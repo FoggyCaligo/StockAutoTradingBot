@@ -1,69 +1,42 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
-@dataclass
+@dataclass(frozen=True)
 class QuoteLevel:
     price: int
     quantity: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class OrderBookSnapshot:
     symbol: str
     timestamp: datetime
-    askLevels: list[QuoteLevel]
-    bidLevels: list[QuoteLevel]
-    lastPrice: int
+    bidLevels: list[QuoteLevel]   # bid1 ~ bid10
+    askLevels: list[QuoteLevel]   # ask1 ~ ask10
 
     @property
-    def ask1(self) -> int:
-        return self.askLevels[0].price
-
-    @property
-    def bid1(self) -> int:
+    def bestBid(self) -> int:
         return self.bidLevels[0].price
 
     @property
-    def midPrice(self) -> float:
-        return (self.ask1 + self.bid1) / 2.0
+    def bestAsk(self) -> int:
+        return self.askLevels[0].price
 
 
-@dataclass
-class Signal:
+@dataclass(frozen=True)
+class Prediction:
     symbol: str
+    entryPrice: int
     predictedPrice: int
-    rawEdge: float
-    spreadRatio: float
-    impactPenalty: float
-    volatilityPenalty: float
-    finalScore: float
-    isEntryCandidate: bool
-    reason: str
+    expectedReturn: float
+    predictedIndex: int
 
 
-@dataclass
-class Position:
+@dataclass(frozen=True)
+class OrderPlan:
     symbol: str
+    buyPrice: int
+    sellPrice: int
     quantity: int
-    averagePrice: int
-    openedAt: datetime
-    lastSignalScore: float = 0.0
-
-
-@dataclass
-class OrderRequest:
-    symbol: str
-    side: str
-    quantity: int
-    orderType: str
-    price: Optional[int] = None
-
-
-@dataclass
-class OrderResult:
-    success: bool
-    orderId: str
-    message: str
-    raw: dict = field(default_factory=dict)
+    expectedReturn: float
