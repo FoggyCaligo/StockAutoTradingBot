@@ -121,6 +121,12 @@ def get_kospi200_list(
     fallback_path = Path(csv_path) if csv_path else DEFAULT_KOSPI200_CSV
     cache = Path(cache_path) if cache_path else DEFAULT_KOSPI200_CACHE
 
+    # An explicit CSV path is treated as a deterministic override for tests and
+    # manual candidate control. Daily refresh is used only when no CSV override
+    # is supplied.
+    if csv_path and fallback_path.exists():
+        return _load_local_universe(fallback_path)
+
     if refresh_daily:
         if _cache_is_today(cache):
             return _load_local_universe(cache)
