@@ -23,9 +23,9 @@ trend_filter:
   require_long_ma_slope_positive: true
 
 strategy:
-  top_ratio: 0.10
+  top_ratio: 0.20
   max_buy_count: 0
-  min_expected_return_percent: 1.0
+  min_expected_return_percent: 0.5
   max_spread_percent: 0.3
   sell_tick_offset: 1
   scan_interval_seconds: 60
