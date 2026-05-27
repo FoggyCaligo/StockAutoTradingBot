@@ -60,6 +60,8 @@ def test_weekly_backtester_runs_and_writes_outputs(tmp_path, monkeypatch):
             start="2024-07-01",
             end="2024-07-31",
             initial_cash=1_000_000,
+            signal_weekday="monday",
+            entry_offset_trading_days=1,
             output_dir=tmp_path,
         ),
     )
@@ -75,3 +77,60 @@ def test_weekly_backtester_runs_and_writes_outputs(tmp_path, monkeypatch):
     assert float(artifacts.summary.iloc[0]["ending_cash"]) > 1_000_000
     assert (tmp_path / "summary.csv").exists()
     assert (tmp_path / "trades.csv").exists()
+
+
+def test_same_day_collision_can_prefer_take_profit(tmp_path, monkeypatch):
+    listing = pd.DataFrame([{"Code": "005930", "Name": "Samsung", "Marcap": 400_000_000_000}])
+    histories = {"005930": _build_history()}
+
+    def _fake_load(self, start: str, end: str) -> HistoricalMarketData:
+        return HistoricalMarketData(listing=listing, histories=histories)
+
+    monkeypatch.setattr(HistoricalKrxDataProvider, "load", _fake_load)
+
+    config = load_config(ROOT / "config/strategy.yaml")
+    backtester = WeeklyBacktester(
+        config=config,
+        settings=BacktestSettings(
+            start="2024-07-01",
+            end="2024-07-31",
+            initial_cash=1_000_000,
+            signal_weekday="monday",
+            entry_offset_trading_days=1,
+            collision_take_profit_ratio=1.0,
+            output_dir=tmp_path,
+        ),
+    )
+
+    artifacts = backtester.run()
+
+    assert "take_profit" in str(artifacts.trades.iloc[0]["exit_reason"])
+
+
+def test_unreliable_monday_approx_falls_back_to_friday_signal(tmp_path, monkeypatch):
+    listing = pd.DataFrame([{"Code": "005930", "Name": "Samsung", "Marcap": 400_000_000_000}])
+    histories = {"005930": _build_history()}
+
+    def _fake_load(self, start: str, end: str) -> HistoricalMarketData:
+        return HistoricalMarketData(listing=listing, histories=histories)
+
+    monkeypatch.setattr(HistoricalKrxDataProvider, "load", _fake_load)
+
+    config = load_config(ROOT / "config/strategy.yaml")
+    backtester = WeeklyBacktester(
+        config=config,
+        settings=BacktestSettings(
+            start="2024-07-01",
+            end="2024-07-31",
+            initial_cash=1_000_000,
+            signal_weekday="monday",
+            entry_offset_trading_days=1,
+            approximate_monday_10am=True,
+            monday_approx_max_gap_pct=0.5,
+            output_dir=tmp_path,
+        ),
+    )
+
+    artifacts = backtester.run()
+
+    assert artifacts.trades.iloc[0]["signal_mode"] == "fallback"

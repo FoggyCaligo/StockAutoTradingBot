@@ -34,6 +34,11 @@ class BacktestSettings:
     end: str
     initial_cash: int
     data_source: str = "auto"
+    signal_weekday: str = "friday"
+    entry_offset_trading_days: int = 1
+    approximate_monday_10am: bool = False
+    monday_approx_max_gap_pct: float = 2.0
+    collision_take_profit_ratio: float = 0.75
     buy_slippage_bps: float = 0.0
     sell_slippage_bps: float = 0.0
     buy_fee_bps: float = 0.0
@@ -77,22 +82,28 @@ class WeeklyBacktester:
 
         start_ts = pd.Timestamp(self.settings.start)
         end_ts = pd.Timestamp(self.settings.end)
-        monday_dates = [dt for dt in trading_dates if dt.weekday() == 0 and start_ts <= dt <= end_ts]
-        for monday in monday_dates:
-            week_end = self._week_end(monday, trading_dates)
+        signal_dates = [dt for dt in trading_dates if dt.weekday() == self._signal_weekday_index() and start_ts <= dt <= end_ts]
+        for signal_date in signal_dates:
+            entry_date = self._offset_trading_date(signal_date, trading_dates, self.settings.entry_offset_trading_days)
+            if entry_date is None:
+                continue
+            week_end = self._week_end(entry_date, trading_dates)
             if week_end is None:
                 continue
 
-            snapshots = self._build_snapshots_for_date(monday, prepared)
+            snapshots, signal_modes = self._build_snapshots_for_date(
+                signal_date,
+                prepared,
+                entry_date=entry_date if self.settings.approximate_monday_10am else None,
+            )
             candidates = self.strategy.select_candidates(snapshots)
             orders = self.sizer.build_buy_orders(candidates, int(cash))
-            entry_date = self._next_trading_date(monday, trading_dates)
-            if entry_date is None or entry_date > week_end:
+            if entry_date > week_end:
                 weekly_rows.append(
                     {
-                        "week_start": monday.date().isoformat(),
+                        "week_start": entry_date.date().isoformat(),
                         "week_end": week_end.date().isoformat(),
-                        "signal_date": monday.date().isoformat(),
+                        "signal_date": signal_date.date().isoformat(),
                         "entry_date": "",
                         "start_cash": round(cash, 2),
                         "end_cash": round(cash, 2),
@@ -133,6 +144,7 @@ class WeeklyBacktester:
                     week_end=week_end,
                     entry_price=entry_price,
                     quantity=quantity,
+                    collision_mode=signal_modes.get(order.code, "fallback"),
                 )
                 cash += exit_info["net_proceeds"]
                 pnl_krw = exit_info["net_proceeds"] - total_cost
@@ -140,12 +152,13 @@ class WeeklyBacktester:
 
                 trade_rows.append(
                     {
-                        "week_start": monday.date().isoformat(),
-                        "signal_date": monday.date().isoformat(),
+                        "week_start": entry_date.date().isoformat(),
+                        "signal_date": signal_date.date().isoformat(),
                         "entry_date": entry_date.date().isoformat(),
                         "exit_date": exit_info["exit_date"],
                         "code": order.code,
                         "name": order.name,
+                        "signal_mode": signal_modes.get(order.code, "fallback"),
                         "quantity": quantity,
                         "entry_price": round(entry_price, 4),
                         "exit_price": round(exit_info["exit_price"], 4),
@@ -165,9 +178,9 @@ class WeeklyBacktester:
 
             weekly_rows.append(
                 {
-                    "week_start": monday.date().isoformat(),
+                    "week_start": entry_date.date().isoformat(),
                     "week_end": week_end.date().isoformat(),
-                    "signal_date": monday.date().isoformat(),
+                    "signal_date": signal_date.date().isoformat(),
                     "entry_date": entry_date.date().isoformat(),
                     "start_cash": round(week_start_cash, 2),
                     "end_cash": round(cash, 2),
@@ -187,8 +200,14 @@ class WeeklyBacktester:
         self._write_outputs(summary_df, trades_df, weekly_df, monthly_df)
         return BacktestArtifacts(summary=summary_df, trades=trades_df, weekly=weekly_df, monthly=monthly_df, output_dir=self.output_dir)
 
-    def _build_snapshots_for_date(self, date_key: pd.Timestamp, histories: dict[str, pd.DataFrame]) -> list[MarketSnapshot]:
+    def _build_snapshots_for_date(
+        self,
+        date_key: pd.Timestamp,
+        histories: dict[str, pd.DataFrame],
+        entry_date: pd.Timestamp | None = None,
+    ) -> tuple[list[MarketSnapshot], dict[str, str]]:
         snapshots: list[MarketSnapshot] = []
+        signal_modes: dict[str, str] = {}
         for code, history in histories.items():
             if date_key not in history.index:
                 continue
@@ -196,6 +215,17 @@ class WeeklyBacktester:
             if any(pd.isna(row.get(column)) for column in ("ma20", "ma30", "ma30_prev", "ma50", "ma50_prev", "ma120", "ma120_prev")):
                 continue
             current_price = int(row["Close"])
+            change_pct = float(row["change_pct"])
+            signal_mode = "fallback"
+            if entry_date is not None and entry_date in history.index:
+                entry_row = history.loc[entry_date]
+                approx_price = int(entry_row["Open"])
+                prev_close = float(row["Close"])
+                approx_change_pct = ((approx_price / prev_close) - 1.0) * 100.0 if prev_close > 0 else 0.0
+                if self._is_monday_approx_reliable(row, approx_change_pct):
+                    current_price = approx_price
+                    change_pct = approx_change_pct
+                    signal_mode = "approx"
             tick_size = _get_tick_size(current_price)
             snapshots.append(
                 MarketSnapshot(
@@ -204,7 +234,7 @@ class WeeklyBacktester:
                     is_kospi200=True,
                     market_cap_krw=int(row["market_cap_krw"]),
                     current_price=current_price,
-                    change_pct=float(row["change_pct"]),
+                    change_pct=change_pct,
                     turnover_krw=int(row["turnover_krw"]),
                     volume=int(row["Volume"]),
                     ma20=float(row["ma20"]),
@@ -219,7 +249,8 @@ class WeeklyBacktester:
                     tick_size=tick_size,
                 )
             )
-        return snapshots
+            signal_modes[code] = signal_mode
+        return snapshots, signal_modes
 
     def _simulate_exit(
         self,
@@ -230,6 +261,7 @@ class WeeklyBacktester:
         week_end: pd.Timestamp,
         entry_price: float,
         quantity: int,
+        collision_mode: str = "fallback",
     ) -> dict[str, object]:
         tp_price = entry_price * (1.0 + self.config.take_profit_pct / 100.0)
         sl_price = entry_price * (1.0 + self.config.stop_loss_pct / 100.0)
@@ -257,9 +289,22 @@ class WeeklyBacktester:
                 exit_reason = "take_profit_gap_open"
                 break
             if low <= sl_price and high >= tp_price:
-                exit_price = sl_price
+                if collision_mode == "approx":
+                    close_price = float(bar["Close"])
+                    if close_price >= entry_price:
+                        exit_price = tp_price
+                        exit_reason = "take_profit_same_day_collision_approx"
+                    else:
+                        exit_price = sl_price
+                        exit_reason = "stop_loss_same_day_collision_approx"
+                else:
+                    if self._collision_prefers_take_profit(code, entry_date, current_date):
+                        exit_price = tp_price
+                        exit_reason = "take_profit_same_day_collision_fallback"
+                    else:
+                        exit_price = sl_price
+                        exit_reason = "stop_loss_same_day_collision_fallback"
                 exit_date = current_date
-                exit_reason = "stop_loss_same_day_collision"
                 break
             if low <= sl_price:
                 exit_price = sl_price
@@ -386,6 +431,51 @@ class WeeklyBacktester:
             if date_key > current_date:
                 return date_key
         return None
+
+    @staticmethod
+    def _offset_trading_date(
+        current_date: pd.Timestamp,
+        trading_dates: list[pd.Timestamp],
+        offset: int,
+    ) -> pd.Timestamp | None:
+        later_dates = [date_key for date_key in trading_dates if date_key > current_date]
+        if offset <= 0:
+            return current_date if current_date in trading_dates else None
+        if len(later_dates) < offset:
+            return None
+        return later_dates[offset - 1]
+
+    def _signal_weekday_index(self) -> int:
+        weekday = self.settings.signal_weekday.strip().lower()
+        mapping = {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+        }
+        if weekday not in mapping:
+            raise ValueError(f"Unsupported signal weekday: {self.settings.signal_weekday}")
+        return mapping[weekday]
+
+    def _collision_prefers_take_profit(self, code: str, entry_date: pd.Timestamp, exit_date: pd.Timestamp) -> bool:
+        ratio = min(max(self.settings.collision_take_profit_ratio, 0.0), 1.0)
+        bucket_size = 100
+        threshold = int(round(ratio * bucket_size))
+        seed = f"{code}-{entry_date.date().isoformat()}-{exit_date.date().isoformat()}"
+        bucket = sum(ord(char) for char in seed) % bucket_size
+        return bucket < threshold
+
+    def _is_monday_approx_reliable(self, signal_row: pd.Series, approx_change_pct: float) -> bool:
+        if not self.settings.approximate_monday_10am:
+            return False
+        if pd.isna(approx_change_pct):
+            return False
+        if abs(approx_change_pct) > self.settings.monday_approx_max_gap_pct:
+            return False
+        min_change = self.config.min_change_pct
+        max_change = self.config.max_change_pct
+        return min_change <= approx_change_pct <= max_change
 
     @staticmethod
     def _trading_day_distance(start_date: pd.Timestamp, end_date: pd.Timestamp) -> int:
