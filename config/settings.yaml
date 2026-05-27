@@ -1,0 +1,39 @@
+market:
+  start_buy_time: "09:10"
+  stop_buy_time: "11:30"
+  force_sell_time: "13:00"
+  end_time: "15:20"
+
+universe:
+  source: "KOSPI200"
+  csv_path: "data/kospi200.csv"
+  min_price: 10000
+  max_price: 50000
+  min_market_cap_krw: 300000000000
+  min_trading_value_krw: 5000000000
+
+trend_filter:
+  enabled: true
+  short_ma: 5
+  long_ma: 20
+  require_price_above_long_ma: true
+  require_long_ma_slope_positive: true
+
+strategy:
+  top_ratio: 0.10
+  max_buy_count: 3
+  min_expected_return_percent: 1.0
+  max_spread_percent: 0.3
+  sell_tick_offset: 1
+  scan_interval_seconds: 60
+
+risk:
+  dry_run: true
+  max_position_count: 3
+  max_budget_per_cycle_krw: 300000
+  max_budget_per_stock_krw: 100000
+  daily_loss_limit_krw: 10000
+
+api:
+  quote_rate_limit_per_second: 5
+  order_rate_limit_per_second: 5
