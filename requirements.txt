@@ -3,3 +3,4 @@ python-dotenv>=1.0.1
 PyYAML>=6.0.2
 pandas>=2.2.0
 finance-datareader>=0.9.90
+pytest

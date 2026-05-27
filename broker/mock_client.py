@@ -15,6 +15,7 @@ class MockKiwoomClient:
         self._order_seq = itertools.count(1)
         self.positions: dict[str, Position] = {}
         self.open_orders: dict[str, OrderResult] = {}
+        self.orderable_cash: int = 10_000_000
 
     def auth(self) -> str:
         return "mock-token"
@@ -41,11 +42,14 @@ class MockKiwoomClient:
         self.positions.pop(ticker, None)
         return OrderResult(order_id=oid, ticker=ticker, side="SELL", quantity=quantity, status="FILLED")
 
-    def cancel_order(self, order_id: str) -> None:
+    def cancel_order(self, order_id: str, ticker: str = "", quantity: int = 0) -> None:
         self.open_orders.pop(order_id, None)
 
     def get_positions(self) -> list[Position]:
         return list(self.positions.values())
+
+    def get_orderable_cash(self) -> int:
+        return self.orderable_cash
 
     def get_open_orders(self) -> list[dict]:
         return [o.__dict__ for o in self.open_orders.values()]

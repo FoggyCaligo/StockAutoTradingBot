@@ -14,6 +14,9 @@ from strategy.orderbook_predictor import calc_target_sell_price
 from strategy.signal import calc_expected_return, final_filter, get_candidates_top
 from strategy.universe import UniverseConfig, get_candidates
 from utils import RateLimiter, is_after_now, is_between_now, load_yaml
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def build_client(dry_run: bool):
