@@ -35,7 +35,7 @@ risk:
   max_position_count: 3
   max_budget_per_cycle_krw: 0
   max_budget_per_stock_krw: 0
-  stop_loss_percent: 2.0
+  stop_loss_percent: 1.5
   daily_loss_limit_krw: 10000
 
 api:

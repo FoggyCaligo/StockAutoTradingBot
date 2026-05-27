@@ -79,6 +79,10 @@ tests/        테스트 골격
 
 
 ## 2026-05-28 확인할 것
+최소 확인 : 09:05 이후
+Get-ChildItem .\logs | Sort-Object LastWriteTime -Descending | Select-Object -First 5
+
+
 09:05 이후 작업 스케줄러 확인
 schtasks /Query /TN "StockAutoTradingBot-Real" /V /FO LIST
 Last Run Time가 오늘로 바뀌고, Task To Run이 그대로 run_real.ps1이면 자동 실행은 탄 겁니다.
