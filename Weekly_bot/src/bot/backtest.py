@@ -37,6 +37,7 @@ class BacktestSettings:
     signal_weekday: str = "friday"
     entry_offset_trading_days: int = 1
     approximate_monday_10am: bool = False
+    monday_approx_price_mode: str = "open"
     monday_approx_max_gap_pct: float = 2.0
     collision_take_profit_ratio: float = 0.75
     buy_slippage_bps: float = 0.0
@@ -219,7 +220,7 @@ class WeeklyBacktester:
             signal_mode = "fallback"
             if entry_date is not None and entry_date in history.index:
                 entry_row = history.loc[entry_date]
-                approx_price = int(entry_row["Open"])
+                approx_price = self._approximate_signal_price(float(row["Close"]), float(entry_row["Open"]))
                 prev_close = float(row["Close"])
                 approx_change_pct = ((approx_price / prev_close) - 1.0) * 100.0 if prev_close > 0 else 0.0
                 if self._is_monday_approx_reliable(row, approx_change_pct):
@@ -476,6 +477,16 @@ class WeeklyBacktester:
         min_change = self.config.min_change_pct
         max_change = self.config.max_change_pct
         return min_change <= approx_change_pct <= max_change
+
+    def _approximate_signal_price(self, friday_close: float, monday_open: float) -> int:
+        mode = self.settings.monday_approx_price_mode.strip().lower()
+        if mode == "open":
+            return int(monday_open)
+        if mode == "mid":
+            return int(round((friday_close + monday_open) / 2.0))
+        if mode == "weighted":
+            return int(round(friday_close * 0.6 + monday_open * 0.4))
+        raise ValueError(f"Unsupported monday approximation price mode: {self.settings.monday_approx_price_mode}")
 
     @staticmethod
     def _trading_day_distance(start_date: pd.Timestamp, end_date: pd.Timestamp) -> int:

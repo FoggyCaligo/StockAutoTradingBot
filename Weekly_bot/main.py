@@ -61,6 +61,7 @@ def main() -> None:
     parser.add_argument("--signal-weekday", default="friday", choices=["monday", "tuesday", "wednesday", "thursday", "friday"], help="Signal generation weekday for backtest")
     parser.add_argument("--entry-offset-days", type=int, default=1, help="Number of trading days after the signal day to enter in backtest")
     parser.add_argument("--approx-monday-10am", action="store_true", help="Approximate Monday 10:00 signal by using Monday open versus prior close while keeping prior trend indicators")
+    parser.add_argument("--monday-approx-price-mode", default="open", choices=["open", "mid", "weighted"], help="Price proxy to use for Monday 10:00 approximation")
     parser.add_argument("--monday-approx-max-gap-pct", type=float, default=2.0, help="Use Monday 10:00 approximation only when Monday open gap versus prior close stays within this percent")
     parser.add_argument("--collision-tp-ratio", type=float, default=0.75, help="When both TP and SL touch on the same day in backtest, assume TP with this probability-like ratio")
     parser.add_argument("--buy-slippage-bps", type=float, default=0.0, help="Backtest buy slippage in basis points")
@@ -90,6 +91,7 @@ def main() -> None:
                 signal_weekday=args.signal_weekday,
                 entry_offset_trading_days=args.entry_offset_days,
                 approximate_monday_10am=args.approx_monday_10am,
+                monday_approx_price_mode=args.monday_approx_price_mode,
                 monday_approx_max_gap_pct=args.monday_approx_max_gap_pct,
                 collision_take_profit_ratio=args.collision_tp_ratio,
                 buy_slippage_bps=args.buy_slippage_bps,

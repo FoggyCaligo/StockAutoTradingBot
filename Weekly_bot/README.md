@@ -28,7 +28,7 @@ Real-trading update:
 1. 시가총액 3,000억 원 이상
 2. 당일 등락률 -1% ~ -10%
 3. 거래대금/거래량 최소 기준 통과
-4. 현재가가 Envelope 하단 2% 아래
+4. 현재가가 Envelope 하단 2.5% 아래
 5. 추세 조건 통과
    - `(MA30 우상향 OR MA50 우상향)`
    - `OR (MA120 우상향 AND 현재가 > MA120)`
@@ -116,13 +116,14 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 - 기본 백테스트는 전주 금요일 신호 생성, 다음 거래일인 월요일 시가 매수, 진입일~금요일 일봉 OHLC 기준 익절·손절 판정, 금요일 종가 강제청산으로 근사합니다.
 - 같은 날 익절가와 손절가가 모두 닿으면 기본적으로 `익절 75% / 손절 25%` 비율이 되도록 종목/날짜 기준으로 결정합니다.
 - `--approx-monday-10am` 옵션을 켜면, 금요일 이동평균/거래대금 지표는 유지하되 월요일 시가를 현재가처럼 넣어 월요일 10:00 신호를 우선 근사합니다.
+- `--monday-approx-price-mode open|mid|weighted` 로 월요일 근사 가격을 고를 수 있습니다. `mid`는 `(금요일 종가 + 월요일 시가) / 2` 혼합값입니다.
 - 다만 월요일 시가가 전주 금요일 종가 대비 너무 크게 벌어져 있거나 계산이 불가능하면, 해당 종목은 금요일 신호로 되돌리고 같은 날 익절/손절 충돌도 `익절 75% / 손절 25%` fallback 규칙을 사용합니다.
 - 과거 호가 데이터가 없기 때문에 스프레드는 1틱 매수호가/매도호가 차이로 단순화합니다.
 
 예시:
 
 ```powershell
-.\.venv\Scripts\python.exe .\Weekly_bot\main.py backtest --start 2024-01-01 --end 2024-12-31 --cash 10000000 --source auto --signal-weekday friday --entry-offset-days 1 --approx-monday-10am --monday-approx-max-gap-pct 2.0 --collision-tp-ratio 0.75 --buy-slippage-bps 5 --sell-slippage-bps 5 --log-dir .\Weekly_bot\logs
+.\.venv\Scripts\python.exe .\Weekly_bot\main.py backtest --start 2024-01-01 --end 2024-12-31 --cash 10000000 --source auto --signal-weekday friday --entry-offset-days 1 --approx-monday-10am --monday-approx-price-mode mid --monday-approx-max-gap-pct 2.0 --collision-tp-ratio 0.75 --buy-slippage-bps 5 --sell-slippage-bps 5 --log-dir .\Weekly_bot\logs
 ```
 
 생성 파일:

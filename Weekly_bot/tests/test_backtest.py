@@ -134,3 +134,19 @@ def test_unreliable_monday_approx_falls_back_to_friday_signal(tmp_path, monkeypa
     artifacts = backtester.run()
 
     assert artifacts.trades.iloc[0]["signal_mode"] == "fallback"
+
+
+def test_mid_price_approximation_is_supported():
+    config = load_config(ROOT / "config/strategy.yaml")
+    backtester = WeeklyBacktester(
+        config=config,
+        settings=BacktestSettings(
+            start="2024-01-01",
+            end="2024-01-31",
+            initial_cash=1_000_000,
+            approximate_monday_10am=True,
+            monday_approx_price_mode="mid",
+        ),
+    )
+
+    assert backtester._approximate_signal_price(100.0, 90.0) == 95
