@@ -50,16 +50,34 @@ def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
 def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict) -> None:
     order_limiter = RateLimiter(cfg["api"]["order_rate_limit_per_second"])
     budget_per_stock = cfg["risk"]["max_budget_per_stock_krw"]
+    budget_per_cycle = cfg["risk"].get("max_budget_per_cycle_krw", 0)
     tick_offset = cfg["strategy"]["sell_tick_offset"]
+    try:
+        orderable_cash = client.get_orderable_cash()
+    except Exception as exc:
+        print(f"Failed to fetch orderable cash: {exc}")
+        return
+
+    if orderable_cash <= 0:
+        print("Orderable cash is zero. Skip buy cycle.")
+        return
+
+    remaining_cash = min(orderable_cash, budget_per_cycle) if budget_per_cycle > 0 else orderable_cash
 
     for candidate in targets:
-        qty = calc_order_quantity(candidate, budget_per_stock)
+        per_stock_budget = min(budget_per_stock, remaining_cash)
+        qty = calc_order_quantity(candidate, per_stock_budget)
         if qty <= 0:
+            continue
+
+        estimated_cost = qty * candidate.price
+        if estimated_cost <= 0 or estimated_cost > remaining_cash:
             continue
 
         order_limiter.wait()
         buy_order = client.buy_limit(candidate.ticker, qty, candidate.price)
         recorder.save_order(buy_order)
+        remaining_cash -= estimated_cost
 
         fill = client.wait_buy_filled(buy_order.order_id)
         if fill is None:
@@ -76,6 +94,9 @@ def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict
         order_limiter.wait()
         sell_order = client.sell_limit(candidate.ticker, fill.quantity, target_price)
         recorder.save_order(sell_order)
+
+        if remaining_cash < candidate.price:
+            break
 
 
 def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
