@@ -111,19 +111,31 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
 
     def get_snapshot(self, code: str) -> MarketSnapshot | None:
         normalized = _normalize_code(code)
-        if self._snapshots is not None:
-            cached_snapshot = next((snapshot for snapshot in self._snapshots if snapshot.code == normalized), None)
-            if cached_snapshot is not None:
-                return cached_snapshot
-
         row = self._get_universe_row(normalized)
         if row is None:
             return None
         try:
-            return self._build_snapshot(row, normalized)
+            snapshot = self._build_snapshot(row, normalized)
+            self._refresh_cached_snapshot(snapshot)
+            return snapshot
         except Exception as exc:
             print(f"Skipping live snapshot for {normalized} due to error: {exc}")
             return None
+
+    def _refresh_cached_snapshot(self, snapshot: MarketSnapshot) -> None:
+        if self._snapshots is None:
+            return
+        refreshed: list[MarketSnapshot] = []
+        replaced = False
+        for cached_snapshot in self._snapshots:
+            if cached_snapshot.code == snapshot.code:
+                refreshed.append(snapshot)
+                replaced = True
+            else:
+                refreshed.append(cached_snapshot)
+        if not replaced:
+            refreshed.append(snapshot)
+        self._snapshots = refreshed
 
     def _load_universe_df(self) -> pd.DataFrame:
         if self._universe_df is None:
