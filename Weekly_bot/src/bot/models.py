@@ -51,6 +51,19 @@ class OrderIntent:
 
 
 @dataclass(frozen=True)
+class OrderExecutionResult:
+    order_id: str
+    code: str
+    side: str
+    requested_quantity: int
+    status: str
+    filled_quantity: int = 0
+    fill_price: float = 0.0
+    message: str = ""
+    recorded_at: datetime | None = None
+
+
+@dataclass(frozen=True)
 class Position:
     code: str
     name: str

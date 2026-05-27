@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+WORKSPACE_ROOT = ROOT.parent
+if str(WORKSPACE_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORKSPACE_ROOT))
 
 from Daily_bot.broker.kiwoom_client import KiwoomClient
 from Daily_bot.broker.mock_client import MockKiwoomClient
@@ -271,7 +277,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="config/settings.yaml")
+    parser.add_argument("--config", default=str(ROOT / "config/settings.yaml"))
     parser.add_argument("--dry-run", action="store_true", help="Use mock broker and do not send real orders")
     parser.add_argument("--real", action="store_true", help="Use real Kiwoom client. Requires implementation and credentials")
     return parser.parse_args()

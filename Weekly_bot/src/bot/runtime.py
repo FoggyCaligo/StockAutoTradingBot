@@ -7,12 +7,14 @@ from pathlib import Path
 from bot.config import StrategyConfig
 from bot.data.base import MarketDataProvider
 from bot.execution.base import OrderExecutor
-from bot.models import Candidate, ExitDecision
+from bot.models import Candidate, ExitDecision, OrderExecutionResult
 from bot.risk.position_sizing import EqualWeightPositionSizer
 from bot.strategy.weekly_pullback import WeeklyPullbackStrategy
 
 
 class BotRuntime:
+    SUCCESS_STATUSES = {"FILLED", "POSITION_CONFIRMED_AFTER_TIMEOUT", "POSITION_CLEARED_AFTER_TIMEOUT"}
+
     def __init__(
         self,
         config: StrategyConfig,
@@ -38,7 +40,11 @@ class BotRuntime:
         candidates = self.scan_candidates()
         cash = self.executor.get_available_cash()
         orders = self.sizer.build_buy_orders(candidates, cash)
-        order_ids = [self.executor.submit_order(order) for order in orders]
+        order_ids: list[str] = []
+        for order in orders:
+            result = self._submit_order_with_logging("monday_buy", order)
+            if result.order_id:
+                order_ids.append(result.order_id)
         return order_ids
 
     def monitor_exits(self) -> list[str]:
@@ -48,6 +54,7 @@ class BotRuntime:
         for position in positions:
             snapshot = self.data_provider.get_snapshot(position.code)
             if snapshot is None:
+                self._write_runtime_event("monitor_exits", position.code, "SELL", "SNAPSHOT_MISSING", "snapshot unavailable")
                 continue
             decision = self.strategy.check_exit(position, snapshot.current_price)
             decisions.append(decision)
@@ -59,7 +66,9 @@ class BotRuntime:
                     reason=decision.reason,
                     reference_price=snapshot.current_price,
                 )
-                submitted.append(self.executor.submit_order(order))
+                result = self._submit_order_with_logging("monitor_exits", order)
+                if result.order_id:
+                    submitted.append(result.order_id)
         self._write_exit_decisions(decisions)
         return submitted
 
@@ -76,8 +85,65 @@ class BotRuntime:
                 reason="friday_liquidation",
                 reference_price=reference_price,
             )
-            submitted.append(self.executor.submit_order(order))
+            result = self._submit_order_with_logging("friday_liquidate", order)
+            if result.order_id:
+                submitted.append(result.order_id)
         return submitted
+
+    def _submit_order_with_logging(self, phase: str, order) -> OrderExecutionResult:
+        try:
+            result = self.executor.submit_order(order)
+        except Exception as exc:
+            positions, state_message = self.executor.recheck_account_state()
+            self._write_runtime_event(
+                phase,
+                order.code,
+                order.side,
+                "ERROR",
+                f"{exc}; {state_message}; positions={len(positions)}",
+            )
+            raise
+
+        if result.status == "PARTIAL_FILL":
+            self._write_runtime_event(
+                phase,
+                order.code,
+                order.side,
+                result.status,
+                f"filled_quantity={result.filled_quantity} fill_price={result.fill_price}",
+            )
+        elif result.status not in self.SUCCESS_STATUSES:
+            positions, state_message = self.executor.recheck_account_state()
+            self._write_runtime_event(
+                phase,
+                order.code,
+                order.side,
+                result.status,
+                f"{result.message}; {state_message}; positions={len(positions)}",
+            )
+
+        return result
+
+    def _write_runtime_event(self, phase: str, code: str, side: str, status: str, message: str) -> None:
+        path = self.log_dir / "runtime_events.csv"
+        exists = path.exists()
+        with path.open("a", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=["time", "phase", "code", "side", "status", "message"],
+            )
+            if not exists:
+                writer.writeheader()
+            writer.writerow(
+                {
+                    "time": datetime.now().isoformat(timespec="seconds"),
+                    "phase": phase,
+                    "code": code,
+                    "side": side,
+                    "status": status,
+                    "message": message,
+                }
+            )
 
     def _write_candidates(self, candidates: list[Candidate]) -> None:
         path = self.log_dir / "candidates.csv"

@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from bot.execution.base import OrderExecutor
-from bot.models import OrderIntent, Position
+from bot.models import OrderExecutionResult, OrderIntent, Position
 
 
 class DryRunExecutor(OrderExecutor):
@@ -36,28 +36,57 @@ class DryRunExecutor(OrderExecutor):
                 )
         return positions
 
-    def submit_order(self, order: OrderIntent) -> str:
+    def submit_order(self, order: OrderIntent) -> OrderExecutionResult:
         order_id = f"DRY-{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
-        self._append_order_log(order_id, order)
+        result = OrderExecutionResult(
+            order_id=order_id,
+            code=order.code,
+            side=order.side,
+            requested_quantity=order.quantity,
+            status="FILLED",
+            filled_quantity=order.quantity,
+            fill_price=float(order.reference_price),
+            message="dry_run_immediate_fill",
+            recorded_at=datetime.now(),
+        )
+        self._append_order_log(order, result)
         if order.side == "BUY":
             self._append_position(order)
         elif order.side == "SELL":
             self._remove_position(order.code)
-        return order_id
+        return result
 
-    def _append_order_log(self, order_id: str, order: OrderIntent) -> None:
+    def recheck_account_state(self) -> tuple[list[Position], str]:
+        positions = self.get_positions()
+        return positions, f"positions={len(positions)} dry_run_state_ok"
+
+    def _append_order_log(self, order: OrderIntent, result: OrderExecutionResult) -> None:
         exists = self.orders_path.exists()
         with self.orders_path.open("a", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(
                 f,
-                fieldnames=["time", "order_id", "code", "name", "side", "quantity", "order_type", "reason", "reference_price"],
+                fieldnames=[
+                    "time",
+                    "order_id",
+                    "code",
+                    "name",
+                    "side",
+                    "quantity",
+                    "order_type",
+                    "reason",
+                    "reference_price",
+                    "status",
+                    "filled_quantity",
+                    "fill_price",
+                    "message",
+                ],
             )
             if not exists:
                 writer.writeheader()
             writer.writerow(
                 {
-                    "time": datetime.now().isoformat(timespec="seconds"),
-                    "order_id": order_id,
+                    "time": (result.recorded_at or datetime.now()).isoformat(timespec="seconds"),
+                    "order_id": result.order_id,
                     "code": order.code,
                     "name": order.name,
                     "side": order.side,
@@ -65,6 +94,10 @@ class DryRunExecutor(OrderExecutor):
                     "order_type": order.order_type,
                     "reason": order.reason,
                     "reference_price": order.reference_price,
+                    "status": result.status,
+                    "filled_quantity": result.filled_quantity,
+                    "fill_price": result.fill_price,
+                    "message": result.message,
                 }
             )
 
