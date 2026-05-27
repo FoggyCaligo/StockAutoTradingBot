@@ -24,6 +24,7 @@ class _ClientStub:
 
     def cancel_order(self, order_id: str, ticker: str = "", quantity: int = 0):
         self.cancel_calls.append((order_id, ticker, quantity))
+        self._open_orders = []
 
     def get_positions(self):
         return self._positions

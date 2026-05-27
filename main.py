@@ -9,6 +9,7 @@ from broker.mock_client import MockKiwoomClient
 from models import BotState, Candidate
 from risk.force_sell import force_sell
 from risk.guards import has_open_orders, has_position, trim_targets, calc_order_quantity
+from risk.stop_loss import monitor_stop_loss
 from storage.db import Recorder
 from strategy.orderbook_predictor import calc_target_sell_price
 from strategy.signal import calc_expected_return, final_filter, get_candidates_top
@@ -42,7 +43,7 @@ def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
     for ticker, candidate in candidates.items():
         limiter.wait()
         snapshot = client.get_20hoga(ticker)
-        candidate = calc_expected_return(candidate, snapshot)
+        candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"])
         recorder.save_snapshot(candidate, snapshot)
         recorder.save_signal(candidate, selected=False)
         calculated.append(candidate)
@@ -159,6 +160,12 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
         positions = client.get_positions()
         open_orders = client.get_open_orders()
+
+        if has_position(positions):
+            stop_loss_executed = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+            if stop_loss_executed:
+                time.sleep(1)
+                continue
 
         if has_position(positions) or has_open_orders(open_orders):
             time.sleep(5)

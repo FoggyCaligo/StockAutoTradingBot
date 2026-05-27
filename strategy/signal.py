@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from models import Candidate, HogaSnapshot
-from strategy.orderbook_predictor import calc_spread_percent, predict_price_from_hoga
+from strategy.orderbook_predictor import calc_spread_percent, calc_target_sell_price, predict_price_from_hoga
 
 
-def calc_expected_return(candidate: Candidate, snapshot: HogaSnapshot) -> Candidate:
+def calc_expected_return(candidate: Candidate, snapshot: HogaSnapshot, sell_tick_offset: int = 1) -> Candidate:
     expect_price = predict_price_from_hoga(snapshot)
+    target_sell_price = calc_target_sell_price(expect_price, sell_tick_offset)
     price = snapshot.current_price or candidate.price
     candidate.price = price
     candidate.expect_price = expect_price
-    candidate.expect_revenue_percent = ((expect_price - price) / price * 100) if price > 0 else 0.0
+    candidate.expect_revenue_percent = ((target_sell_price - price) / price * 100) if price > 0 else 0.0
     candidate.spread_percent = calc_spread_percent(snapshot)
     candidate.hoga_snapshot_time = snapshot.captured_at
     candidate.raw_hoga = snapshot.raw

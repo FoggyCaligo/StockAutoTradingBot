@@ -30,10 +30,11 @@ strategy:
   scan_interval_seconds: 60
 
 risk:
-  dry_run: true
+  dry_run: false
   max_position_count: 3
   max_budget_per_cycle_krw: 300000
   max_budget_per_stock_krw: 100000
+  stop_loss_percent: 2.0
   daily_loss_limit_krw: 10000
 
 api:
