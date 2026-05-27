@@ -17,9 +17,23 @@ class UniverseConfig:
     min_market_cap_krw: int
     min_trading_value_krw: int
     csv_path: str | None = None
+    cache_path: str | None = None
+    source: str = "KOSPI200"
+    refresh_daily: bool = True
 
 
 DEFAULT_KOSPI200_CSV = Path("data/kospi200.csv")
+DEFAULT_KOSPI200_CACHE = Path("data/kospi200_latest.csv")
+NUMERIC_COLUMNS = [
+    "Close",
+    "Open",
+    "Marcap",
+    "MarketCap",
+    "Amount",
+    "TradingValue",
+    "market_cap",
+    "trading_value",
+]
 
 
 def _safe_int(value: Any) -> int:
@@ -42,34 +56,92 @@ def _safe_str(value: Any) -> str | None:
     return str(value).strip()
 
 
-def _load_local_universe(path: Path) -> pd.DataFrame:
-    if not path.exists():
-        raise FileNotFoundError(f"Local universe CSV not found: {path}")
-    df = pd.read_csv(path, dtype=str)
-    df = df.fillna("")
-    for numeric_col in ["Close", "Open", "Marcap", "Amount", "TradingValue", "market_cap", "trading_value"]:
+def _normalize_code(value: Any) -> str:
+    code = str(value or "").strip()
+    if code.endswith(".KS") or code.endswith(".KQ"):
+        code = code.split(".")[0]
+    return code.zfill(6) if code else ""
+
+
+def _coerce_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.fillna("").copy()
+    for numeric_col in NUMERIC_COLUMNS:
         if numeric_col in df.columns:
             series = pd.to_numeric(df[numeric_col].astype(str).str.replace(",", ""), errors="coerce")
-            series = pd.Series(series).fillna(0).astype(int)
-            df[numeric_col] = series
+            df[numeric_col] = pd.Series(series).fillna(0).astype(int)
     return df
 
 
+def _load_local_universe(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        raise FileNotFoundError(f"Local universe CSV not found: {path}")
+    return _coerce_numeric_columns(pd.read_csv(path, dtype=str))
 
-def get_kospi200_list(csv_path: str | None = None) -> pd.DataFrame:
-    local_path = Path(csv_path) if csv_path else DEFAULT_KOSPI200_CSV
-    if local_path.exists():
-        return _load_local_universe(local_path)
 
-    try:
-        import FinanceDataReader as fdr  # type: ignore[import]
+def _cache_is_today(path: Path) -> bool:
+    if not path.exists():
+        return False
+    modified_day = pd.Timestamp(path.stat().st_mtime, unit="s").normalize()
+    return bool(modified_day == pd.Timestamp("today").normalize())
 
-        df = fdr.StockListing("KOSPI")
-        return df
-    except Exception as exc:
-        raise RuntimeError(
-            "Failed to load universe. Provide data/kospi200.csv or install FinanceDataReader with network access."
-        ) from exc
+
+def _save_cache(df: pd.DataFrame, cache_path: Path) -> None:
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(cache_path, index=False)
+
+
+def _load_fdr_listing(source: str) -> pd.DataFrame:
+    import FinanceDataReader as fdr  # type: ignore[import]
+
+    candidates = [source]
+    if source.upper() == "KOSPI200":
+        # FinanceDataReader versions differ. Try the narrow source first, then
+        # fall back to broad KOSPI listing so the bot can still build a daily
+        # refreshed universe.
+        candidates.extend(["KS200", "KOSPI"])
+
+    last_error: Exception | None = None
+    for market in candidates:
+        try:
+            df = fdr.StockListing(market)
+            if isinstance(df, pd.DataFrame) and not df.empty:
+                return _coerce_numeric_columns(df)
+        except Exception as exc:  # pragma: no cover - network/data source dependent
+            last_error = exc
+
+    raise RuntimeError(f"FinanceDataReader failed to load source={source}") from last_error
+
+
+def get_kospi200_list(
+    csv_path: str | None = None,
+    cache_path: str | None = None,
+    source: str = "KOSPI200",
+    refresh_daily: bool = True,
+) -> pd.DataFrame:
+    fallback_path = Path(csv_path) if csv_path else DEFAULT_KOSPI200_CSV
+    cache = Path(cache_path) if cache_path else DEFAULT_KOSPI200_CACHE
+
+    if refresh_daily:
+        if _cache_is_today(cache):
+            return _load_local_universe(cache)
+        try:
+            df = _load_fdr_listing(source)
+            _save_cache(df, cache)
+            return df
+        except Exception as exc:
+            warnings.warn(
+                f"Daily universe refresh failed; falling back to local CSV/cache. reason={exc}",
+                UserWarning,
+            )
+
+    if cache.exists():
+        return _load_local_universe(cache)
+    if fallback_path.exists():
+        return _load_local_universe(fallback_path)
+
+    raise RuntimeError(
+        "Failed to load universe. Enable network access for FinanceDataReader or provide data/kospi200.csv."
+    )
 
 
 def filter_by_price(df: pd.DataFrame, min_price: int, max_price: int) -> pd.DataFrame:
@@ -119,7 +191,8 @@ def filter_by_trend(df: pd.DataFrame, enabled: bool = True) -> pd.DataFrame:
         return df
 
     if "trend_ok" in df.columns:
-        df["trend_ok"] = df["trend_ok"].astype(bool)
+        trend = df["trend_ok"].astype(str).str.lower().isin(["true", "1", "yes", "y"])
+        df["trend_ok"] = trend
         result = df.loc[df["trend_ok"]]
         assert isinstance(result, pd.DataFrame)
         return result
@@ -131,7 +204,7 @@ def filter_by_trend(df: pd.DataFrame, enabled: bool = True) -> pd.DataFrame:
         today = pd.Timestamp("today").normalize()
         start = today - pd.Timedelta(days=90)
         for _, row in df.iterrows():
-            ticker = _safe_str(row.get("Code") or row.get("Symbol") or row.get("code") or "")
+            ticker = _normalize_code(row.get("Code") or row.get("Symbol") or row.get("code") or "")
             if not ticker:
                 trend_ok.append(False)
                 continue
@@ -158,7 +231,12 @@ def filter_by_trend(df: pd.DataFrame, enabled: bool = True) -> pd.DataFrame:
 
 
 def get_candidates(cfg: UniverseConfig, trend_enabled: bool = True) -> dict[str, Candidate]:
-    df = get_kospi200_list(cfg.csv_path)
+    df = get_kospi200_list(
+        cfg.csv_path,
+        cache_path=cfg.cache_path,
+        source=cfg.source,
+        refresh_daily=cfg.refresh_daily,
+    )
     df = filter_by_price(df, cfg.min_price, cfg.max_price)
     df = filter_by_market_cap(df, cfg.min_market_cap_krw)
     df = filter_by_trading_value(df, cfg.min_trading_value_krw)
@@ -166,8 +244,8 @@ def get_candidates(cfg: UniverseConfig, trend_enabled: bool = True) -> dict[str,
 
     candidates: dict[str, Candidate] = {}
     for _, row in df.iterrows():
-        ticker = str(row.get("Code") or row.get("Symbol") or row.get("code") or "").zfill(6)
-        if not ticker.strip():
+        ticker = _normalize_code(row.get("Code") or row.get("Symbol") or row.get("code") or "")
+        if not ticker:
             continue
 
         price = _safe_int(row.get("Close") or row.get("Open") or row.get("price") or row.get("Price"))
