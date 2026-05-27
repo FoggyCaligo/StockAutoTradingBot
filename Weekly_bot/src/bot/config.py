@@ -28,6 +28,8 @@ class StrategyConfig:
     min_positions: int
     take_profit_pct: float
     stop_loss_pct: float
+    monitor_poll_seconds: int
+    monitor_end_time: str
     friday_liquidation_time: str
 
 
@@ -61,5 +63,7 @@ def load_config(path: str | Path = "config/strategy.yaml") -> StrategyConfig:
         min_positions=int(sizing["min_positions"]),
         take_profit_pct=float(exits["take_profit_pct"]),
         stop_loss_pct=float(exits["stop_loss_pct"]),
+        monitor_poll_seconds=int(exits.get("monitor_poll_seconds", 60)),
+        monitor_end_time=str(exits.get("monitor_end_time", "15:10")),
         friday_liquidation_time=str(exits["friday_liquidation_time"]),
     )

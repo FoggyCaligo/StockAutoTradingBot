@@ -29,4 +29,6 @@ position_sizing:
 exit_rules:
   take_profit_pct: 2.5
   stop_loss_pct: -3.5
+  monitor_poll_seconds: 60
+  monitor_end_time: "15:10"
   friday_liquidation_time: "14:50"

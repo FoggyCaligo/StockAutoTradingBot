@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -71,6 +72,29 @@ class BotRuntime:
                     submitted.append(result.order_id)
         self._write_exit_decisions(decisions)
         return submitted
+
+    def monitor_exits_loop(self) -> list[str]:
+        all_submitted: list[str] = []
+        while self._is_before_time(self.config.monitor_end_time):
+            submitted = self.monitor_exits()
+            all_submitted.extend(submitted)
+            if submitted:
+                self._write_runtime_event(
+                    "monitor_loop",
+                    "",
+                    "",
+                    "SUBMITTED",
+                    f"submitted_exit_orders={len(submitted)}",
+                )
+            time.sleep(max(self.config.monitor_poll_seconds, 1))
+        self._write_runtime_event(
+            "monitor_loop",
+            "",
+            "",
+            "STOPPED",
+            f"monitor_end_time_reached={self.config.monitor_end_time}",
+        )
+        return all_submitted
 
     def friday_liquidate(self) -> list[str]:
         positions = self.executor.get_positions()
@@ -144,6 +168,13 @@ class BotRuntime:
                     "message": message,
                 }
             )
+
+    @staticmethod
+    def _is_before_time(hhmm: str) -> bool:
+        now = datetime.now().time().replace(second=0, microsecond=0)
+        hour, minute = hhmm.split(":")
+        cutoff = now.replace(hour=int(hour), minute=int(minute))
+        return now <= cutoff
 
     def _write_candidates(self, candidates: list[Candidate]) -> None:
         path = self.log_dir / "candidates.csv"

@@ -53,6 +53,7 @@ def main() -> None:
     parser.add_argument("--log-dir", default="logs")
     parser.add_argument("--real", action="store_true", help="Submit real orders via Kiwoom REST API")
     parser.add_argument("--dry-run", action="store_true", help="Force dry-run mode")
+    parser.add_argument("--once", action="store_true", help="Run monitor only once instead of looping until monitor_end_time")
     args = parser.parse_args()
 
     if args.real and args.dry_run:
@@ -75,7 +76,7 @@ def main() -> None:
         for order_id in order_ids:
             print(order_id)
     elif args.command == "monitor":
-        order_ids = runtime.monitor_exits()
+        order_ids = runtime.monitor_exits() if args.once else runtime.monitor_exits_loop()
         print(f"submitted_exit_orders={len(order_ids)}")
         for order_id in order_ids:
             print(order_id)

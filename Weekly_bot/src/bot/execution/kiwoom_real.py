@@ -103,7 +103,7 @@ class KiwoomRealExecutor(OrderExecutor):
         latest_message = submit_message
 
         while time.monotonic() < deadline:
-            fill = self.client.get_buy_fill(order_id)
+            fill = self.client.get_order_fill(order_id) if hasattr(self.client, "get_order_fill") else self.client.get_buy_fill(order_id)
             if fill is not None:
                 return OrderExecutionResult(
                     order_id=order_id,

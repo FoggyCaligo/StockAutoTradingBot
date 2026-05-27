@@ -80,13 +80,16 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
         self.client.auth()
         self._get_kospi200_list = universe_loader
         self._get_tick_size = tick_size_fn
+        self._universe_df: pd.DataFrame | None = None
+        self._universe_rows_by_code: dict[str, pd.Series] = {}
+        self._history_cache: dict[str, pd.DataFrame] = {}
         self._snapshots: list[MarketSnapshot] | None = None
 
     def load_snapshots(self) -> list[MarketSnapshot]:
         if self._snapshots is not None:
             return self._snapshots
 
-        universe_df = self._get_kospi200_list(source="KOSPI200", refresh_daily=True)
+        universe_df = self._load_universe_df()
         snapshots: list[MarketSnapshot] = []
 
         prefiltered = self._prefilter_listing(universe_df)
@@ -108,7 +111,39 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
 
     def get_snapshot(self, code: str) -> MarketSnapshot | None:
         normalized = _normalize_code(code)
-        return next((snapshot for snapshot in self.load_snapshots() if snapshot.code == normalized), None)
+        if self._snapshots is not None:
+            cached_snapshot = next((snapshot for snapshot in self._snapshots if snapshot.code == normalized), None)
+            if cached_snapshot is not None:
+                return cached_snapshot
+
+        row = self._get_universe_row(normalized)
+        if row is None:
+            return None
+        try:
+            return self._build_snapshot(row, normalized)
+        except Exception as exc:
+            print(f"Skipping live snapshot for {normalized} due to error: {exc}")
+            return None
+
+    def _load_universe_df(self) -> pd.DataFrame:
+        if self._universe_df is None:
+            self._universe_df = self._get_kospi200_list(source="KOSPI200", refresh_daily=True)
+        return self._universe_df
+
+    def _get_universe_row(self, code: str) -> pd.Series | None:
+        if code in self._universe_rows_by_code:
+            return self._universe_rows_by_code[code]
+
+        universe_df = self._load_universe_df()
+        for _, row in universe_df.iterrows():
+            normalized = _normalize_code(_get_row_value(row, ["Code", "Symbol", "code"]))
+            if not normalized:
+                continue
+            if normalized not in self._universe_rows_by_code:
+                self._universe_rows_by_code[normalized] = row
+            if normalized == code:
+                return row
+        return None
 
     def _prefilter_listing(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
@@ -171,8 +206,10 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
             tick_size=tick_size,
         )
 
-    @staticmethod
-    def _load_history(code: str) -> pd.DataFrame:
+    def _load_history(self, code: str) -> pd.DataFrame:
+        if code in self._history_cache:
+            return self._history_cache[code]
+
         import FinanceDataReader as fdr  # type: ignore[import]
 
         end = datetime.now().date()
@@ -180,4 +217,5 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
         history = fdr.DataReader(code, start=start, end=end)
         if not isinstance(history, pd.DataFrame) or history.empty or "Close" not in history.columns:
             raise RuntimeError("price history unavailable")
+        self._history_cache[code] = history
         return history

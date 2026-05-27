@@ -5,6 +5,25 @@ $workspaceRoot = Split-Path -Parent $botRoot
 $pythonPath = Join-Path $workspaceRoot ".venv\Scripts\python.exe"
 $mainPath = Join-Path $botRoot "main.py"
 $logDir = Join-Path $botRoot "logs"
+$lockPath = Join-Path $logDir "run_real.lock"
+
+function Test-BotPythonRunning {
+    param(
+        [string]$BotRootPath,
+        [string]$EntryPath
+    )
+
+    $normalizedBotRoot = [System.IO.Path]::GetFullPath($BotRootPath)
+    $normalizedEntry = [System.IO.Path]::GetFullPath($EntryPath)
+    $processes = Get-CimInstance Win32_Process -Filter "Name = 'python.exe' OR Name = 'pythonw.exe'"
+    foreach ($process in $processes) {
+        $commandLine = [string]$process.CommandLine
+        if ($commandLine -and $commandLine.Contains($normalizedBotRoot) -and $commandLine.Contains($normalizedEntry)) {
+            return $true
+        }
+    }
+    return $false
+}
 
 if (!(Test-Path $pythonPath)) {
     throw "Python executable not found: $pythonPath"
@@ -15,6 +34,16 @@ if (!(Test-Path $mainPath)) {
 }
 
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+
+if (Test-Path $lockPath) {
+    if (Test-BotPythonRunning -BotRootPath $botRoot -EntryPath $mainPath) {
+        Write-Output "Daily_bot is already running. Skip duplicate start."
+        exit 0
+    }
+    Remove-Item $lockPath -Force
+}
+
+Set-Content -Path $lockPath -Value "pid=$PID`nstarted_at=$(Get-Date -Format o)" -Encoding ascii
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $logPath = Join-Path $logDir "run_real_$timestamp.log"
 
@@ -23,5 +52,8 @@ try {
     & $pythonPath $mainPath --real *>&1 | Tee-Object -FilePath $logPath
 }
 finally {
+    if (Test-Path $lockPath) {
+        Remove-Item $lockPath -Force
+    }
     Pop-Location
 }

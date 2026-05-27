@@ -232,6 +232,10 @@ class KiwoomClient:
         raw = self.get_order_status(order_id)
         return self._build_fill_from_status(raw, order_id)
 
+    def get_order_fill(self, order_id: str) -> Fill | None:
+        raw = self.get_order_status(order_id)
+        return self._build_fill_from_status(raw, order_id)
+
     def wait_buy_filled(
         self,
         order_id: str,
