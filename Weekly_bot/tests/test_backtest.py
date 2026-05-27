@@ -69,6 +69,9 @@ def test_weekly_backtester_runs_and_writes_outputs(tmp_path, monkeypatch):
     assert not artifacts.summary.empty
     assert not artifacts.trades.empty
     assert artifacts.trades.iloc[0]["exit_reason"] == "take_profit"
+    assert artifacts.trades.iloc[0]["signal_date"] == "2024-07-08"
+    assert artifacts.trades.iloc[0]["entry_date"] == "2024-07-09"
+    assert int(artifacts.trades.iloc[0]["holding_days"]) == 1
     assert float(artifacts.summary.iloc[0]["ending_cash"]) > 1_000_000
     assert (tmp_path / "summary.csv").exists()
     assert (tmp_path / "trades.csv").exists()

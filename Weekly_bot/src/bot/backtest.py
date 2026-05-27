@@ -86,6 +86,25 @@ class WeeklyBacktester:
             snapshots = self._build_snapshots_for_date(monday, prepared)
             candidates = self.strategy.select_candidates(snapshots)
             orders = self.sizer.build_buy_orders(candidates, int(cash))
+            entry_date = self._next_trading_date(monday, trading_dates)
+            if entry_date is None or entry_date > week_end:
+                weekly_rows.append(
+                    {
+                        "week_start": monday.date().isoformat(),
+                        "week_end": week_end.date().isoformat(),
+                        "signal_date": monday.date().isoformat(),
+                        "entry_date": "",
+                        "start_cash": round(cash, 2),
+                        "end_cash": round(cash, 2),
+                        "pnl_krw": 0.0,
+                        "pnl_pct": 0.0,
+                        "num_candidates": len(candidates),
+                        "num_orders": 0,
+                        "num_trades": 0,
+                        "realized_pnl_krw": 0.0,
+                    }
+                )
+                continue
 
             week_start_cash = cash
             week_realized = 0.0
@@ -93,10 +112,10 @@ class WeeklyBacktester:
 
             for order in orders:
                 history = prepared.get(order.code)
-                if history is None or monday not in history.index:
+                if history is None or entry_date not in history.index:
                     continue
 
-                entry_bar = history.loc[monday]
+                entry_bar = history.loc[entry_date]
                 entry_price = self._apply_buy_costs(float(entry_bar["Open"]))
                 quantity = order.quantity
                 gross_cost = entry_price * quantity
@@ -110,7 +129,7 @@ class WeeklyBacktester:
                     code=order.code,
                     name=order.name,
                     history=history,
-                    entry_date=monday,
+                    entry_date=entry_date,
                     week_end=week_end,
                     entry_price=entry_price,
                     quantity=quantity,
@@ -122,7 +141,8 @@ class WeeklyBacktester:
                 trade_rows.append(
                     {
                         "week_start": monday.date().isoformat(),
-                        "entry_date": monday.date().isoformat(),
+                        "signal_date": monday.date().isoformat(),
+                        "entry_date": entry_date.date().isoformat(),
                         "exit_date": exit_info["exit_date"],
                         "code": order.code,
                         "name": order.name,
@@ -130,6 +150,7 @@ class WeeklyBacktester:
                         "entry_price": round(entry_price, 4),
                         "exit_price": round(exit_info["exit_price"], 4),
                         "exit_reason": exit_info["exit_reason"],
+                        "holding_days": exit_info["holding_days"],
                         "gross_cost": round(gross_cost, 2),
                         "buy_fee": round(buy_fee, 2),
                         "sell_fee": round(exit_info["sell_fee"], 2),
@@ -146,6 +167,8 @@ class WeeklyBacktester:
                 {
                     "week_start": monday.date().isoformat(),
                     "week_end": week_end.date().isoformat(),
+                    "signal_date": monday.date().isoformat(),
+                    "entry_date": entry_date.date().isoformat(),
                     "start_cash": round(week_start_cash, 2),
                     "end_cash": round(cash, 2),
                     "pnl_krw": round(cash - week_start_cash, 2),
@@ -211,7 +234,7 @@ class WeeklyBacktester:
         tp_price = entry_price * (1.0 + self.config.take_profit_pct / 100.0)
         sl_price = entry_price * (1.0 + self.config.stop_loss_pct / 100.0)
 
-        window = history.loc[(history.index > entry_date) & (history.index <= week_end)]
+        window = history.loc[(history.index >= entry_date) & (history.index <= week_end)]
         if window.empty:
             window = history.loc[[entry_date]]
 
@@ -220,8 +243,19 @@ class WeeklyBacktester:
         exit_reason = "friday_liquidation"
 
         for current_date, bar in window.iterrows():
+            open_price = float(bar["Open"])
             low = float(bar["Low"])
             high = float(bar["High"])
+            if open_price <= sl_price:
+                exit_price = open_price
+                exit_date = current_date
+                exit_reason = "stop_loss_gap_open"
+                break
+            if open_price >= tp_price:
+                exit_price = open_price
+                exit_date = current_date
+                exit_reason = "take_profit_gap_open"
+                break
             if low <= sl_price and high >= tp_price:
                 exit_price = sl_price
                 exit_date = current_date
@@ -250,6 +284,7 @@ class WeeklyBacktester:
             "exit_price": exit_price,
             "exit_date": exit_date.date().isoformat(),
             "exit_reason": exit_reason,
+            "holding_days": self._trading_day_distance(entry_date, exit_date),
             "sell_fee": sell_fee,
             "sell_tax": sell_tax,
             "net_proceeds": net_proceeds,
@@ -344,6 +379,17 @@ class WeeklyBacktester:
     def _week_end(monday: pd.Timestamp, trading_dates: list[pd.Timestamp]) -> pd.Timestamp | None:
         candidates = [dt for dt in trading_dates if monday <= dt <= monday + pd.Timedelta(days=4)]
         return candidates[-1] if candidates else None
+
+    @staticmethod
+    def _next_trading_date(current_date: pd.Timestamp, trading_dates: list[pd.Timestamp]) -> pd.Timestamp | None:
+        for date_key in trading_dates:
+            if date_key > current_date:
+                return date_key
+        return None
+
+    @staticmethod
+    def _trading_day_distance(start_date: pd.Timestamp, end_date: pd.Timestamp) -> int:
+        return max(int(len(pd.bdate_range(start_date, end_date)) - 1), 0)
 
     def _apply_buy_costs(self, price: float) -> float:
         return price * (1.0 + self.settings.buy_slippage_bps / 10_000.0)
