@@ -7,8 +7,10 @@ market:
 universe:
   source: "KOSPI200"
   csv_path: "data/kospi200.csv"
-  min_price: 10000
-  max_price: 50000
+  cache_path: "data/kospi200_latest.csv"
+  refresh_daily: true
+  min_price: 5000
+  max_price: 100000
   min_market_cap_krw: 300000000000
   min_trading_value_krw: 5000000000
 
