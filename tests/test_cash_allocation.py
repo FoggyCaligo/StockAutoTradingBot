@@ -17,6 +17,7 @@ class _ClientStub:
         self.orderable_cash = orderable_cash
         self.orderable_cash_sequence: list[int] | None = None
         self.fill_sequence: list[Fill | None] | None = None
+        self.buy_fill_sequence: list[Fill | None] | None = None
         self.sell_limit_error: RuntimeError | None = None
         self.positions = []
         self.open_orders = []
@@ -43,6 +44,11 @@ class _ClientStub:
         if self.fill_sequence:
             return self.fill_sequence.pop(0)
         return Fill(order_id=order_id, ticker="MOCK", quantity=1, price=10000)
+
+    def get_buy_fill(self, order_id: str) -> Fill | None:
+        if self.buy_fill_sequence:
+            return self.buy_fill_sequence.pop(0)
+        return None
 
     def cancel_order(self, order_id: str, ticker: str = "", quantity: int = 0) -> None:
         self.cancel_calls.append((order_id, ticker, quantity))
@@ -135,6 +141,20 @@ def test_activate_buy_refreshes_cash_after_unfilled_buy_cancel():
         ("005930", 10, 10_000),
         ("000660", 10, 10_000),
     ]
+
+
+def test_activate_buy_places_exit_order_for_partial_fill_after_cancel():
+    client = _ClientStub(orderable_cash=120_000)
+    client.orderable_cash_sequence = [120_000]
+    client.fill_sequence = [None]
+    client.buy_fill_sequence = [Fill(order_id="BUY-1", ticker="005930", quantity=3, price=10_000)]
+    recorder = _RecorderStub(orders=[])
+    targets = [Candidate(ticker="005930", price=10_000, expect_price=10_200)]
+
+    activate_buy(client, recorder, targets, _cfg())
+
+    assert client.cancel_calls == [("BUY-1", "005930", 10)]
+    assert client.sell_calls == [("005930", 3, 10150)]
 
 
 def test_activate_buy_distributes_full_cash_across_all_targets_when_limits_removed():

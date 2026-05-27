@@ -78,3 +78,6 @@ class MockKiwoomClient:
             quantity=self.last_buy_order.quantity,
             price=self.last_buy_order.price or 0,
         )
+
+    def get_buy_fill(self, order_id: str) -> Fill | None:
+        return self.wait_buy_filled(order_id)

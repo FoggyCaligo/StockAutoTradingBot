@@ -76,6 +76,19 @@ def cancel_unfilled_buy(client, buy_order, candidate: Candidate, qty: int, recor
         client.wait_until_order_cancelled(buy_order.order_id)
 
 
+def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, tick_offset: int, order_limiter: RateLimiter) -> None:
+    target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
+    if target_price <= fill.price:
+        order_limiter.wait()
+        sell_order = client.sell_market(candidate.ticker, fill.quantity)
+        recorder.save_order(sell_order)
+        return
+
+    order_limiter.wait()
+    sell_order = client.sell_limit(candidate.ticker, fill.quantity, target_price)
+    recorder.save_order(sell_order)
+
+
 def _refresh_remaining_cash(client, budget_per_cycle: int) -> int | None:
     try:
         refreshed_cash = client.get_orderable_cash()
@@ -139,22 +152,23 @@ def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict
             if fill is None:
                 order_limiter.wait()
                 cancel_unfilled_buy(client, buy_order, candidate, qty, recorder)
+                partial_fill = None
+                if hasattr(client, "get_buy_fill"):
+                    partial_fill = client.get_buy_fill(buy_order.order_id)
+                if partial_fill is not None and partial_fill.quantity > 0:
+                    print(
+                        f"Partial fill recovered after cancel for {candidate.ticker}: "
+                        f"{partial_fill.quantity} shares. Submitting exit order."
+                    )
+                    submit_exit_order(client, recorder, candidate, partial_fill, tick_offset, order_limiter)
+                    return
                 refreshed_cash = _refresh_remaining_cash(client, budget_per_cycle)
                 if refreshed_cash is None:
                     return
                 remaining_cash = refreshed_cash
                 continue
 
-            target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
-            if target_price <= fill.price:
-                order_limiter.wait()
-                sell_order = client.sell_market(candidate.ticker, fill.quantity)
-                recorder.save_order(sell_order)
-                continue
-
-            order_limiter.wait()
-            sell_order = client.sell_limit(candidate.ticker, fill.quantity, target_price)
-            recorder.save_order(sell_order)
+            submit_exit_order(client, recorder, candidate, fill, tick_offset, order_limiter)
 
             if remaining_cash < candidate.price:
                 break

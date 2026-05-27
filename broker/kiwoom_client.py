@@ -228,6 +228,10 @@ class KiwoomClient:
         }
         return self._request("POST", self.DOMESTIC_ACCOUNT_PATH, api_id=self.TR_KA10076_FILLS, json=payload)
 
+    def get_buy_fill(self, order_id: str) -> Fill | None:
+        raw = self.get_order_status(order_id)
+        return self._build_fill_from_status(raw, order_id)
+
     def wait_buy_filled(
         self,
         order_id: str,
@@ -237,21 +241,9 @@ class KiwoomClient:
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
             raw = self.get_order_status(order_id)
-            rows = self._extract_list(raw, ["cntr"]) or []
-            if rows:
-                total_quantity = sum(self._extract_number(row, ["cntr_qty"]) for row in rows)
-                latest_row = rows[-1]
-                price = self._extract_number(latest_row, ["cntr_pric", "ord_pric"])
-                ticker = self._normalize_ticker(self._extract_value(latest_row, ["stk_cd"]) or "")
-                if total_quantity > 0 and price > 0:
-                    if expected_quantity is None or total_quantity >= expected_quantity:
-                        return Fill(
-                            order_id=order_id,
-                            ticker=ticker,
-                            quantity=total_quantity,
-                            price=price,
-                            raw=latest_row,
-                        )
+            fill = self._build_fill_from_status(raw, order_id)
+            if fill is not None and (expected_quantity is None or fill.quantity >= expected_quantity):
+                return fill
             time.sleep(2)
         return None
 
@@ -293,6 +285,26 @@ class KiwoomClient:
             if ticker and quantity > 0:
                 positions.append(Position(ticker=ticker, quantity=quantity, avg_price=avg_price, raw=item))
         return positions
+
+    def _build_fill_from_status(self, raw: dict[str, Any], order_id: str) -> Fill | None:
+        rows = self._extract_list(raw, ["cntr"]) or []
+        if not rows:
+            return None
+
+        total_quantity = sum(self._extract_number(row, ["cntr_qty"]) for row in rows)
+        latest_row = rows[-1]
+        price = self._extract_number(latest_row, ["cntr_pric", "ord_pric"])
+        ticker = self._normalize_ticker(self._extract_value(latest_row, ["stk_cd"]) or "")
+        if total_quantity <= 0 or price <= 0:
+            return None
+
+        return Fill(
+            order_id=order_id,
+            ticker=ticker,
+            quantity=total_quantity,
+            price=price,
+            raw=latest_row,
+        )
 
     def _extract_hoga_levels(self, raw: dict[str, Any], side: str) -> list[HogaLevel]:
         levels: list[HogaLevel] = []
