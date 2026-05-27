@@ -28,7 +28,7 @@ Real-trading update:
 1. 시가총액 3,000억 원 이상
 2. 당일 등락률 -1% ~ -10%
 3. 거래대금/거래량 최소 기준 통과
-4. 현재가가 Envelope 하단 아래
+4. 현재가가 Envelope 하단 2% 아래
 5. 추세 조건 통과
    - `(MA30 우상향 OR MA50 우상향)`
    - `OR (MA120 우상향 AND 현재가 > MA120)`
@@ -99,6 +99,7 @@ python main.py scan --data data/sample_market_snapshot.csv
 python main.py buy --data data/sample_market_snapshot.csv --cash 1000000
 python main.py monitor --positions logs/positions.csv --data data/sample_market_snapshot.csv
 python main.py friday-liquidate --positions logs/positions.csv
+python main.py backtest --start 2024-01-01 --end 2024-12-31 --cash 10000000 --source auto --log-dir logs
 ```
 
 PowerShell에서는 다음처럼 실행할 수 있습니다.
@@ -106,6 +107,27 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 ```powershell
 .\.venv\Scripts\python.exe main.py scan --data data\sample_market_snapshot.csv
 ```
+
+## Backtest
+
+`backtest` 명령은 KOSPI200 현재 구성 종목을 기준으로 과거 일봉 데이터를 자동 수집해서 주간 전략을 간이 재현합니다.
+
+- 기본 데이터 소스는 `auto`이며, `FinanceDataReader`를 우선 사용하고 실패 시 `yfinance` 가격 데이터를 시도합니다.
+- 백테스트는 월요일 시가 매수, 화~금 일봉 고가/저가 기준 익절·손절 판정, 금요일 종가 강제청산으로 근사합니다.
+- 과거 호가 데이터가 없기 때문에 스프레드는 1틱 매수호가/매도호가 차이로 단순화합니다.
+
+예시:
+
+```powershell
+.\.venv\Scripts\python.exe .\Weekly_bot\main.py backtest --start 2024-01-01 --end 2024-12-31 --cash 10000000 --source auto --buy-slippage-bps 5 --sell-slippage-bps 5 --log-dir .\Weekly_bot\logs
+```
+
+생성 파일:
+
+- `logs\backtests\summary.csv`
+- `logs\backtests\trades.csv`
+- `logs\backtests\weekly.csv`
+- `logs\backtests\monthly.csv`
 
 ---
 

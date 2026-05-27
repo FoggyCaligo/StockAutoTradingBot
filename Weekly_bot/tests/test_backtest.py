@@ -1,0 +1,74 @@
+from pathlib import Path
+import sys
+
+import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from bot.backtest import BacktestSettings, WeeklyBacktester
+from bot.config import load_config
+from bot.data.historical_provider import HistoricalKrxDataProvider, HistoricalMarketData
+
+
+def _build_history() -> pd.DataFrame:
+    dates = pd.bdate_range("2024-01-01", periods=140)
+    rows: list[dict[str, float]] = []
+    close = 80.0
+    for date in dates[:-5]:
+        open_price = close
+        high = close * 1.01
+        low = close * 0.99
+        rows.append(
+            {
+                "Open": open_price,
+                "High": high,
+                "Low": low,
+                "Close": close,
+                "Volume": 12_000_000,
+                "Change": 0.002,
+            }
+        )
+        close += 0.2
+
+    weekly_rows = [
+        {"Open": 102.0, "High": 103.0, "Low": 100.0, "Close": 101.0, "Volume": 15_000_000, "Change": -0.05},
+        {"Open": 101.0, "High": 103.0, "Low": 100.5, "Close": 102.0, "Volume": 13_000_000, "Change": 0.0099},
+        {"Open": 102.0, "High": 106.0, "Low": 101.0, "Close": 105.0, "Volume": 13_000_000, "Change": 0.0294},
+        {"Open": 105.0, "High": 106.0, "Low": 103.0, "Close": 104.0, "Volume": 11_000_000, "Change": -0.0095},
+        {"Open": 104.0, "High": 105.0, "Low": 103.0, "Close": 104.5, "Volume": 11_000_000, "Change": 0.0048},
+    ]
+    rows.extend(weekly_rows)
+    return pd.DataFrame(rows, index=dates)
+
+
+def test_weekly_backtester_runs_and_writes_outputs(tmp_path, monkeypatch):
+    listing = pd.DataFrame([{"Code": "005930", "Name": "Samsung", "Marcap": 400_000_000_000}])
+    histories = {"005930": _build_history()}
+
+    def _fake_load(self, start: str, end: str) -> HistoricalMarketData:
+        return HistoricalMarketData(listing=listing, histories=histories)
+
+    monkeypatch.setattr(HistoricalKrxDataProvider, "load", _fake_load)
+
+    config = load_config(ROOT / "config/strategy.yaml")
+    backtester = WeeklyBacktester(
+        config=config,
+        settings=BacktestSettings(
+            start="2024-07-01",
+            end="2024-07-31",
+            initial_cash=1_000_000,
+            output_dir=tmp_path,
+        ),
+    )
+
+    artifacts = backtester.run()
+
+    assert not artifacts.summary.empty
+    assert not artifacts.trades.empty
+    assert artifacts.trades.iloc[0]["exit_reason"] == "take_profit"
+    assert float(artifacts.summary.iloc[0]["ending_cash"]) > 1_000_000
+    assert (tmp_path / "summary.csv").exists()
+    assert (tmp_path / "trades.csv").exists()

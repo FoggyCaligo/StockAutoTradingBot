@@ -11,6 +11,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from bot.config import load_config
+from bot.backtest import BacktestSettings, WeeklyBacktester
 from bot.data.csv_provider import CsvMarketDataProvider
 from bot.data.live_provider import LiveKrxMarketDataProvider
 from bot.execution.dry_run import DryRunExecutor
@@ -46,7 +47,7 @@ def build_runtime(args: argparse.Namespace) -> BotRuntime:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="KOSPI200 Weekly Pullback Bot v0.1")
-    parser.add_argument("command", choices=["scan", "buy", "monitor", "friday-liquidate"])
+    parser.add_argument("command", choices=["scan", "buy", "monitor", "friday-liquidate", "backtest"])
     parser.add_argument("--config", default="config/strategy.yaml")
     parser.add_argument("--data", default="live")
     parser.add_argument("--cash", type=int, default=1_000_000)
@@ -54,6 +55,14 @@ def main() -> None:
     parser.add_argument("--real", action="store_true", help="Submit real orders via Kiwoom REST API")
     parser.add_argument("--dry-run", action="store_true", help="Force dry-run mode")
     parser.add_argument("--once", action="store_true", help="Run monitor only once instead of looping until monitor_end_time")
+    parser.add_argument("--start", help="Backtest start date in YYYY-MM-DD format")
+    parser.add_argument("--end", help="Backtest end date in YYYY-MM-DD format")
+    parser.add_argument("--source", default="auto", choices=["auto", "fdr", "yfinance"], help="Historical data source for backtest")
+    parser.add_argument("--buy-slippage-bps", type=float, default=0.0, help="Backtest buy slippage in basis points")
+    parser.add_argument("--sell-slippage-bps", type=float, default=0.0, help="Backtest sell slippage in basis points")
+    parser.add_argument("--buy-fee-bps", type=float, default=0.0, help="Backtest buy fee in basis points")
+    parser.add_argument("--sell-fee-bps", type=float, default=0.0, help="Backtest sell fee in basis points")
+    parser.add_argument("--sell-tax-bps", type=float, default=0.0, help="Backtest sell-side tax in basis points")
     args = parser.parse_args()
 
     if args.real and args.dry_run:
@@ -61,6 +70,30 @@ def main() -> None:
 
     if not args.real and not args.dry_run and os.getenv("TRADING_MODE", "").lower() == "real":
         args.real = True
+
+    if args.command == "backtest":
+        if not args.start or not args.end:
+            parser.error("--start and --end are required for backtest.")
+        config = load_config(_resolve_path(args.config))
+        backtester = WeeklyBacktester(
+            config=config,
+            settings=BacktestSettings(
+                start=args.start,
+                end=args.end,
+                initial_cash=args.cash,
+                data_source=args.source,
+                buy_slippage_bps=args.buy_slippage_bps,
+                sell_slippage_bps=args.sell_slippage_bps,
+                buy_fee_bps=args.buy_fee_bps,
+                sell_fee_bps=args.sell_fee_bps,
+                sell_tax_bps=args.sell_tax_bps,
+                output_dir=_resolve_path(args.log_dir) / "backtests",
+            ),
+        )
+        artifacts = backtester.run()
+        print(artifacts.summary.to_string(index=False))
+        print(f"backtest_output_dir={artifacts.output_dir}")
+        return
 
     runtime = build_runtime(args)
 
