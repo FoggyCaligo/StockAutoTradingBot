@@ -64,6 +64,18 @@ def cancel_unfilled_buy(client, buy_order, candidate: Candidate, qty: int, recor
         client.wait_until_order_cancelled(buy_order.order_id)
 
 
+def _refresh_remaining_cash(client, budget_per_cycle: int) -> int | None:
+    try:
+        refreshed_cash = client.get_orderable_cash()
+    except Exception as exc:
+        print(f"Failed to refresh orderable cash: {exc}")
+        return None
+
+    if refreshed_cash <= 0:
+        return 0
+    return min(refreshed_cash, budget_per_cycle) if budget_per_cycle > 0 else refreshed_cash
+
+
 def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict) -> None:
     order_limiter = RateLimiter(cfg["api"]["order_rate_limit_per_second"])
     budget_per_stock = cfg["risk"]["max_budget_per_stock_krw"]
@@ -100,6 +112,10 @@ def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict
         if fill is None:
             order_limiter.wait()
             cancel_unfilled_buy(client, buy_order, candidate, qty, recorder)
+            refreshed_cash = _refresh_remaining_cash(client, budget_per_cycle)
+            if refreshed_cash is None:
+                return
+            remaining_cash = refreshed_cash
             continue
 
         target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
