@@ -1,4 +1,5 @@
 market:
+  prewarm_start_time: "08:55"
   start_buy_time: "09:10"
   stop_buy_time: "11:30"
   force_sell_time: "13:00"
@@ -23,7 +24,7 @@ trend_filter:
 
 strategy:
   top_ratio: 0.10
-  max_buy_count: 3
+  max_buy_count: 0
   min_expected_return_percent: 1.0
   max_spread_percent: 0.3
   sell_tick_offset: 1
@@ -32,8 +33,8 @@ strategy:
 risk:
   dry_run: false
   max_position_count: 3
-  max_budget_per_cycle_krw: 300000
-  max_budget_per_stock_krw: 100000
+  max_budget_per_cycle_krw: 0
+  max_budget_per_stock_krw: 0
   stop_loss_percent: 2.0
   daily_loss_limit_krw: 10000
 

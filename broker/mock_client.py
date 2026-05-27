@@ -63,7 +63,12 @@ class MockKiwoomClient:
     def get_open_orders(self) -> list[dict]:
         return [o.__dict__ for o in self.open_orders.values()]
 
-    def wait_buy_filled(self, order_id: str, timeout_seconds: int = 30) -> Fill | None:
+    def wait_buy_filled(
+        self,
+        order_id: str,
+        expected_quantity: int | None = None,
+        timeout_seconds: int = 30,
+    ) -> Fill | None:
         # Mock assumes buy_limit fills immediately.
         if not self.last_buy_order or self.last_buy_order.order_id != order_id:
             return None

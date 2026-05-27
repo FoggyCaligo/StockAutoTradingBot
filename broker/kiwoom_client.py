@@ -228,18 +228,30 @@ class KiwoomClient:
         }
         return self._request("POST", self.DOMESTIC_ACCOUNT_PATH, api_id=self.TR_KA10076_FILLS, json=payload)
 
-    def wait_buy_filled(self, order_id: str, timeout_seconds: int = 30) -> Fill | None:
+    def wait_buy_filled(
+        self,
+        order_id: str,
+        expected_quantity: int | None = None,
+        timeout_seconds: int = 30,
+    ) -> Fill | None:
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
             raw = self.get_order_status(order_id)
             rows = self._extract_list(raw, ["cntr"]) or []
             if rows:
-                row = rows[0]
-                quantity = self._extract_number(row, ["cntr_qty"])
-                price = self._extract_number(row, ["cntr_pric", "ord_pric"])
-                ticker = self._normalize_ticker(self._extract_value(row, ["stk_cd"]) or "")
-                if quantity > 0 and price > 0:
-                    return Fill(order_id=order_id, ticker=ticker, quantity=quantity, price=price, raw=row)
+                total_quantity = sum(self._extract_number(row, ["cntr_qty"]) for row in rows)
+                latest_row = rows[-1]
+                price = self._extract_number(latest_row, ["cntr_pric", "ord_pric"])
+                ticker = self._normalize_ticker(self._extract_value(latest_row, ["stk_cd"]) or "")
+                if total_quantity > 0 and price > 0:
+                    if expected_quantity is None or total_quantity >= expected_quantity:
+                        return Fill(
+                            order_id=order_id,
+                            ticker=ticker,
+                            quantity=total_quantity,
+                            price=price,
+                            raw=latest_row,
+                        )
             time.sleep(2)
         return None
 

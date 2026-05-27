@@ -21,9 +21,12 @@ def calc_order_quantity(candidate: Candidate, budget_per_stock_krw: int) -> int:
 
 
 def can_buy_candidate(candidate: Candidate, budget_per_stock_krw: int, sell_tick_offset: int) -> bool:
-    qty = calc_order_quantity(candidate, budget_per_stock_krw)
-    if qty <= 0:
+    if candidate.price <= 0:
         return False
+    if budget_per_stock_krw > 0:
+        qty = calc_order_quantity(candidate, budget_per_stock_krw)
+        if qty <= 0:
+            return False
     target_sell_price = calc_target_sell_price(candidate.expect_price, sell_tick_offset)
     return target_sell_price > candidate.price
 
@@ -38,6 +41,6 @@ def trim_targets(
     for c in candidates:
         if can_buy_candidate(c, budget_per_stock_krw, sell_tick_offset):
             result.append(c)
-        if len(result) >= max_buy_count:
+        if max_buy_count > 0 and len(result) >= max_buy_count:
             break
     return result

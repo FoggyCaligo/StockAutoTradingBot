@@ -24,8 +24,8 @@ def build_client(dry_run: bool):
     return MockKiwoomClient() if dry_run else KiwoomClient()
 
 
-def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
-    universe_cfg = UniverseConfig(
+def build_universe_config(cfg: dict) -> UniverseConfig:
+    return UniverseConfig(
         min_price=cfg["universe"]["min_price"],
         max_price=cfg["universe"]["max_price"],
         min_market_cap_krw=cfg["universe"]["min_market_cap_krw"],
@@ -36,17 +36,28 @@ def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
         refresh_daily=cfg["universe"].get("refresh_daily", True),
     )
 
+
+def warm_universe(cfg: dict) -> None:
+    universe_cfg = build_universe_config(cfg)
+    get_candidates(universe_cfg, cfg["trend_filter"]["enabled"])
+
+
+def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
+    universe_cfg = build_universe_config(cfg)
     candidates = get_candidates(universe_cfg, cfg["trend_filter"]["enabled"])
     limiter = RateLimiter(cfg["api"]["quote_rate_limit_per_second"])
     calculated: list[Candidate] = []
 
     for ticker, candidate in candidates.items():
-        limiter.wait()
-        snapshot = client.get_20hoga(ticker)
-        candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"])
-        recorder.save_snapshot(candidate, snapshot)
-        recorder.save_signal(candidate, selected=False)
-        calculated.append(candidate)
+        try:
+            limiter.wait()
+            snapshot = client.get_20hoga(ticker)
+            candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"])
+            recorder.save_snapshot(candidate, snapshot)
+            recorder.save_signal(candidate, selected=False)
+            calculated.append(candidate)
+        except Exception as exc:
+            print(f"Skipping {ticker} during scan due to error: {exc}")
 
     return calculated
 
@@ -77,6 +88,16 @@ def _refresh_remaining_cash(client, budget_per_cycle: int) -> int | None:
     return min(refreshed_cash, budget_per_cycle) if budget_per_cycle > 0 else refreshed_cash
 
 
+def _recheck_account_state(client) -> tuple[list, list[dict]] | tuple[None, None]:
+    try:
+        positions = client.get_positions()
+        open_orders = client.get_open_orders()
+        return positions, open_orders
+    except Exception as exc:
+        print(f"Failed to recheck account state after buy error: {exc}")
+        return None, None
+
+
 def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict) -> None:
     order_limiter = RateLimiter(cfg["api"]["order_rate_limit_per_second"])
     budget_per_stock = cfg["risk"]["max_budget_per_stock_krw"]
@@ -94,44 +115,64 @@ def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict
 
     remaining_cash = min(orderable_cash, budget_per_cycle) if budget_per_cycle > 0 else orderable_cash
 
-    for candidate in targets:
-        per_stock_budget = min(budget_per_stock, remaining_cash)
-        qty = calc_order_quantity(candidate, per_stock_budget)
-        if qty <= 0:
-            continue
+    for index, candidate in enumerate(targets):
+        try:
+            remaining_target_count = len(targets) - index
+            if budget_per_stock > 0:
+                per_stock_budget = min(budget_per_stock, remaining_cash)
+            else:
+                per_stock_budget = remaining_cash if remaining_target_count <= 1 else remaining_cash // remaining_target_count
+            qty = calc_order_quantity(candidate, per_stock_budget)
+            if qty <= 0:
+                continue
 
-        estimated_cost = qty * candidate.price
-        if estimated_cost <= 0 or estimated_cost > remaining_cash:
-            continue
+            estimated_cost = qty * candidate.price
+            if estimated_cost <= 0 or estimated_cost > remaining_cash:
+                continue
 
-        order_limiter.wait()
-        buy_order = client.buy_limit(candidate.ticker, qty, candidate.price)
-        recorder.save_order(buy_order)
-        remaining_cash -= estimated_cost
-
-        fill = client.wait_buy_filled(buy_order.order_id)
-        if fill is None:
             order_limiter.wait()
-            cancel_unfilled_buy(client, buy_order, candidate, qty, recorder)
-            refreshed_cash = _refresh_remaining_cash(client, budget_per_cycle)
-            if refreshed_cash is None:
-                return
-            remaining_cash = refreshed_cash
-            continue
+            buy_order = client.buy_limit(candidate.ticker, qty, candidate.price)
+            recorder.save_order(buy_order)
+            remaining_cash -= estimated_cost
 
-        target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
-        if target_price <= fill.price:
+            fill = client.wait_buy_filled(buy_order.order_id, qty)
+            if fill is None:
+                order_limiter.wait()
+                cancel_unfilled_buy(client, buy_order, candidate, qty, recorder)
+                refreshed_cash = _refresh_remaining_cash(client, budget_per_cycle)
+                if refreshed_cash is None:
+                    return
+                remaining_cash = refreshed_cash
+                continue
+
+            target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
+            if target_price <= fill.price:
+                order_limiter.wait()
+                sell_order = client.sell_market(candidate.ticker, fill.quantity)
+                recorder.save_order(sell_order)
+                continue
+
             order_limiter.wait()
-            sell_order = client.sell_market(candidate.ticker, fill.quantity)
+            sell_order = client.sell_limit(candidate.ticker, fill.quantity, target_price)
             recorder.save_order(sell_order)
-            continue
 
-        order_limiter.wait()
-        sell_order = client.sell_limit(candidate.ticker, fill.quantity, target_price)
-        recorder.save_order(sell_order)
-
-        if remaining_cash < candidate.price:
-            break
+            if remaining_cash < candidate.price:
+                break
+        except Exception as exc:
+            print(f"Buy flow error for {candidate.ticker}: {exc}")
+            positions, open_orders = _recheck_account_state(client)
+            if positions is None or open_orders is None:
+                print("Stopping new buys because account state could not be confirmed.")
+                return
+            print(
+                "Stopping new buys after buy error. "
+                f"positions={len(positions)} open_orders={len(open_orders)}"
+            )
+            if has_position(positions):
+                print("Position detected after buy error. Manual check recommended before resuming.")
+            if has_open_orders(open_orders):
+                print("Open orders detected after buy error. Manual check recommended before resuming.")
+            return
 
 
 def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
@@ -144,6 +185,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
     state = BotState.NO_POSITION
     force_sell_done = False
+    warmed_session = False
 
     while True:
         if is_after_now(cfg["market"]["force_sell_time"]) and not force_sell_done:
@@ -153,6 +195,17 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             state = BotState.STOPPED
             print("Force sell completed. Stop trading for today.")
             break
+
+        if is_between_now(
+            cfg["market"].get("prewarm_start_time", cfg["market"]["start_buy_time"]),
+            cfg["market"]["start_buy_time"],
+        ) and not warmed_session:
+            try:
+                warm_universe(cfg)
+                warmed_session = True
+                print("Universe warm-up completed.")
+            except Exception as exc:
+                print(f"Universe warm-up failed: {exc}")
 
         if not is_between_now(cfg["market"]["start_buy_time"], cfg["market"]["stop_buy_time"]):
             time.sleep(5)
@@ -172,7 +225,12 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             continue
 
         state = BotState.SCANNING
-        calculated = scan_and_rank(client, recorder, cfg)
+        try:
+            calculated = scan_and_rank(client, recorder, cfg)
+        except Exception as exc:
+            print(f"Scan cycle failed: {exc}")
+            time.sleep(cfg["strategy"]["scan_interval_seconds"])
+            continue
         top = get_candidates_top(calculated, cfg["strategy"]["top_ratio"])
         filtered = final_filter(
             top,
