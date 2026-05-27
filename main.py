@@ -30,6 +30,9 @@ def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
         min_market_cap_krw=cfg["universe"]["min_market_cap_krw"],
         min_trading_value_krw=cfg["universe"]["min_trading_value_krw"],
         csv_path=cfg["universe"].get("csv_path"),
+        cache_path=cfg["universe"].get("cache_path"),
+        source=cfg["universe"].get("source", "KOSPI200"),
+        refresh_daily=cfg["universe"].get("refresh_daily", True),
     )
 
     candidates = get_candidates(universe_cfg, cfg["trend_filter"]["enabled"])
@@ -45,6 +48,20 @@ def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
         calculated.append(candidate)
 
     return calculated
+
+
+def cancel_unfilled_buy(client, buy_order, candidate: Candidate, qty: int, recorder: Recorder) -> None:
+    """Cancel a buy order that did not fill within the wait timeout.
+
+    This prevents a late buy fill from appearing without an immediate paired
+    target sell order.
+    """
+    if not buy_order.order_id:
+        return
+
+    client.cancel_order(buy_order.order_id, ticker=candidate.ticker, quantity=qty)
+    if hasattr(client, "wait_until_order_cancelled"):
+        client.wait_until_order_cancelled(buy_order.order_id)
 
 
 def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict) -> None:
@@ -81,7 +98,8 @@ def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict
 
         fill = client.wait_buy_filled(buy_order.order_id)
         if fill is None:
-            # TODO: cancel buy order when real client implementation exists.
+            order_limiter.wait()
+            cancel_unfilled_buy(client, buy_order, candidate, qty, recorder)
             continue
 
         target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
