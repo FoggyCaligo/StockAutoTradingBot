@@ -134,12 +134,75 @@ def _ticker_key(ticker: str) -> str:
     return str(ticker or "").strip().upper().removeprefix("A")
 
 
+def _get_open_order_ticker(order: dict) -> str:
+    return _ticker_key(order.get("ticker") or order.get("stk_cd") or order.get("pdno") or "")
+
+
+def _get_active_tickers(positions: list, open_orders: list[dict]) -> set[str]:
+    tickers = {
+        _ticker_key(getattr(position, "ticker", ""))
+        for position in positions
+        if getattr(position, "quantity", 0) > 0
+    }
+    tickers.update(ticker for ticker in (_get_open_order_ticker(order) for order in open_orders) if ticker)
+    return tickers
+
+
 def _find_position_for_candidate(positions: list, candidate: Candidate):
     candidate_key = _ticker_key(candidate.ticker)
     for position in positions:
         if _ticker_key(getattr(position, "ticker", "")) == candidate_key and getattr(position, "quantity", 0) > 0:
             return position
     return None
+
+
+def _estimate_position_value(client, position) -> int:
+    quantity = getattr(position, "quantity", 0)
+    if quantity <= 0:
+        return 0
+    fallback_price = getattr(position, "avg_price", 0)
+    try:
+        snapshot = client.get_20hoga(getattr(position, "ticker", ""))
+        current_price = snapshot.current_price or fallback_price
+    except Exception as exc:
+        print(f"Failed to price position {getattr(position, 'ticker', '')}: {exc}. Falling back to avg_price.")
+        current_price = fallback_price
+    return max(current_price, 0) * quantity
+
+
+def estimate_account_value(client, positions: list | None = None) -> int:
+    try:
+        cash = client.get_orderable_cash()
+    except Exception as exc:
+        print(f"Failed to fetch cash for account value estimate: {exc}")
+        cash = 0
+
+    if positions is None:
+        try:
+            positions = client.get_positions()
+        except Exception as exc:
+            print(f"Failed to fetch positions for account value estimate: {exc}")
+            positions = []
+
+    position_value = sum(_estimate_position_value(client, position) for position in positions)
+    return max(cash, 0) + position_value
+
+
+def is_daily_loss_limit_reached(client, cfg: dict, initial_account_value: int, positions: list | None = None) -> bool:
+    limit_percent = float(cfg["risk"].get("daily_loss_limit_percent", 0) or 0)
+    if limit_percent <= 0 or initial_account_value <= 0:
+        return False
+
+    current_value = estimate_account_value(client, positions)
+    loss_percent = (initial_account_value - current_value) / initial_account_value * 100
+    if loss_percent >= limit_percent:
+        print(
+            f"Daily loss limit reached: initial={initial_account_value} "
+            f"current={current_value} loss_percent={loss_percent:.2f}% "
+            f"limit={limit_percent:.2f}%. Blocking new buys only."
+        )
+        return True
+    return False
 
 
 def submit_target_exit_order_from_position_if_present(
@@ -249,6 +312,8 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     state = BotState.NO_POSITION
     force_sell_done = False
     warmed_session = False
+    initial_account_value = estimate_account_value(client)
+    print(f"Initial account value estimate: {initial_account_value}")
 
     while True:
         if is_after_now(cfg["market"]["force_sell_time"]) and not force_sell_done:
@@ -278,7 +343,15 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             if stop_loss_executed:
                 time.sleep(1)
                 continue
-        if has_position(positions) or has_open_orders(open_orders):
+
+        if is_daily_loss_limit_reached(client, cfg, initial_account_value, positions):
+            time.sleep(5)
+            continue
+
+        active_tickers = _get_active_tickers(positions, open_orders)
+        max_position_count = int(cfg["risk"].get("max_position_count", cfg["strategy"]["max_buy_count"]) or 0)
+        empty_slots = max(0, max_position_count - len(active_tickers))
+        if empty_slots <= 0:
             time.sleep(5)
             continue
 
@@ -291,7 +364,9 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             continue
         top = get_candidates_top(calculated, cfg["strategy"]["top_ratio"])
         filtered = final_filter(top, cfg["strategy"]["min_expected_return_percent"], cfg["strategy"]["sell_tick_offset"])
-        targets = trim_targets(filtered, cfg["strategy"]["max_buy_count"], cfg["risk"]["max_budget_per_stock_krw"], cfg["strategy"]["sell_tick_offset"])
+        filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
+        buy_count = min(int(cfg["strategy"]["max_buy_count"]), empty_slots)
+        targets = trim_targets(filtered, buy_count, cfg["risk"]["max_budget_per_stock_krw"], cfg["strategy"]["sell_tick_offset"])
         for target in targets:
             recorder.save_signal(target, selected=True)
         if targets:
