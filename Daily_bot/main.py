@@ -170,7 +170,34 @@ def _estimate_position_value(client, position) -> int:
     return max(current_price, 0) * quantity
 
 
-def estimate_account_value(client, positions: list | None = None) -> int:
+def _to_int(value: object) -> int:
+    try:
+        return int(str(value).replace(",", "").strip())
+    except (TypeError, ValueError):
+        return 0
+
+
+def _estimate_open_order_value(order: dict) -> int:
+    quantity = _to_int(
+        order.get("oso_qty")
+        or order.get("remaining_qty")
+        or order.get("rmn_qty")
+        or order.get("ord_qty")
+    )
+    if quantity <= 0:
+        return 0
+
+    side = str(order.get("io_tp_nm") or order.get("side") or "").strip().upper()
+    if "SELL" in side or "매도" in side:
+        return 0
+
+    price = _to_int(order.get("ord_pric") or order.get("price") or order.get("unit_cntr_pric"))
+    if price <= 0:
+        return 0
+    return quantity * price
+
+
+def estimate_account_value(client, positions: list | None = None, open_orders: list[dict] | None = None) -> int:
     try:
         cash = client.get_orderable_cash()
     except Exception as exc:
@@ -184,16 +211,30 @@ def estimate_account_value(client, positions: list | None = None) -> int:
             print(f"Failed to fetch positions for account value estimate: {exc}")
             positions = []
 
+    if open_orders is None:
+        try:
+            open_orders = client.get_open_orders()
+        except Exception as exc:
+            print(f"Failed to fetch open orders for account value estimate: {exc}")
+            open_orders = []
+
     position_value = sum(_estimate_position_value(client, position) for position in positions)
-    return max(cash, 0) + position_value
+    open_buy_order_value = sum(_estimate_open_order_value(order) for order in open_orders)
+    return max(cash, 0) + position_value + open_buy_order_value
 
 
-def is_daily_loss_limit_reached(client, cfg: dict, initial_account_value: int, positions: list | None = None) -> bool:
+def is_daily_loss_limit_reached(
+    client,
+    cfg: dict,
+    initial_account_value: int,
+    positions: list | None = None,
+    open_orders: list[dict] | None = None,
+) -> bool:
     limit_percent = float(cfg["risk"].get("daily_loss_limit_percent", 0) or 0)
     if limit_percent <= 0 or initial_account_value <= 0:
         return False
 
-    current_value = estimate_account_value(client, positions)
+    current_value = estimate_account_value(client, positions, open_orders)
     loss_percent = (initial_account_value - current_value) / initial_account_value * 100
     if loss_percent >= limit_percent:
         print(
@@ -344,7 +385,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 time.sleep(1)
                 continue
 
-        if is_daily_loss_limit_reached(client, cfg, initial_account_value, positions):
+        if is_daily_loss_limit_reached(client, cfg, initial_account_value, positions, open_orders):
             time.sleep(5)
             continue
 
@@ -365,7 +406,8 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         top = get_candidates_top(calculated, cfg["strategy"]["top_ratio"])
         filtered = final_filter(top, cfg["strategy"]["min_expected_return_percent"], cfg["strategy"]["sell_tick_offset"])
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
-        buy_count = min(int(cfg["strategy"]["max_buy_count"]), empty_slots)
+        configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
+        buy_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
         targets = trim_targets(filtered, buy_count, cfg["risk"]["max_budget_per_stock_krw"], cfg["strategy"]["sell_tick_offset"])
         for target in targets:
             recorder.save_signal(target, selected=True)

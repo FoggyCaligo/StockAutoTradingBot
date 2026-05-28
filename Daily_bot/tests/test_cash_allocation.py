@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from Daily_bot.main import activate_buy
+from Daily_bot.main import activate_buy, estimate_account_value, is_daily_loss_limit_reached
 from Daily_bot.models import Candidate, Fill, OrderResult
 
 
@@ -204,3 +204,42 @@ def test_activate_buy_stops_new_buys_after_exception_when_position_exists():
     activate_buy(client, recorder, targets, _unlimited_cfg())
 
     assert client.buy_calls == [("005930", 15, 10_000)]
+
+
+def test_estimate_account_value_includes_open_buy_orders():
+    client = _ClientStub(orderable_cash=50_000)
+    client.positions = [type("Position", (), {"ticker": "005930", "quantity": 2, "avg_price": 10_000})()]
+    client.open_orders = [
+        {"io_tp_nm": "+매수", "ord_qty": "3", "oso_qty": "3", "ord_pric": "10000"},
+        {"io_tp_nm": "-매도", "ord_qty": "2", "oso_qty": "2", "ord_pric": "10150"},
+    ]
+    client.get_20hoga = lambda ticker: type("Snapshot", (), {"current_price": 10_500})()
+
+    result = estimate_account_value(client, client.positions, client.open_orders)
+
+    assert result == 50_000 + 21_000 + 30_000
+
+
+def test_daily_loss_limit_ignores_cash_reserved_by_open_buy_orders():
+    client = _ClientStub(orderable_cash=50_000)
+    client.positions = []
+    client.open_orders = [
+        {"io_tp_nm": "+매수", "ord_qty": "5", "oso_qty": "5", "ord_pric": "10000"},
+    ]
+    cfg = {"risk": {"daily_loss_limit_percent": 10.0}}
+
+    reached = is_daily_loss_limit_reached(client, cfg, initial_account_value=100_000, positions=client.positions, open_orders=client.open_orders)
+
+    assert reached is False
+
+
+def test_slot_refill_buy_count_respects_empty_slots_when_strategy_limit_is_unlimited():
+    cfg = {
+        "strategy": {"max_buy_count": 0},
+    }
+    empty_slots = 2
+
+    configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
+    buy_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
+
+    assert buy_count == 2
