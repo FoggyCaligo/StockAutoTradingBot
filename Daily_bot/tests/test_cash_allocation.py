@@ -157,6 +157,21 @@ def test_activate_buy_places_exit_order_for_partial_fill_after_cancel():
     assert client.sell_calls == [("005930", 3, 10150)]
 
 
+def test_activate_buy_uses_buy_limit_price_when_partial_fill_price_is_anomalously_high():
+    client = _ClientStub(orderable_cash=120_000)
+    client.orderable_cash_sequence = [120_000]
+    client.fill_sequence = [None]
+    client.buy_fill_sequence = [Fill(order_id="BUY-1", ticker="005930", quantity=3, price=10_300, raw={"cntr_pric": "10300"})]
+    recorder = _RecorderStub(orders=[])
+    targets = [Candidate(ticker="005930", price=10_000, expect_price=10_200)]
+
+    activate_buy(client, recorder, targets, _cfg())
+
+    assert client.cancel_calls == [("BUY-1", "005930", 10)]
+    assert client.sell_calls == [("005930", 3, 10150)]
+    assert client.market_sell_calls == []
+
+
 def test_activate_buy_distributes_full_cash_across_all_targets_when_limits_removed():
     client = _ClientStub(orderable_cash=300_000)
     recorder = _RecorderStub(orders=[])

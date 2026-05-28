@@ -43,9 +43,10 @@ class WeeklyPullbackStrategy:
             return False, ["turnover_too_low"]
         reasons.append("turnover_ok")
 
-        if s.volume < self.config.min_volume:
+        if self.config.min_volume > 0 and s.volume < self.config.min_volume:
             return False, ["volume_too_low"]
-        reasons.append("volume_ok")
+        if self.config.min_volume > 0:
+            reasons.append("volume_ok")
 
         lower_envelope = self._lower_envelope(s)
         if s.current_price >= lower_envelope:
@@ -56,14 +57,27 @@ class WeeklyPullbackStrategy:
             return False, ["trend_filter_failed"]
         reasons.append("trend_ok")
 
-        if s.spread_ticks > self.config.max_spread_ticks:
+        if self.config.max_spread_ticks > 0 and s.spread_ticks > self.config.max_spread_ticks:
             return False, ["spread_too_wide"]
-        reasons.append("spread_ok")
+        if self.config.max_spread_ticks > 0:
+            reasons.append("spread_ok")
 
         return True, reasons
 
     def _lower_envelope(self, s: MarketSnapshot) -> float:
-        return s.ma20 * (1.0 - self.config.envelope_lower_pct / 100.0)
+        envelope_basis = self._envelope_basis_ma(s)
+        return envelope_basis * (1.0 - self.config.envelope_lower_pct / 100.0)
+
+    def _envelope_basis_ma(self, s: MarketSnapshot) -> float:
+        if self.config.envelope_ma_days == 20:
+            return s.ma20
+        if self.config.envelope_ma_days == 30:
+            return s.ma30
+        if self.config.envelope_ma_days == 50:
+            return s.ma50
+        if self.config.envelope_ma_days == 120:
+            return s.ma120
+        return s.ma20
 
     @staticmethod
     def _trend_ok(s: MarketSnapshot) -> bool:
@@ -76,7 +90,7 @@ class WeeklyPullbackStrategy:
         # 단순 v0.1 점수화. 필터 통과 후 10개 초과 시 정렬용으로만 사용한다.
         pullback_score = abs(s.change_pct)
         turnover_score = min(s.turnover_krw / 10_000_000_000, 10.0)
-        spread_penalty = s.spread_ticks * 0.5
+        spread_penalty = s.spread_ticks * 0.5 if self.config.max_spread_ticks > 0 else 0.0
         trend_bonus = 0.0
         if s.ma30 > s.ma30_prev:
             trend_bonus += 2.0

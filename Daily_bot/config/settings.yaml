@@ -10,23 +10,16 @@ universe:
   csv_path: "data/kospi200.csv"
   cache_path: "data/kospi200_latest.csv"
   refresh_daily: true
-  min_price: 5000
-  max_price: 100000
   min_market_cap_krw: 300000000000
   min_trading_value_krw: 5000000000
 
 trend_filter:
   enabled: true
-  short_ma: 5
-  long_ma: 20
-  require_price_above_long_ma: true
-  require_long_ma_slope_positive: true
 
 strategy:
   top_ratio: 0.20
   max_buy_count: 0
-  min_expected_return_percent: 0.6
-  max_spread_percent: 0.3
+  min_expected_return_percent: 0.2
   sell_tick_offset: 1
   scan_interval_seconds: 60
 

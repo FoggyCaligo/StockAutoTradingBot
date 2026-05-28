@@ -150,3 +150,38 @@ def test_mid_price_approximation_is_supported():
     )
 
     assert backtester._approximate_signal_price(100.0, 90.0) == 95
+
+
+def test_liquidation_offset_extends_holding_window(tmp_path, monkeypatch):
+    listing = pd.DataFrame([{"Code": "005930", "Name": "Samsung", "Marcap": 400_000_000_000}])
+    history = _build_history().copy()
+    history.loc[pd.Timestamp("2024-07-09"), ["Open", "High", "Low", "Close", "Volume", "Change"]] = [101.0, 102.0, 100.5, 101.8, 13_000_000, 0.0079]
+    history.loc[pd.Timestamp("2024-07-10"), ["Open", "High", "Low", "Close", "Volume", "Change"]] = [101.8, 102.4, 101.0, 102.0, 13_000_000, 0.002]
+    history.loc[pd.Timestamp("2024-07-11"), ["Open", "High", "Low", "Close", "Volume", "Change"]] = [102.0, 102.8, 101.7, 102.4, 11_000_000, 0.0039]
+    history.loc[pd.Timestamp("2024-07-12"), ["Open", "High", "Low", "Close", "Volume", "Change"]] = [102.4, 102.9, 102.0, 102.5, 11_000_000, 0.001]
+    history.loc[pd.Timestamp("2024-07-15"), ["Open", "High", "Low", "Close", "Volume", "Change"]] = [102.6, 103.0, 102.1, 102.8, 12_000_000, 0.0029]
+    histories = {"005930": history}
+
+    def _fake_load(self, start: str, end: str) -> HistoricalMarketData:
+        return HistoricalMarketData(listing=listing, histories=histories)
+
+    monkeypatch.setattr(HistoricalKrxDataProvider, "load", _fake_load)
+
+    config = load_config(ROOT / "config/strategy.yaml")
+    backtester = WeeklyBacktester(
+        config=config,
+        settings=BacktestSettings(
+            start="2024-07-01",
+            end="2024-07-31",
+            initial_cash=1_000_000,
+            signal_weekday="monday",
+            entry_offset_trading_days=1,
+            liquidation_offset_trading_days=1,
+            output_dir=tmp_path,
+        ),
+    )
+
+    artifacts = backtester.run()
+
+    assert artifacts.trades.iloc[0]["exit_date"] == "2024-07-15"
+    assert artifacts.trades.iloc[0]["exit_reason"] == "extended_liquidation"

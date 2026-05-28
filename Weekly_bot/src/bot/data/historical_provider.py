@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -59,7 +60,25 @@ class HistoricalKrxDataProvider:
                 if self.source == "fdr":
                     raise
 
+        fallback_path = self._local_listing_fallback_path()
+        if fallback_path is not None:
+            listing = pd.read_csv(fallback_path)
+            if isinstance(listing, pd.DataFrame) and not listing.empty:
+                return listing
+
         raise RuntimeError("Unable to load KOSPI200 listing. Install FinanceDataReader or choose a supported source.")
+
+    @staticmethod
+    def _local_listing_fallback_path() -> Path | None:
+        repo_root = Path(__file__).resolve().parents[4]
+        candidates = [
+            repo_root / "Weekly_bot" / "data" / "kospi200_latest.csv",
+            repo_root / "Daily_bot" / "data" / "kospi200_latest.csv",
+        ]
+        for path in candidates:
+            if path.exists():
+                return path
+        return None
 
     def _load_price_history(self, code: str, start: date, end: date) -> pd.DataFrame:
         errors: list[str] = []

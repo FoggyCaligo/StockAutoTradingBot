@@ -295,8 +295,12 @@ class KiwoomClient:
         if not rows:
             return None
 
-        total_quantity = sum(self._extract_number(row, ["cntr_qty"]) for row in rows)
-        latest_row = rows[-1]
+        matching_rows = self._filter_rows_for_order(rows, order_id)
+        if not matching_rows:
+            return None
+
+        total_quantity = sum(self._extract_number(row, ["cntr_qty"]) for row in matching_rows)
+        latest_row = matching_rows[-1]
         price = self._extract_number(latest_row, ["cntr_pric", "ord_pric"])
         ticker = self._normalize_ticker(self._extract_value(latest_row, ["stk_cd"]) or "")
         if total_quantity <= 0 or price <= 0:
@@ -309,6 +313,21 @@ class KiwoomClient:
             price=price,
             raw=latest_row,
         )
+
+    def _filter_rows_for_order(self, rows: list[dict[str, Any]], order_id: str) -> list[dict[str, Any]]:
+        normalized_order_id = str(order_id).strip()
+        if not normalized_order_id:
+            return rows
+
+        direct_matches = [row for row in rows if str(row.get("ord_no") or "").strip() == normalized_order_id]
+        if direct_matches:
+            return direct_matches
+
+        origin_matches = [row for row in rows if str(row.get("orig_ord_no") or "").strip() == normalized_order_id]
+        if origin_matches:
+            return origin_matches
+
+        return []
 
     def _extract_hoga_levels(self, raw: dict[str, Any], side: str) -> list[HogaLevel]:
         levels: list[HogaLevel] = []

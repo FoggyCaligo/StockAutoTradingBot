@@ -1,0 +1,2 @@
+start,end,initial_cash,ending_cash,total_return_pct,weeks,trades,win_rate_pct,avg_trade_pct,avg_weekly_pct,max_drawdown_pct,buy_slippage_bps,sell_slippage_bps,buy_fee_bps,sell_fee_bps,sell_tax_bps
+2020-01-01,2024-12-31,10000000.0,9504975.89,-4.9502,244,1451,60.3722,0.0017,0.0003,-31.9697,5.0,5.0,0.0,0.0,0.0

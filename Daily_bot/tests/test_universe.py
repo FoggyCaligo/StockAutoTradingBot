@@ -6,7 +6,7 @@ from Daily_bot.strategy.universe import UniverseConfig, get_candidates, get_kosp
 
 
 def test_get_kospi200_list_loads_local_csv_when_refresh_daily_false():
-    csv_path = Path("data/kospi200.csv")
+    csv_path = Path("Daily_bot/data/kospi200.csv")
     df = get_kospi200_list(str(csv_path), refresh_daily=False)
 
     assert not df.empty
@@ -17,11 +17,9 @@ def test_get_kospi200_list_loads_local_csv_when_refresh_daily_false():
 def test_get_candidates_uses_csv_when_refresh_daily_false(tmp_path):
     cache_path = tmp_path / "missing_cache.csv"
     cfg = UniverseConfig(
-        min_price=10000,
-        max_price=500000,
         min_market_cap_krw=100000000000,
         min_trading_value_krw=10000000000,
-        csv_path="data/kospi200.csv",
+        csv_path="Daily_bot/data/kospi200.csv",
         cache_path=str(cache_path),
         refresh_daily=False,
     )

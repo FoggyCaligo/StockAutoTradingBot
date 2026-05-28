@@ -12,8 +12,6 @@ from Daily_bot.models import Candidate
 
 @dataclass
 class UniverseConfig:
-    min_price: int
-    max_price: int
     min_market_cap_krw: int
     min_trading_value_krw: int
     csv_path: str | None = None
@@ -144,19 +142,6 @@ def get_kospi200_list(
     )
 
 
-def filter_by_price(df: pd.DataFrame, min_price: int, max_price: int) -> pd.DataFrame:
-    price_col = None
-    for candidate in ["Close", "Open", "현재가", "price", "Price"]:
-        if candidate in df.columns:
-            price_col = candidate
-            break
-    if price_col is None:
-        return df
-    result = df.loc[(df[price_col] >= min_price) & (df[price_col] <= max_price)]
-    assert isinstance(result, pd.DataFrame)
-    return result
-
-
 def filter_by_market_cap(df: pd.DataFrame, min_market_cap_krw: int) -> pd.DataFrame:
     for col in ["Marcap", "MarketCap", "market_cap", "시가총액"]:
         if col in df.columns:
@@ -176,13 +161,11 @@ def filter_by_trading_value(df: pd.DataFrame, min_trading_value_krw: int) -> pd.
 
 
 def _trend_ok_from_series(close_series: pd.Series) -> bool:
-    if len(close_series) < 21:
+    if len(close_series) < 6:
         return False
-    ma5 = close_series.rolling(5).mean().iloc[-1]
-    ma20 = close_series.rolling(20).mean().iloc[-1]
+    ma5_slope = close_series.rolling(5).mean().diff().iloc[-1]
     ma20_slope = close_series.rolling(20).mean().diff().iloc[-1]
-    price = close_series.iloc[-1]
-    return bool(price > ma20 and ma5 > ma20 and ma20_slope > 0)
+    return bool(ma20_slope > 0 or ma5_slope > 0)
 
 
 def filter_by_trend(df: pd.DataFrame, enabled: bool = True) -> pd.DataFrame:
@@ -237,7 +220,6 @@ def get_candidates(cfg: UniverseConfig, trend_enabled: bool = True) -> dict[str,
         source=cfg.source,
         refresh_daily=cfg.refresh_daily,
     )
-    df = filter_by_price(df, cfg.min_price, cfg.max_price)
     df = filter_by_market_cap(df, cfg.min_market_cap_krw)
     df = filter_by_trading_value(df, cfg.min_trading_value_krw)
     df = filter_by_trend(df, trend_enabled)

@@ -60,6 +60,7 @@ def main() -> None:
     parser.add_argument("--source", default="auto", choices=["auto", "fdr", "yfinance"], help="Historical data source for backtest")
     parser.add_argument("--signal-weekday", default="friday", choices=["monday", "tuesday", "wednesday", "thursday", "friday"], help="Signal generation weekday for backtest")
     parser.add_argument("--entry-offset-days", type=int, default=1, help="Number of trading days after the signal day to enter in backtest")
+    parser.add_argument("--liquidation-offset-days", type=int, default=0, help="Number of extra trading days after Friday before forced liquidation")
     parser.add_argument("--approx-monday-10am", action="store_true", help="Approximate Monday 10:00 signal by using Monday open versus prior close while keeping prior trend indicators")
     parser.add_argument("--monday-approx-price-mode", default="open", choices=["open", "mid", "weighted"], help="Price proxy to use for Monday 10:00 approximation")
     parser.add_argument("--monday-approx-max-gap-pct", type=float, default=2.0, help="Use Monday 10:00 approximation only when Monday open gap versus prior close stays within this percent")
@@ -90,6 +91,7 @@ def main() -> None:
                 data_source=args.source,
                 signal_weekday=args.signal_weekday,
                 entry_offset_trading_days=args.entry_offset_days,
+                liquidation_offset_trading_days=args.liquidation_offset_days,
                 approximate_monday_10am=args.approx_monday_10am,
                 monday_approx_price_mode=args.monday_approx_price_mode,
                 monday_approx_max_gap_pct=args.monday_approx_max_gap_pct,

@@ -36,8 +36,6 @@ def test_scan_and_rank_skips_ticker_when_hoga_fetch_fails(monkeypatch):
     recorder = _RecorderStub(snapshots=[], signals=[])
     cfg = {
         "universe": {
-            "min_price": 5_000,
-            "max_price": 100_000,
             "min_market_cap_krw": 1,
             "min_trading_value_krw": 1,
         },

@@ -32,8 +32,6 @@ def build_client(dry_run: bool):
 
 def build_universe_config(cfg: dict) -> UniverseConfig:
     return UniverseConfig(
-        min_price=cfg["universe"]["min_price"],
-        max_price=cfg["universe"]["max_price"],
         min_market_cap_krw=cfg["universe"]["min_market_cap_krw"],
         min_trading_value_krw=cfg["universe"]["min_trading_value_krw"],
         csv_path=cfg["universe"].get("csv_path"),
@@ -82,14 +80,36 @@ def cancel_unfilled_buy(client, buy_order, candidate: Candidate, qty: int, recor
         client.wait_until_order_cancelled(buy_order.order_id)
 
 
+def _resolve_buy_fill_price(fill, buy_limit_price: int, ticker: str) -> int:
+    if buy_limit_price > 0 and fill.price > buy_limit_price:
+        print(
+            f"Fill price anomaly for {ticker}: fill_price={fill.price} exceeds "
+            f"buy_limit_price={buy_limit_price}. Using buy_limit_price for exit decision. "
+            f"raw_fill={fill.raw}"
+        )
+        return buy_limit_price
+    return fill.price
+
+
 def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, tick_offset: int, order_limiter: RateLimiter) -> None:
     target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
-    if target_price <= fill.price:
+    decision_fill_price = _resolve_buy_fill_price(fill, candidate.price, candidate.ticker)
+    if target_price <= decision_fill_price:
+        print(
+            f"Submitting market sell for {candidate.ticker}: "
+            f"target_price={target_price} decision_fill_price={decision_fill_price} "
+            f"raw_fill={fill.raw}"
+        )
         order_limiter.wait()
         sell_order = client.sell_market(candidate.ticker, fill.quantity)
         recorder.save_order(sell_order)
         return
 
+    print(
+        f"Submitting limit sell for {candidate.ticker}: "
+        f"target_price={target_price} decision_fill_price={decision_fill_price} "
+        f"raw_fill={fill.raw}"
+    )
     order_limiter.wait()
     sell_order = client.sell_limit(candidate.ticker, fill.quantity, target_price)
     recorder.save_order(sell_order)
@@ -164,7 +184,8 @@ def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict
                 if partial_fill is not None and partial_fill.quantity > 0:
                     print(
                         f"Partial fill recovered after cancel for {candidate.ticker}: "
-                        f"{partial_fill.quantity} shares. Submitting exit order."
+                        f"{partial_fill.quantity} shares at fill_price={partial_fill.price}. "
+                        f"raw_fill={partial_fill.raw}. Submitting exit order."
                     )
                     submit_exit_order(client, recorder, candidate, partial_fill, tick_offset, order_limiter)
                     return
@@ -255,7 +276,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         filtered = final_filter(
             top,
             cfg["strategy"]["min_expected_return_percent"],
-            cfg["strategy"]["max_spread_percent"],
+            cfg["strategy"]["sell_tick_offset"],
         )
         targets = trim_targets(
             filtered,

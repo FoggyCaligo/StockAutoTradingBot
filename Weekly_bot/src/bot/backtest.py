@@ -36,6 +36,7 @@ class BacktestSettings:
     data_source: str = "auto"
     signal_weekday: str = "friday"
     entry_offset_trading_days: int = 1
+    liquidation_offset_trading_days: int = 0
     approximate_monday_10am: bool = False
     monday_approx_price_mode: str = "open"
     monday_approx_max_gap_pct: float = 2.0
@@ -88,7 +89,7 @@ class WeeklyBacktester:
             entry_date = self._offset_trading_date(signal_date, trading_dates, self.settings.entry_offset_trading_days)
             if entry_date is None:
                 continue
-            week_end = self._week_end(entry_date, trading_dates)
+            week_end = self._liquidation_date(entry_date, trading_dates, self.settings.liquidation_offset_trading_days)
             if week_end is None:
                 continue
 
@@ -273,7 +274,7 @@ class WeeklyBacktester:
 
         exit_price = float(window.iloc[-1]["Close"])
         exit_date = window.index[-1]
-        exit_reason = "friday_liquidation"
+        exit_reason = "friday_liquidation" if exit_date.weekday() == 4 else "extended_liquidation"
 
         for current_date, bar in window.iterrows():
             open_price = float(bar["Open"])
@@ -422,9 +423,18 @@ class WeeklyBacktester:
         return sorted(all_dates)
 
     @staticmethod
-    def _week_end(monday: pd.Timestamp, trading_dates: list[pd.Timestamp]) -> pd.Timestamp | None:
+    def _liquidation_date(
+        monday: pd.Timestamp,
+        trading_dates: list[pd.Timestamp],
+        liquidation_offset: int,
+    ) -> pd.Timestamp | None:
         candidates = [dt for dt in trading_dates if monday <= dt <= monday + pd.Timedelta(days=4)]
-        return candidates[-1] if candidates else None
+        if not candidates:
+            return None
+        base_week_end = candidates[-1]
+        if liquidation_offset <= 0:
+            return base_week_end
+        return WeeklyBacktester._offset_trading_date(base_week_end, trading_dates, liquidation_offset)
 
     @staticmethod
     def _next_trading_date(current_date: pd.Timestamp, trading_dates: list[pd.Timestamp]) -> pd.Timestamp | None:

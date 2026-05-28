@@ -27,12 +27,12 @@ Real-trading update:
 
 1. 시가총액 3,000억 원 이상
 2. 당일 등락률 -1% ~ -10%
-3. 거래대금/거래량 최소 기준 통과
-4. 현재가가 Envelope 하단 2.5% 아래
+3. 거래대금 10억 원 이상
+4. 현재가가 Envelope 하단 2.6% 아래
 5. 추세 조건 통과
    - `(MA30 우상향 OR MA50 우상향)`
    - `OR (MA120 우상향 AND 현재가 > MA120)`
-6. 스프레드 `<= 2틱`
+6. 스프레드 필터는 현재 비활성화
 
 ### 종목 수 / 자금 배분
 
@@ -44,7 +44,7 @@ Real-trading update:
 
 ### 매도 조건
 
-- 익절: 매수가 대비 +2.5%
+- 익절: 매수가 대비 +3.0%
 - 손절: 매수가 대비 -5.0%
 - 금요일: 남은 보유 종목 전량 시장가 매도
 
@@ -132,6 +132,25 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 - `logs\backtests\trades.csv`
 - `logs\backtests\weekly.csv`
 - `logs\backtests\monthly.csv`
+
+## Current Baseline
+
+Current working baseline after iterative backtests:
+
+- `change_pct`: `-7.0% ~ -2.0%`
+- `min_turnover_krw`: `1,000,000,000`
+- `envelope_lower_pct`: `2.6%`
+- `take_profit_pct`: `3.0%`
+- `stop_loss_pct`: `-5.0%`
+- `min_volume`: disabled (`0`)
+- `max_spread_ticks`: disabled (`0`)
+
+Backtest assumptions currently used:
+
+- Signal day: previous Friday
+- Entry: next trading day open, with Monday 10:00 approximation tried first
+- Exit: intraday TP/SL touch assumed at target price, gap open handled at open
+- Weekly fallback: Friday close liquidation for remaining positions
 
 ---
 

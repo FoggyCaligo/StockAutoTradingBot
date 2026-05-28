@@ -26,7 +26,7 @@ def get_candidates_top(candidates: list[Candidate], ratio: float) -> list[Candid
 def final_filter(
     candidates: list[Candidate],
     min_expected_return_percent: float,
-    max_spread_percent: float,
+    sell_tick_offset: int,
 ) -> list[Candidate]:
     result: list[Candidate] = []
     for c in candidates:
@@ -34,9 +34,8 @@ def final_filter(
             continue
         if c.expect_revenue_percent < min_expected_return_percent:
             continue
-        if c.spread_percent > max_spread_percent:
-            continue
-        if c.expect_price <= c.price:
+        target_sell_price = calc_target_sell_price(c.expect_price, sell_tick_offset)
+        if target_sell_price <= c.price:
             continue
         result.append(c)
     return result
