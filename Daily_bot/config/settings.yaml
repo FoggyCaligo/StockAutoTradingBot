@@ -19,7 +19,7 @@ trend_filter:
 strategy:
   top_ratio: 0.20
   max_buy_count: 3
-  min_expected_return_percent: 0.2
+  min_expected_return_percent: 0.25
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
