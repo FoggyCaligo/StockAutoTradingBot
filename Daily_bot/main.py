@@ -22,7 +22,7 @@ from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import calc_expected_return, final_filter, get_candidates_top
 from Daily_bot.strategy.universe import UniverseConfig, get_candidates
-from Daily_bot.utils import RateLimiter, is_after_now, is_between_now, load_yaml
+from Daily_bot.utils import RateLimiter, get_tick_size, is_after_now, is_between_now, load_yaml, round_to_tick
 
 load_dotenv()
 
@@ -81,17 +81,28 @@ def _resolve_buy_fill_price(fill, buy_limit_price: int, ticker: str) -> int:
     return fill.price
 
 
-def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, tick_offset: int, order_limiter: RateLimiter) -> None:
+def _min_sell_price_above_buy(buy_price: int) -> int:
+    if buy_price <= 0:
+        return 0
+    return round_to_tick(buy_price + get_tick_size(buy_price))
+
+
+def _safe_target_sell_price(candidate: Candidate, tick_offset: int, buy_reference_price: int) -> int:
     target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
-    decision_fill_price = _resolve_buy_fill_price(fill, candidate.price, candidate.ticker)
-    if target_price <= decision_fill_price:
+    min_sell_price = _min_sell_price_above_buy(buy_reference_price)
+    if min_sell_price > 0 and target_price < min_sell_price:
         print(
-            f"Submitting market sell for {candidate.ticker}: "
-            f"target_price={target_price} decision_fill_price={decision_fill_price} raw_fill={fill.raw}"
+            f"Raising target sell price for {candidate.ticker}: "
+            f"raw_target_price={target_price} buy_reference_price={buy_reference_price} "
+            f"safe_target_price={min_sell_price}"
         )
-        order_limiter.wait()
-        recorder.save_order(client.sell_market(candidate.ticker, fill.quantity))
-        return
+        return min_sell_price
+    return target_price
+
+
+def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, tick_offset: int, order_limiter: RateLimiter) -> None:
+    decision_fill_price = _resolve_buy_fill_price(fill, candidate.price, candidate.ticker)
+    target_price = _safe_target_sell_price(candidate, tick_offset, decision_fill_price)
     print(
         f"Submitting limit sell for {candidate.ticker}: "
         f"target_price={target_price} decision_fill_price={decision_fill_price} raw_fill={fill.raw}"
@@ -148,7 +159,8 @@ def submit_target_exit_order_from_position_if_present(
     quantity = getattr(position, "quantity", 0)
     if quantity <= 0:
         return False
-    target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
+    buy_reference_price = getattr(position, "avg_price", 0) or candidate.price
+    target_price = _safe_target_sell_price(candidate, tick_offset, buy_reference_price)
     print(
         f"Position recovered for {candidate.ticker} after fill lookup failed: "
         f"quantity={quantity} target_price={target_price}. Submitting target limit sell."
