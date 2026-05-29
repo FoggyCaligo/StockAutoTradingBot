@@ -1,6 +1,6 @@
 market:
   prewarm_start_time: "08:55"
-  start_buy_time: "09:10"
+  start_buy_time: "09:30"
   stop_buy_time: "13:00"
   force_sell_time: "15:00"
   end_time: "15:20"
@@ -20,6 +20,7 @@ strategy:
   top_ratio: 0.20
   max_buy_count: 3
   min_expected_return_percent: 0.25
+  max_spread_percent: 0.5
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
@@ -28,7 +29,7 @@ risk:
   max_position_count: 3
   max_budget_per_cycle_krw: 0
   max_budget_per_stock_krw: 0
-  stop_loss_percent: 7.0
+  stop_loss_percent: 5.0
   daily_loss_limit_percent: 10.0
   daily_loss_limit_krw: 10000
 
