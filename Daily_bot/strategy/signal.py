@@ -27,7 +27,7 @@ def final_filter(
     candidates: list[Candidate],
     min_expected_return_percent: float,
     sell_tick_offset: int,
-    max_spread_percent: float = 0.0,
+    max_spread_percent: float = 0.5,
 ) -> list[Candidate]:
     result: list[Candidate] = []
     for c in candidates:
