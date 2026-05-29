@@ -1,6 +1,6 @@
 market:
   prewarm_start_time: "08:55"
-  start_buy_time: "09:10"
+  start_buy_time: "09:30"
   stop_buy_time: "13:00"
   force_sell_time: "15:00"
   end_time: "15:20"
