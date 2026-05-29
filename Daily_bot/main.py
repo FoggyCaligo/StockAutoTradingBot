@@ -16,7 +16,7 @@ from Daily_bot.broker.kiwoom_client import KiwoomClient
 from Daily_bot.broker.mock_client import MockKiwoomClient
 from Daily_bot.models import BotState, Candidate
 from Daily_bot.risk.force_sell import force_sell
-from Daily_bot.risk.guards import calc_order_quantity, has_open_orders, has_position, trim_targets
+from Daily_bot.risk.guards import calc_order_quantity, has_open_orders, has_position, select_affordable_targets
 from Daily_bot.risk.stop_loss import monitor_stop_loss
 from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
@@ -408,7 +408,22 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
         configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
         buy_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
-        targets = trim_targets(filtered, buy_count, cfg["risk"]["max_budget_per_stock_krw"], cfg["strategy"]["sell_tick_offset"])
+        try:
+            orderable_cash = client.get_orderable_cash()
+        except Exception as exc:
+            print(f"Failed to fetch orderable cash for target planning: {exc}")
+            time.sleep(cfg["strategy"]["scan_interval_seconds"])
+            continue
+        planning_cash = min(orderable_cash, cfg["risk"].get("max_budget_per_cycle_krw", 0)) if cfg["risk"].get("max_budget_per_cycle_krw", 0) > 0 else orderable_cash
+        targets = select_affordable_targets(
+            filtered,
+            buy_count,
+            planning_cash,
+            cfg["risk"]["max_budget_per_stock_krw"],
+            cfg["strategy"]["sell_tick_offset"],
+        )
+        if targets and len(targets) < buy_count:
+            print(f"Planned {len(targets)} affordable targets out of desired {buy_count} due to cash constraints.")
         for target in targets:
             recorder.save_signal(target, selected=True)
         if targets:

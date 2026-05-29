@@ -44,3 +44,45 @@ def trim_targets(
         if max_buy_count > 0 and len(result) >= max_buy_count:
             break
     return result
+
+
+def select_affordable_targets(
+    candidates: list[Candidate],
+    max_buy_count: int,
+    available_cash_krw: int,
+    budget_per_stock_krw: int,
+    sell_tick_offset: int,
+) -> list[Candidate]:
+    if available_cash_krw <= 0:
+        return []
+
+    eligible = trim_targets(candidates, 0, budget_per_stock_krw, sell_tick_offset)
+    if not eligible:
+        return []
+
+    desired_max = len(eligible) if max_buy_count <= 0 else min(max_buy_count, len(eligible))
+    for target_count in range(desired_max, 0, -1):
+        remaining_cash = available_cash_krw
+        selected: list[Candidate] = []
+        for candidate in eligible:
+            remaining_slots = target_count - len(selected)
+            if remaining_slots <= 0:
+                break
+
+            if budget_per_stock_krw > 0:
+                per_stock_budget = min(budget_per_stock_krw, remaining_cash)
+            else:
+                per_stock_budget = remaining_cash if remaining_slots <= 1 else remaining_cash // remaining_slots
+
+            qty = calc_order_quantity(candidate, per_stock_budget)
+            estimated_cost = qty * candidate.price
+            if qty <= 0 or estimated_cost <= 0 or estimated_cost > remaining_cash:
+                continue
+
+            selected.append(candidate)
+            remaining_cash -= estimated_cost
+
+        if len(selected) == target_count:
+            return selected
+
+    return []
