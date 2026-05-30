@@ -32,6 +32,14 @@ NUMERIC_COLUMNS = [
     "market_cap",
     "trading_value",
 ]
+FLOAT_COLUMNS = [
+    "ChagesRatio",  # FinanceDataReader keeps this misspelling in some listings.
+    "ChangesRatio",
+    "ChangeRatio",
+    "ChangeRate",
+    "change_percent",
+    "daily_change_percent",
+]
 
 
 def _safe_int(value: Any) -> int:
@@ -46,6 +54,20 @@ def _safe_int(value: Any) -> int:
             return int(float(str(value).replace(",", "").strip()))
         except ValueError:
             return 0
+
+
+def _safe_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).replace(",", "").replace("%", "").strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
 
 
 def _safe_str(value: Any) -> str | None:
@@ -67,6 +89,13 @@ def _coerce_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
         if numeric_col in df.columns:
             series = pd.to_numeric(df[numeric_col].astype(str).str.replace(",", ""), errors="coerce")
             df[numeric_col] = pd.Series(series).fillna(0).astype(int)
+    for float_col in FLOAT_COLUMNS:
+        if float_col in df.columns:
+            series = pd.to_numeric(
+                df[float_col].astype(str).str.replace(",", "").str.replace("%", ""),
+                errors="coerce",
+            )
+            df[float_col] = pd.Series(series).fillna(0.0).astype(float)
     return df
 
 
@@ -213,6 +242,15 @@ def filter_by_trend(df: pd.DataFrame, enabled: bool = True) -> pd.DataFrame:
         return df
 
 
+def _get_daily_change_percent(row: pd.Series) -> float | None:
+    for col in ["ChagesRatio", "ChangesRatio", "ChangeRatio", "ChangeRate", "change_percent", "daily_change_percent"]:
+        if col in row:
+            value = _safe_float(row.get(col))
+            if value is not None:
+                return value
+    return None
+
+
 def get_candidates(cfg: UniverseConfig, trend_enabled: bool = True) -> dict[str, Candidate]:
     df = get_kospi200_list(
         cfg.csv_path,
@@ -234,6 +272,7 @@ def get_candidates(cfg: UniverseConfig, trend_enabled: bool = True) -> dict[str,
         market_cap = _safe_int(row.get("Marcap") or row.get("MarketCap") or row.get("market_cap"))
         trading_value = _safe_int(row.get("Amount") or row.get("TradingValue") or row.get("trading_value"))
         trend_ok = bool(row.get("trend_ok", True))
+        daily_change_percent = _get_daily_change_percent(row)
 
         candidates[ticker] = Candidate(
             ticker=ticker,
@@ -241,6 +280,7 @@ def get_candidates(cfg: UniverseConfig, trend_enabled: bool = True) -> dict[str,
             price=price,
             market_cap=market_cap,
             trading_value=trading_value,
+            daily_change_percent=daily_change_percent,
             trend_ok=trend_ok,
         )
     return candidates

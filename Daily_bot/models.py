@@ -25,6 +25,7 @@ class Candidate:
     spread_percent: float = 0.0
     market_cap: int | None = None
     trading_value: int | None = None
+    daily_change_percent: float | None = None
     trend_ok: bool = False
     hoga_snapshot_time: datetime | None = None
     raw_hoga: dict[str, Any] | None = None
