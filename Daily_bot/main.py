@@ -63,17 +63,6 @@ def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
     return calculated
 
 
-def filter_by_daily_drop(candidates: list[Candidate], max_daily_change_percent: float | None) -> list[Candidate]:
-    if max_daily_change_percent is None:
-        return candidates
-    return [
-        candidate
-        for candidate in candidates
-        if candidate.daily_change_percent is not None
-        and candidate.daily_change_percent <= max_daily_change_percent
-    ]
-
-
 def cancel_unfilled_buy(client, buy_order, candidate: Candidate, qty: int, recorder: Recorder) -> None:
     if not buy_order.order_id:
         return
@@ -415,12 +404,12 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             time.sleep(cfg["strategy"]["scan_interval_seconds"])
             continue
         top = get_candidates_top(calculated, cfg["strategy"]["top_ratio"])
-        drop_filtered = filter_by_daily_drop(top, cfg["strategy"].get("max_daily_change_percent"))
         filtered = final_filter(
-            drop_filtered,
+            top,
             cfg["strategy"]["min_expected_return_percent"],
             cfg["strategy"]["sell_tick_offset"],
             cfg["strategy"].get("max_spread_percent", 0.5),
+            cfg["strategy"].get("max_daily_change_percent"),
         )
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
         configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
