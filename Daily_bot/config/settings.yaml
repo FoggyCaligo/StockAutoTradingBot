@@ -21,6 +21,7 @@ strategy:
   max_buy_count: 3
   min_expected_return_percent: 0.25
   max_spread_percent: 0.5
+  max_daily_change_percent: -2.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
