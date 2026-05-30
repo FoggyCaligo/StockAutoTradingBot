@@ -28,6 +28,7 @@ def final_filter(
     min_expected_return_percent: float,
     sell_tick_offset: int,
     max_spread_percent: float = 0.5,
+    max_daily_change_percent: float | None = None,
 ) -> list[Candidate]:
     result: list[Candidate] = []
     for c in candidates:
@@ -36,6 +37,11 @@ def final_filter(
         if c.expect_revenue_percent < min_expected_return_percent:
             continue
         if max_spread_percent > 0 and c.spread_percent > max_spread_percent:
+            continue
+        if (
+            max_daily_change_percent is not None
+            and (c.daily_change_percent is None or c.daily_change_percent > max_daily_change_percent)
+        ):
             continue
         target_sell_price = calc_target_sell_price(c.expect_price, sell_tick_offset)
         if target_sell_price <= c.price:
