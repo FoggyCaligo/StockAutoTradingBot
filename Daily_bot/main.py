@@ -404,7 +404,12 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             time.sleep(cfg["strategy"]["scan_interval_seconds"])
             continue
         top = get_candidates_top(calculated, cfg["strategy"]["top_ratio"])
-        filtered = final_filter(top, cfg["strategy"]["min_expected_return_percent"], cfg["strategy"]["sell_tick_offset"])
+        filtered = final_filter(
+            top,
+            cfg["strategy"]["min_expected_return_percent"],
+            cfg["strategy"]["sell_tick_offset"],
+            cfg["strategy"].get("max_spread_percent", 0.5),
+        )
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
         configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
         buy_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
