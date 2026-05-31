@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 from Daily_bot.broker.kiwoom_client import KiwoomClient
 from Daily_bot.broker.mock_client import MockKiwoomClient
-from Daily_bot.models import BotState, Candidate
+from Daily_bot.models import BotState, Candidate, Fill
 from Daily_bot.risk.force_sell import force_sell
 from Daily_bot.risk.guards import calc_order_quantity, has_open_orders, has_position, select_affordable_targets
 from Daily_bot.risk.stop_loss import monitor_stop_loss
@@ -246,10 +246,28 @@ def is_daily_loss_limit_reached(
     return False
 
 
+def poll_and_record_new_fills(client, recorder: Recorder) -> None:
+    if not hasattr(client, "get_order_fill"):
+        return
+    for order in recorder.get_orders_without_recorded_fill():
+        order_id = str(order.get("broker_order_id") or "").strip()
+        side = str(order.get("side") or "").strip().upper()
+        if not order_id or side not in {"BUY", "SELL"}:
+            continue
+        try:
+            fill = client.get_order_fill(order_id)
+        except Exception as exc:
+            print(f"Failed to poll fill for order_id={order_id} ticker={order.get('ticker')}: {exc}")
+            continue
+        if fill is not None and fill.quantity > 0:
+            recorder.save_fill(fill, side=side, source="poll")
+
+
 def submit_target_exit_order_from_position_if_present(
     client,
     recorder: Recorder,
     candidate: Candidate,
+    buy_order_id: str,
     tick_offset: int,
     order_limiter: RateLimiter,
 ) -> bool:
@@ -264,6 +282,14 @@ def submit_target_exit_order_from_position_if_present(
     if quantity <= 0:
         return False
     buy_reference_price = getattr(position, "avg_price", 0) or candidate.price
+    recovered_fill = Fill(
+        order_id=buy_order_id,
+        ticker=candidate.ticker,
+        quantity=quantity,
+        price=buy_reference_price,
+        raw={"source": "position_recovery"},
+    )
+    recorder.save_fill(recovered_fill, side="BUY", source="position_recovery")
     target_price = _safe_target_sell_price(candidate, tick_offset, buy_reference_price)
     print(
         f"Position recovered for {candidate.ticker} after fill lookup failed: "
@@ -313,13 +339,21 @@ def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict
                 cancel_unfilled_buy(client, buy_order, candidate, qty, recorder)
                 partial_fill = client.get_buy_fill(buy_order.order_id) if hasattr(client, "get_buy_fill") else None
                 if partial_fill is not None and partial_fill.quantity > 0:
+                    recorder.save_fill(partial_fill, side="BUY", source="partial_after_cancel")
                     print(
                         f"Partial fill recovered after cancel for {candidate.ticker}: "
                         f"{partial_fill.quantity} shares at fill_price={partial_fill.price}. raw_fill={partial_fill.raw}."
                     )
                     submit_exit_order(client, recorder, candidate, partial_fill, tick_offset, order_limiter)
                     return
-                if submit_target_exit_order_from_position_if_present(client, recorder, candidate, tick_offset, order_limiter):
+                if submit_target_exit_order_from_position_if_present(
+                    client,
+                    recorder,
+                    candidate,
+                    buy_order.order_id,
+                    tick_offset,
+                    order_limiter,
+                ):
                     return
                 refreshed_cash = _refresh_remaining_cash(client, budget_per_cycle)
                 if refreshed_cash is None:
@@ -327,6 +361,7 @@ def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict
                 remaining_cash = refreshed_cash
                 continue
 
+            recorder.save_fill(fill, side="BUY", source="wait_buy_filled")
             submit_exit_order(client, recorder, candidate, fill, tick_offset, order_limiter)
             if remaining_cash < candidate.price:
                 break
@@ -359,7 +394,8 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     while True:
         if is_after_now(cfg["market"]["force_sell_time"]) and not force_sell_done:
             state = BotState.FORCE_SELLING
-            force_sell(client)
+            force_sell(client, recorder=recorder)
+            poll_and_record_new_fills(client, recorder)
             force_sell_done = True
             state = BotState.STOPPED
             print("Force sell completed. Stop trading for today.")
@@ -379,8 +415,10 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
         positions = client.get_positions()
         open_orders = client.get_open_orders()
+        poll_and_record_new_fills(client, recorder)
         if has_position(positions):
             stop_loss_executed = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+            poll_and_record_new_fills(client, recorder)
             if stop_loss_executed:
                 time.sleep(1)
                 continue
@@ -408,7 +446,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             top,
             cfg["strategy"]["min_expected_return_percent"],
             cfg["strategy"]["sell_tick_offset"],
-            cfg["strategy"].get("max_spread_percent", 0.5),
+            cfg["strategy"].get("max_spread_percent", 0.7),
         )
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
         configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
