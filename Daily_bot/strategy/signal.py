@@ -27,12 +27,15 @@ def final_filter(
     candidates: list[Candidate],
     min_expected_return_percent: float,
     sell_tick_offset: int,
+    max_spread_percent: float = 0.5,
 ) -> list[Candidate]:
     result: list[Candidate] = []
     for c in candidates:
         if not c.trend_ok:
             continue
         if c.expect_revenue_percent < min_expected_return_percent:
+            continue
+        if max_spread_percent > 0 and c.spread_percent > max_spread_percent:
             continue
         target_sell_price = calc_target_sell_price(c.expect_price, sell_tick_offset)
         if target_sell_price <= c.price:
