@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import time
 
+from Daily_bot.storage.db import Recorder
+
 
 def _to_int(value, default: int = 0) -> int:
     if value is None:
@@ -48,18 +50,20 @@ def wait_until_all_orders_cancelled(client, timeout_seconds: int = 60, poll_seco
     return not client.get_open_orders()
 
 
-def sell_all_positions_market(client) -> None:
+def sell_all_positions_market(client, recorder: Recorder | None = None) -> None:
     for position in client.get_positions():
         if position.quantity > 0:
-            client.sell_market(position.ticker, position.quantity)
+            sell_order = client.sell_market(position.ticker, position.quantity)
+            if recorder is not None:
+                recorder.save_order(sell_order)
 
 
-def force_sell(client) -> None:
+def force_sell(client, recorder: Recorder | None = None) -> None:
     """Cancel all open orders, confirm cancellation, then sell positions at market."""
     cancel_all_open_orders(client)
     cancelled = wait_until_all_orders_cancelled(client)
     if not cancelled:
         raise RuntimeError("Open orders still remain after cancellation timeout. Refusing market sell to avoid order conflict.")
-    sell_all_positions_market(client)
+    sell_all_positions_market(client, recorder=recorder)
     if hasattr(client, "wait_until_no_position"):
         client.wait_until_no_position()
