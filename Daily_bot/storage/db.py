@@ -65,6 +65,7 @@ class Recorder:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(self.path)
+        self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
         self.conn.commit()
 
@@ -191,3 +192,19 @@ class Recorder:
             f"FILL {side} {fill.ticker} qty={fill.quantity} price={fill.price} "
             f"filled_at={filled_at} source={source} order_id={fill.order_id}"
         )
+
+    def get_orders_without_recorded_fill(self, limit: int = 200) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            """
+            SELECT o.broker_order_id, o.ticker, o.side, o.quantity, o.price, o.status, o.created_at
+            FROM orders o
+            LEFT JOIN fills f ON f.broker_order_id = o.broker_order_id
+            WHERE o.broker_order_id IS NOT NULL
+              AND o.broker_order_id != ''
+              AND f.id IS NULL
+            ORDER BY o.id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return [dict(row) for row in rows]
