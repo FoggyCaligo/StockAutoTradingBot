@@ -249,9 +249,10 @@ def is_daily_loss_limit_reached(
 def poll_and_record_new_fills(client, recorder: Recorder) -> None:
     if not hasattr(client, "get_order_fill"):
         return
-    for order in recorder.get_orders_without_recorded_fill():
+    for order in recorder.get_orders_needing_fill_poll():
         order_id = str(order.get("broker_order_id") or "").strip()
         side = str(order.get("side") or "").strip().upper()
+        already_recorded = int(order.get("recorded_fill_quantity") or 0)
         if not order_id or side not in {"BUY", "SELL"}:
             continue
         try:
@@ -259,8 +260,18 @@ def poll_and_record_new_fills(client, recorder: Recorder) -> None:
         except Exception as exc:
             print(f"Failed to poll fill for order_id={order_id} ticker={order.get('ticker')}: {exc}")
             continue
-        if fill is not None and fill.quantity > 0:
-            recorder.save_fill(fill, side=side, source="poll")
+        if fill is None or fill.quantity <= already_recorded:
+            continue
+        delta_quantity = fill.quantity - already_recorded
+        delta_fill = Fill(
+            order_id=fill.order_id,
+            ticker=fill.ticker,
+            quantity=delta_quantity,
+            price=fill.price,
+            filled_at=fill.filled_at,
+            raw={"source": "delta_poll", "total_fill_quantity": fill.quantity, "raw": fill.raw},
+        )
+        recorder.save_fill(delta_fill, side=side, source="poll")
 
 
 def submit_target_exit_order_from_position_if_present(
