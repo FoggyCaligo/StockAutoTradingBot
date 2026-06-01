@@ -22,6 +22,7 @@ from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import calc_expected_return, final_filter, get_candidates_top
 from Daily_bot.strategy.universe import UniverseConfig, get_candidates
+from Daily_bot.telemetry.trace_helpers import trace_candidate_watchlist
 from Daily_bot.utils import RateLimiter, get_tick_size, is_after_now, is_between_now, load_yaml, round_to_tick
 
 load_dotenv()
@@ -57,6 +58,7 @@ def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
             candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"])
             recorder.save_snapshot(candidate, snapshot)
             recorder.save_signal(candidate, selected=False)
+            recorder.save_market_trace(candidate, snapshot, phase="scan_candidate", selected=False, reason="main_scan")
             calculated.append(candidate)
         except Exception as exc:
             print(f"Skipping {ticker} during scan due to error: {exc}")
@@ -399,6 +401,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     state = BotState.NO_POSITION
     force_sell_done = False
     warmed_session = False
+    watchlist: dict[str, Candidate] = {}
     initial_account_value = estimate_account_value(client)
     print(f"Initial account value estimate: {initial_account_value}")
 
@@ -426,7 +429,17 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
         positions = client.get_positions()
         open_orders = client.get_open_orders()
+        active_tickers = _get_active_tickers(positions, open_orders)
         poll_and_record_new_fills(client, recorder)
+        if watchlist:
+            watchlist = trace_candidate_watchlist(
+                client=client,
+                recorder=recorder,
+                candidates=watchlist,
+                quote_rate_limit_per_second=cfg["api"]["quote_rate_limit_per_second"],
+                sell_tick_offset=cfg["strategy"]["sell_tick_offset"],
+                selected_keys=active_tickers,
+            )
         if has_position(positions):
             stop_loss_executed = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
             poll_and_record_new_fills(client, recorder)
@@ -438,7 +451,6 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             time.sleep(5)
             continue
 
-        active_tickers = _get_active_tickers(positions, open_orders)
         max_position_count = int(cfg["risk"].get("max_position_count", cfg["strategy"]["max_buy_count"]) or 0)
         empty_slots = max(0, max_position_count - len(active_tickers))
         if empty_slots <= 0:
@@ -460,6 +472,8 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             cfg["strategy"].get("max_spread_percent", 0.7),
         )
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
+        for candidate in filtered:
+            watchlist[_ticker_key(candidate.ticker)] = candidate
         configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
         buy_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
         try:
