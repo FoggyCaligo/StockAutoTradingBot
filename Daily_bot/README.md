@@ -32,7 +32,7 @@
 - 각 종목의 20호가 스냅샷을 조회합니다.
 - 매수호가 잔량과 매도호가 잔량을 `1:1`로 차감해가며 상쇄합니다.
 - 한쪽 호가가 먼저 소진되면 그 시점의 bid/ask frontier를 기준으로 가격대를 잡습니다.
-- 최종 예상가는 그 frontier의 `중간값(mid)`을 호가단위에 맞게 절사한 값입니다.
+- 최종 예상가는 그 frontier의 중간값을 호가단위에 맞게 절사한 값입니다.
 - 목표 매도가는 `예상가 - 1틱`으로 계산합니다.
 
 #### 기대수익률 계산 기준
@@ -48,7 +48,7 @@
 
 #### 최종 후보 필터 기준
 
-- 기대수익률 하한: `0.25%` 이상 (수수료 & 세금 제외한 손익분기선)
+- 기대수익률 하한: `0.25%` 이상
 - 스프레드 상한: `0.7%` 이하
 - 목표 매도가(`예상가 - 1틱`)가 현재가보다 높아야 함
 - 이미 보유 중이거나 미체결 주문이 걸린 종목은 제외
@@ -154,6 +154,91 @@ python main.py --real
 python main.py --dry-run
 ```
 
+## 백테스트 / 리플레이
+
+`Daily_bot`은 현재 두 가지 방식으로 과거 데이터를 다시 볼 수 있습니다.
+
+### 1. market_traces 리플레이
+
+파일:
+
+```text
+Daily_bot/backtest/replay_market_traces.py
+```
+
+용도:
+
+- 장중에 기록된 `market_traces`를 바탕으로
+- 어떤 종목에 진입했을지
+- `take_profit`, `stop_loss` 기준으로 결과가 어땠을지를
+- 가볍게 재생하는 리플레이형 백테스트입니다.
+
+기본적으로는 실제로 `selected=1`로 기록된 종목이 있으면 그 종목을 우선 사용합니다.
+
+예시:
+
+```bash
+.\.venv\Scripts\python.exe .\Daily_bot\backtest\replay_market_traces.py ^
+  --db .\Daily_bot\bot.sqlite3 ^
+  --min-expected-return 0.25 ^
+  --max-spread 0.7 ^
+  --top-n 3 ^
+  --take-profit 0.25 ^
+  --stop-loss 6.0 ^
+  --out .\Daily_bot\logs\backtest_replay.csv
+```
+
+실제 선택 신호를 무시하고, 순수 필터/랭킹 기준으로만 다시 고르고 싶으면:
+
+```bash
+.\.venv\Scripts\python.exe .\Daily_bot\backtest\replay_market_traces.py ^
+  --db .\Daily_bot\bot.sqlite3 ^
+  --ignore-selected-signals
+```
+
+### 2. 설정값 스윕 비교
+
+파일:
+
+```text
+Daily_bot/backtest/sweep_replay_configs.py
+```
+
+용도:
+
+아래 설정값을 여러 조합으로 바꿔가며 리플레이 결과를 비교합니다.
+
+- `min_expected_return_percent`
+- `max_spread_percent`
+- `top_n_per_day` (`max_buy_count`에 대응)
+- `stop_loss_percent`
+
+출력:
+
+- CSV 요약 파일
+- 각 조합별 거래 수 / 승률 / 평균 손익률 / 누적 손익률
+
+예시:
+
+```bash
+.\.venv\Scripts\python.exe .\Daily_bot\backtest\sweep_replay_configs.py ^
+  --db .\Daily_bot\bot.sqlite3 ^
+  --min-expected-returns 0.2,0.25,0.3 ^
+  --max-spreads 0.5,0.7 ^
+  --top-ns 1,2,3 ^
+  --take-profit 0.25 ^
+  --stop-losses 5.0,6.0,7.0 ^
+  --out .\Daily_bot\logs\backtest_replay_sweep.csv
+```
+
+실제 선택 신호를 무시하고 필터/랭킹만으로 비교하고 싶으면:
+
+```bash
+.\.venv\Scripts\python.exe .\Daily_bot\backtest\sweep_replay_configs.py ^
+  --db .\Daily_bot\bot.sqlite3 ^
+  --ignore-selected-signals
+```
+
 ## 빠른 점검 포인트
 
 ### 봇이 살아 있는지 확인
@@ -166,6 +251,9 @@ python main.py --dry-run
 - `hoga_snapshots`
 - `signals`
 - `orders`
+- `fills`
+- `market_traces`
+- `account_traces`
 
 이 테이블들의 건수가 증가하면 실제 로직이 진행 중인 것입니다.
 
@@ -176,9 +264,11 @@ python main.py --dry-run
 - 주문가능현금
 
 이 세 가지를 함께 봐야
+
 - 아직 시작 전인지
 - 슬롯이 찬 상태인지
 - 후보는 있었지만 자금 때문에 일부만 매수된 건지
+
 를 구분하기 쉽습니다.
 
 ## 테스트
