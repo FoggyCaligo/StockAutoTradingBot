@@ -11,6 +11,9 @@ class _RecorderStub:
     def save_order(self, order: OrderResult) -> None:
         self.orders.append(order)
 
+    def save_fill(self, fill, side: str, source: str = "broker") -> None:
+        pass
+
 
 class _ClientStub:
     def __init__(self, orderable_cash: int):

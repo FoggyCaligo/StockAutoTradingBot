@@ -23,6 +23,17 @@ class TraceRow:
 
 
 @dataclass
+class SelectedSignal:
+    session_date: str
+    ticker: str
+    created_at: str
+    price: int
+    expect_price: int
+    expect_revenue_percent: float
+    spread_percent: float
+
+
+@dataclass
 class BacktestTrade:
     session_date: str
     ticker: str
@@ -86,6 +97,39 @@ def load_traces(db_path: Path) -> list[TraceRow]:
     ]
 
 
+def load_selected_signals(db_path: Path) -> list[SelectedSignal]:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        """
+        SELECT
+            substr(created_at, 1, 10) AS session_date,
+            ticker,
+            created_at,
+            price,
+            expect_price,
+            expect_revenue_percent,
+            spread_percent
+        FROM signals
+        WHERE selected = 1
+        ORDER BY created_at, ticker
+        """
+    ).fetchall()
+    conn.close()
+    return [
+        SelectedSignal(
+            session_date=row["session_date"],
+            ticker=row["ticker"],
+            created_at=row["created_at"],
+            price=_to_int(row["price"]),
+            expect_price=_to_int(row["expect_price"]),
+            expect_revenue_percent=_to_float(row["expect_revenue_percent"]),
+            spread_percent=_to_float(row["spread_percent"]),
+        )
+        for row in rows
+    ]
+
+
 def group_by_session_and_ticker(rows: list[TraceRow]) -> dict[tuple[str, str], list[TraceRow]]:
     grouped: dict[tuple[str, str], list[TraceRow]] = {}
     for row in rows:
@@ -98,7 +142,20 @@ def pick_entries(
     min_expected_return_percent: float,
     max_spread_percent: float,
     top_n_per_day: int,
+    selected_signals: list[SelectedSignal] | None = None,
 ) -> dict[str, list[TraceRow]]:
+    if selected_signals:
+        per_day: dict[str, list[TraceRow]] = {}
+        for signal in selected_signals:
+            trace_rows = grouped.get((signal.session_date, signal.ticker))
+            if not trace_rows:
+                continue
+            day_entries = per_day.setdefault(signal.session_date, [])
+            if len(day_entries) < top_n_per_day:
+                day_entries.append(trace_rows[0])
+        if per_day:
+            return per_day
+
     first_rows: list[TraceRow] = []
     for trace_rows in grouped.values():
         first = trace_rows[0]
@@ -167,10 +224,18 @@ def run_backtest(
     top_n_per_day: int,
     take_profit_percent: float,
     stop_loss_percent: float,
+    use_selected_signals: bool = True,
 ) -> list[BacktestTrade]:
     traces = load_traces(db_path)
     grouped = group_by_session_and_ticker(traces)
-    entries_by_day = pick_entries(grouped, min_expected_return_percent, max_spread_percent, top_n_per_day)
+    selected_signals = load_selected_signals(db_path) if use_selected_signals else []
+    entries_by_day = pick_entries(
+        grouped,
+        min_expected_return_percent,
+        max_spread_percent,
+        top_n_per_day,
+        selected_signals=selected_signals,
+    )
     trades: list[BacktestTrade] = []
     for entries in entries_by_day.values():
         for entry in entries:
@@ -225,6 +290,7 @@ def parse_args():
     parser.add_argument("--take-profit", type=float, default=0.25)
     parser.add_argument("--stop-loss", type=float, default=6.0)
     parser.add_argument("--out", default="Daily_bot/logs/backtest_replay.csv")
+    parser.add_argument("--ignore-selected-signals", action="store_true")
     return parser.parse_args()
 
 
@@ -237,6 +303,7 @@ if __name__ == "__main__":
         top_n_per_day=args.top_n,
         take_profit_percent=args.take_profit,
         stop_loss_percent=args.stop_loss,
+        use_selected_signals=not args.ignore_selected_signals,
     )
     write_csv(Path(args.out), result)
     print_summary(result)

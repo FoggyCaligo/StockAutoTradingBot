@@ -5,7 +5,7 @@ from Daily_bot.strategy.signal import final_filter
 from Daily_bot.strategy.universe import _trend_ok_from_series
 
 
-def test_final_filter_uses_target_sell_price_instead_of_spread():
+def test_final_filter_uses_target_sell_price_when_spread_filter_is_disabled():
     candidates = [
         Candidate(
             ticker="005930",
@@ -25,7 +25,7 @@ def test_final_filter_uses_target_sell_price_instead_of_spread():
         ),
     ]
 
-    result = final_filter(candidates, min_expected_return_percent=0.6, sell_tick_offset=1)
+    result = final_filter(candidates, min_expected_return_percent=0.6, sell_tick_offset=1, max_spread_percent=0.0)
 
     assert [candidate.ticker for candidate in result] == ["005930"]
 

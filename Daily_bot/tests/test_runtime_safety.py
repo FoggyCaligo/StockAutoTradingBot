@@ -15,6 +15,9 @@ class _RecorderStub:
     def save_signal(self, candidate, selected: bool = False) -> None:
         self.signals.append(candidate.ticker)
 
+    def save_market_trace(self, candidate, snapshot, phase: str, selected: bool = False, reason: str = "") -> None:
+        pass
+
 
 class _ClientStub:
     def get_20hoga(self, ticker: str) -> HogaSnapshot:
