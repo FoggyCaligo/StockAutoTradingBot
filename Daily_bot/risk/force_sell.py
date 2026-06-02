@@ -50,20 +50,44 @@ def wait_until_all_orders_cancelled(client, timeout_seconds: int = 60, poll_seco
     return not client.get_open_orders()
 
 
-def sell_all_positions_market(client, recorder: Recorder | None = None) -> None:
+def _get_current_price(client, ticker: str) -> int:
+    try:
+        snapshot = client.get_20hoga(ticker)
+    except Exception as exc:
+        print(f"Failed to fetch current price for force sell {ticker}: {exc}")
+        return 0
+    return _to_int(getattr(snapshot, "current_price", 0), default=0)
+
+
+def sell_all_positions_at_current_price(client, recorder: Recorder | None = None) -> None:
     for position in client.get_positions():
-        if position.quantity > 0:
+        if position.quantity <= 0:
+            continue
+
+        current_price = _get_current_price(client, position.ticker)
+        if current_price > 0:
+            print(
+                f"Submitting force sell at current price for {position.ticker}: "
+                f"quantity={position.quantity} current_price={current_price}"
+            )
+            sell_order = client.sell_limit(position.ticker, position.quantity, current_price)
+        else:
+            print(
+                f"Falling back to market force sell for {position.ticker}: "
+                f"quantity={position.quantity}"
+            )
             sell_order = client.sell_market(position.ticker, position.quantity)
-            if recorder is not None:
-                recorder.save_order(sell_order)
+
+        if recorder is not None:
+            recorder.save_order(sell_order)
 
 
 def force_sell(client, recorder: Recorder | None = None) -> None:
-    """Cancel all open orders, confirm cancellation, then sell positions at market."""
+    """Cancel all open orders, confirm cancellation, then force-sell positions at current price."""
     cancel_all_open_orders(client)
     cancelled = wait_until_all_orders_cancelled(client)
     if not cancelled:
-        raise RuntimeError("Open orders still remain after cancellation timeout. Refusing market sell to avoid order conflict.")
-    sell_all_positions_market(client, recorder=recorder)
+        raise RuntimeError("Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.")
+    sell_all_positions_at_current_price(client, recorder=recorder)
     if hasattr(client, "wait_until_no_position"):
         client.wait_until_no_position()

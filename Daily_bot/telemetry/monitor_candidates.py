@@ -1,0 +1,122 @@
+from __future__ import annotations
+
+import argparse
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+WORKSPACE_ROOT = ROOT.parent
+if str(WORKSPACE_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORKSPACE_ROOT))
+
+from dotenv import load_dotenv
+
+from Daily_bot.broker.kiwoom_client import KiwoomClient
+from Daily_bot.broker.mock_client import MockKiwoomClient
+from Daily_bot.storage.db import Recorder
+from Daily_bot.strategy.signal import calc_expected_return, final_filter, get_candidates_top
+from Daily_bot.strategy.universe import UniverseConfig, get_candidates
+from Daily_bot.telemetry.trace_helpers import ticker_key, trace_candidate_watchlist
+from Daily_bot.utils import RateLimiter, is_after_now, is_between_now, load_yaml
+
+load_dotenv()
+
+
+def build_client(dry_run: bool):
+    return MockKiwoomClient() if dry_run else KiwoomClient()
+
+
+def build_universe_config(cfg: dict) -> UniverseConfig:
+    return UniverseConfig(
+        min_market_cap_krw=cfg["universe"]["min_market_cap_krw"],
+        min_trading_value_krw=cfg["universe"]["min_trading_value_krw"],
+        csv_path=cfg["universe"].get("csv_path"),
+        cache_path=cfg["universe"].get("cache_path"),
+        source=cfg["universe"].get("source", "KOSPI200"),
+        refresh_daily=cfg["universe"].get("refresh_daily", True),
+    )
+
+
+def scan_filtered_candidates(client, recorder: Recorder, cfg: dict) -> dict[str, object]:
+    candidates = get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
+    limiter = RateLimiter(cfg["api"]["quote_rate_limit_per_second"])
+    calculated = []
+    for ticker, candidate in candidates.items():
+        try:
+            limiter.wait()
+            snapshot = client.get_20hoga(ticker)
+            calculated_candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"])
+            recorder.save_snapshot(calculated_candidate, snapshot)
+            recorder.save_signal(calculated_candidate, selected=False)
+            recorder.save_market_trace(
+                calculated_candidate,
+                snapshot,
+                phase="candidate_scan",
+                selected=False,
+                reason="monitor_scan",
+            )
+            calculated.append(calculated_candidate)
+        except Exception as exc:
+            print(f"Skipping {ticker} during candidate monitor scan: {exc}")
+
+    top = get_candidates_top(calculated, cfg["strategy"]["top_ratio"])
+    filtered = final_filter(
+        top,
+        cfg["strategy"]["min_expected_return_percent"],
+        cfg["strategy"]["sell_tick_offset"],
+        cfg["strategy"].get("max_spread_percent", 0.7),
+    )
+    return {ticker_key(candidate.ticker): candidate for candidate in filtered}
+
+
+def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
+    cfg = load_yaml(cfg_path)
+    dry_run = cfg["risk"]["dry_run"] if dry_run_override is None else dry_run_override
+    client = build_client(dry_run)
+    recorder = Recorder(Path("bot.sqlite3"))
+    client.auth()
+
+    watchlist: dict[str, object] = {}
+    print("Candidate monitor started. This process records quotes only and does not place orders.")
+
+    while True:
+        if is_after_now(cfg["market"]["force_sell_time"]):
+            print("Candidate monitor reached force_sell_time. Stopping.")
+            break
+
+        if not is_between_now(cfg["market"]["start_buy_time"], cfg["market"]["stop_buy_time"]):
+            time.sleep(5)
+            continue
+
+        try:
+            filtered = scan_filtered_candidates(client, recorder, cfg)
+            watchlist.update(filtered)
+            if watchlist:
+                watchlist = trace_candidate_watchlist(
+                    client=client,
+                    recorder=recorder,
+                    candidates=watchlist,
+                    quote_rate_limit_per_second=cfg["api"]["quote_rate_limit_per_second"],
+                    sell_tick_offset=cfg["strategy"]["sell_tick_offset"],
+                    selected_keys=set(filtered.keys()),
+                )
+            print(f"Candidate monitor traced {len(watchlist)} candidates; latest filtered={len(filtered)}")
+        except Exception as exc:
+            print(f"Candidate monitor cycle failed: {exc}")
+
+        time.sleep(cfg["strategy"].get("scan_interval_seconds", 60))
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Quote-only monitor for Daily_bot filtered candidates.")
+    parser.add_argument("--config", default=str(ROOT / "config/settings.yaml"))
+    parser.add_argument("--dry-run", action="store_true", help="Use mock broker and do not send real orders")
+    parser.add_argument("--real", action="store_true", help="Use real Kiwoom quote client")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    override = True if args.dry_run else False if args.real else None
+    run(args.config, override)

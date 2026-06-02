@@ -56,6 +56,35 @@ CREATE TABLE IF NOT EXISTS fills (
     raw_json TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS market_traces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_date TEXT NOT NULL,
+    phase TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    selected INTEGER DEFAULT 0,
+    reason TEXT,
+    price INTEGER,
+    current_price INTEGER,
+    best_bid INTEGER,
+    best_ask INTEGER,
+    expect_price INTEGER,
+    expect_revenue_percent REAL,
+    spread_percent REAL,
+    raw_json TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS account_traces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_date TEXT NOT NULL,
+    phase TEXT NOT NULL,
+    cash INTEGER,
+    account_value INTEGER,
+    positions_json TEXT,
+    open_orders_json TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 
@@ -119,6 +148,122 @@ class Recorder:
             ),
         )
         self.conn.commit()
+
+    def save_market_trace(
+        self,
+        candidate: Candidate,
+        snapshot: HogaSnapshot,
+        phase: str,
+        selected: bool = False,
+        reason: str = "",
+    ) -> None:
+        from datetime import datetime
+
+        session_date = datetime.now().strftime("%Y-%m-%d")
+        raw_json = json.dumps(snapshot.raw or {}, ensure_ascii=False)
+        best_bid = snapshot.bids[0].price if snapshot.bids else 0
+        best_ask = snapshot.asks[0].price if snapshot.asks else 0
+        row = {
+            "session_date": session_date,
+            "phase": phase,
+            "ticker": candidate.ticker,
+            "selected": 1 if selected else 0,
+            "reason": reason,
+            "price": candidate.price,
+            "current_price": snapshot.current_price,
+            "best_bid": best_bid,
+            "best_ask": best_ask,
+            "expect_price": candidate.expect_price,
+            "expect_revenue_percent": candidate.expect_revenue_percent,
+            "spread_percent": candidate.spread_percent,
+            "raw_json": raw_json,
+        }
+        self.conn.execute(
+            """
+            INSERT INTO market_traces
+            (session_date, phase, ticker, selected, reason, price, current_price, best_bid, best_ask,
+             expect_price, expect_revenue_percent, spread_percent, raw_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["session_date"],
+                row["phase"],
+                row["ticker"],
+                row["selected"],
+                row["reason"],
+                row["price"],
+                row["current_price"],
+                row["best_bid"],
+                row["best_ask"],
+                row["expect_price"],
+                row["expect_revenue_percent"],
+                row["spread_percent"],
+                row["raw_json"],
+            ),
+        )
+        self.conn.commit()
+        self._append_csv_row(
+            self._daily_csv_path("market_traces"),
+            [
+                "session_date",
+                "phase",
+                "ticker",
+                "selected",
+                "reason",
+                "price",
+                "current_price",
+                "best_bid",
+                "best_ask",
+                "expect_price",
+                "expect_revenue_percent",
+                "spread_percent",
+                "raw_json",
+            ],
+            row,
+        )
+
+    def save_account_trace(
+        self,
+        phase: str,
+        cash: int,
+        account_value: int,
+        positions: list[Any],
+        open_orders: list[dict[str, Any]],
+    ) -> None:
+        from datetime import datetime
+
+        session_date = datetime.now().strftime("%Y-%m-%d")
+        positions_json = json.dumps([getattr(position, "__dict__", position) for position in positions], ensure_ascii=False, default=str)
+        open_orders_json = json.dumps(open_orders, ensure_ascii=False, default=str)
+        row = {
+            "session_date": session_date,
+            "phase": phase,
+            "cash": cash,
+            "account_value": account_value,
+            "positions_json": positions_json,
+            "open_orders_json": open_orders_json,
+        }
+        self.conn.execute(
+            """
+            INSERT INTO account_traces
+            (session_date, phase, cash, account_value, positions_json, open_orders_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["session_date"],
+                row["phase"],
+                row["cash"],
+                row["account_value"],
+                row["positions_json"],
+                row["open_orders_json"],
+            ),
+        )
+        self.conn.commit()
+        self._append_csv_row(
+            self._daily_csv_path("account_traces"),
+            ["session_date", "phase", "cash", "account_value", "positions_json", "open_orders_json"],
+            row,
+        )
 
     def save_order(self, order: OrderResult) -> None:
         raw_json = json.dumps(order.raw or {}, ensure_ascii=False)
