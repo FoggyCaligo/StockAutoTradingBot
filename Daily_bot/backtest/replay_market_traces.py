@@ -45,6 +45,16 @@ class BacktestTrade:
     pnl_percent: float
 
 
+@dataclass
+class BacktestSummary:
+    trades: int
+    wins: int
+    losses: int
+    win_rate_percent: float
+    avg_pnl_percent: float
+    total_pnl_percent: float
+
+
 def _to_int(value) -> int:
     try:
         return int(value or 0)
@@ -266,19 +276,44 @@ def write_csv(path: Path, trades: list[BacktestTrade]) -> None:
 
 
 def print_summary(trades: list[BacktestTrade]) -> None:
-    if not trades:
+    summary = summarize_trades(trades)
+    if summary.trades == 0:
         print("No trades replayed. Check market_traces data and filters.")
         return
-    wins = [trade for trade in trades if trade.pnl_percent > 0]
-    losses = [trade for trade in trades if trade.pnl_percent <= 0]
-    avg = mean(trade.pnl_percent for trade in trades)
-    total = sum(trade.pnl_percent for trade in trades)
-    print(f"trades={len(trades)} wins={len(wins)} losses={len(losses)} win_rate={len(wins) / len(trades) * 100:.2f}%")
-    print(f"avg_pnl={avg:.4f}% summed_pnl={total:.4f}%")
+    print(
+        f"trades={summary.trades} wins={summary.wins} losses={summary.losses} "
+        f"win_rate={summary.win_rate_percent:.2f}%"
+    )
+    print(f"avg_pnl={summary.avg_pnl_percent:.4f}% summed_pnl={summary.total_pnl_percent:.4f}%")
     print("exit_reasons:")
     for reason in sorted({trade.exit_reason for trade in trades}):
         count = sum(1 for trade in trades if trade.exit_reason == reason)
         print(f"  {reason}: {count}")
+
+
+def summarize_trades(trades: list[BacktestTrade]) -> BacktestSummary:
+    if not trades:
+        return BacktestSummary(
+            trades=0,
+            wins=0,
+            losses=0,
+            win_rate_percent=0.0,
+            avg_pnl_percent=0.0,
+            total_pnl_percent=0.0,
+        )
+
+    wins = [trade for trade in trades if trade.pnl_percent > 0]
+    losses = [trade for trade in trades if trade.pnl_percent <= 0]
+    avg = mean(trade.pnl_percent for trade in trades)
+    total = sum(trade.pnl_percent for trade in trades)
+    return BacktestSummary(
+        trades=len(trades),
+        wins=len(wins),
+        losses=len(losses),
+        win_rate_percent=len(wins) / len(trades) * 100,
+        avg_pnl_percent=avg,
+        total_pnl_percent=total,
+    )
 
 
 def parse_args():
