@@ -44,6 +44,17 @@ def wait_until_no_open_orders_for_ticker(
     return not any(_get_ticker(order) == ticker for order in client.get_open_orders())
 
 
+def _record_fill_safely(client, recorder: Recorder, order_id: str, side: str, source: str) -> None:
+    if not order_id or not hasattr(client, "get_order_fill"):
+        return
+    try:
+        fill = client.get_order_fill(order_id)
+        if fill:
+            recorder.save_fill(fill, side=side, source=source)
+    except Exception as exc:
+        print(f"Warning: Failed to record immediate fill for {side} order {order_id} ({source}): {exc}")
+
+
 def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], open_orders: list[dict], cfg: dict) -> bool:
     stop_loss_percent = float(cfg["risk"].get("stop_loss_percent", 2.0))
     if stop_loss_percent <= 0:
@@ -70,6 +81,7 @@ def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], ope
 
         sell_order = client.sell_market(position.ticker, position.quantity)
         recorder.save_order(sell_order)
+        _record_fill_safely(client, recorder, _get_order_id(sell_order.__dict__), "SELL", "stop_loss")
         return True
 
     return False

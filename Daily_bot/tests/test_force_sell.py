@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 
-from Daily_bot.models import HogaSnapshot
+from Daily_bot.models import Fill, HogaSnapshot
 from Daily_bot.risk.force_sell import force_sell
 
 
@@ -8,6 +9,18 @@ from Daily_bot.risk.force_sell import force_sell
 class _Position:
     ticker: str
     quantity: int
+
+
+@dataclass
+class _RecorderStub:
+    orders: list = field(default_factory=list)
+    fills: list = field(default_factory=list)
+
+    def save_order(self, order) -> None:
+        self.orders.append(order)
+
+    def save_fill(self, fill, side, source) -> None:
+        self.fills.append((fill, side, source))
 
 
 class _ClientStub:
@@ -37,15 +50,32 @@ class _ClientStub:
 
     def sell_limit(self, ticker: str, quantity: int, price: int):
         self.sell_limit_calls.append((ticker, quantity, price))
+        return type(
+            "Order",
+            (),
+            {"order_id": f"OID-{ticker}", "ticker": ticker, "side": "SELL", "quantity": quantity, "price": price, "status": "SUBMITTED", "raw": {}},
+        )()
 
     def sell_market(self, ticker: str, quantity: int):
         self.sell_market_calls.append((ticker, quantity))
+        price = self.current_prices.get(ticker, 0)
+        return type(
+            "Order",
+            (),
+            {"order_id": f"OID-M-{ticker}", "ticker": ticker, "side": "SELL", "quantity": quantity, "price": price, "status": "SUBMITTED", "raw": {}},
+        )()
+
+    def get_order_fill(self, order_id: str):
+        ticker = order_id.split("-")[-1]
+        price = self.current_prices.get(ticker, 0)
+        return Fill(order_id=order_id, ticker=ticker, quantity=1, price=price, filled_at=datetime.now())
 
 
 def test_force_sell_passes_ticker_and_quantity_to_cancel_order():
     client = _ClientStub()
+    recorder = _RecorderStub()
 
-    force_sell(client)
+    force_sell(client, recorder=recorder)
 
     assert client.cancel_calls == [
         ("1234567", "005930", 3),
@@ -53,3 +83,11 @@ def test_force_sell_passes_ticker_and_quantity_to_cancel_order():
     ]
     assert client.sell_limit_calls == [("005930", 3, 71000), ("000660", 1, 189000)]
     assert client.sell_market_calls == []
+    
+    # Verify fills were recorded
+    assert len(recorder.fills) == 2
+    for fill, side, source in recorder.fills:
+        assert side == "SELL"
+        assert source == "force_sell"
+        assert fill.order_id.startswith("OID-")
+        assert fill.price > 0

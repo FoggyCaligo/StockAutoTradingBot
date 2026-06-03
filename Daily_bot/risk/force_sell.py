@@ -59,6 +59,17 @@ def _get_current_price(client, ticker: str) -> int:
     return _to_int(getattr(snapshot, "current_price", 0), default=0)
 
 
+def _record_fill_safely(client, recorder: Recorder, order_id: str, side: str, source: str) -> None:
+    if not order_id or not hasattr(client, "get_order_fill"):
+        return
+    try:
+        fill = client.get_order_fill(order_id)
+        if fill:
+            recorder.save_fill(fill, side=side, source=source)
+    except Exception as exc:
+        print(f"Warning: Failed to record immediate fill for {side} order {order_id} ({source}): {exc}")
+
+
 def sell_all_positions_at_current_price(client, recorder: Recorder | None = None) -> None:
     for position in client.get_positions():
         if position.quantity <= 0:
@@ -80,6 +91,7 @@ def sell_all_positions_at_current_price(client, recorder: Recorder | None = None
 
         if recorder is not None:
             recorder.save_order(sell_order)
+            _record_fill_safely(client, recorder, _get_order_id(sell_order.__dict__), "SELL", "force_sell")
 
 
 def force_sell(client, recorder: Recorder | None = None) -> None:

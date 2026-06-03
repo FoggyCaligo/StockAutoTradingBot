@@ -15,6 +15,7 @@ class MockKiwoomClient:
         self._order_seq = itertools.count(1)
         self.positions: dict[str, Position] = {}
         self.open_orders: dict[str, OrderResult] = {}
+        self.sell_fills: dict[str, Fill] = {}
         self.orderable_cash: int = 10_000_000
         self.last_buy_order: OrderResult | None = None
 
@@ -38,11 +39,16 @@ class MockKiwoomClient:
     def sell_limit(self, ticker: str, quantity: int, price: int) -> OrderResult:
         oid = f"MOCK-SELL-{next(self._order_seq)}"
         self.open_orders[oid] = OrderResult(order_id=oid, ticker=ticker, side="SELL", quantity=quantity, price=price)
+        # For mock, we'll assume it fills immediately for testing immediate fill recording
+        self.sell_fills[oid] = Fill(order_id=oid, ticker=ticker, quantity=quantity, price=price)
         return self.open_orders[oid]
 
     def sell_market(self, ticker: str, quantity: int) -> OrderResult:
         oid = f"MOCK-MARKET-SELL-{next(self._order_seq)}"
         self.positions.pop(ticker, None)
+        # Mock price for market sell
+        price = 10000
+        self.sell_fills[oid] = Fill(order_id=oid, ticker=ticker, quantity=quantity, price=price)
         return OrderResult(order_id=oid, ticker=ticker, side="SELL", quantity=quantity, status="FILLED")
 
     def cancel_order(self, order_id: str, ticker: str = "", quantity: int = 0) -> None:
@@ -81,3 +87,8 @@ class MockKiwoomClient:
 
     def get_buy_fill(self, order_id: str) -> Fill | None:
         return self.wait_buy_filled(order_id)
+
+    def get_order_fill(self, order_id: str) -> Fill | None:
+        if self.last_buy_order and self.last_buy_order.order_id == order_id:
+            return self.get_buy_fill(order_id)
+        return self.sell_fills.get(order_id)
