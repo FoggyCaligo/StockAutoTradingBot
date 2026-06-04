@@ -1,7 +1,0 @@
-﻿broker_order_id,ticker,side,quantity,price,status,raw_json
-0231370,336370,BUY,6,11120,KRX 매수주문이 완료되었습니다.,"{""ord_no"": ""0231370"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""KRX 매수주문이 완료되었습니다.""}"
-0232330,336370,SELL,6,11250,매도주문이 완료되었습니다.,"{""ord_no"": ""0232330"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""매도주문이 완료되었습니다.""}"
-0239592,020150,BUY,1,63000,KRX 매수주문이 완료되었습니다.,"{""ord_no"": ""0239592"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""KRX 매수주문이 완료되었습니다.""}"
-0240555,020150,SELL,1,63400,매도주문이 완료되었습니다.,"{""ord_no"": ""0240555"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""매도주문이 완료되었습니다.""}"
-0247734,005850,BUY,2,69800,KRX 매수주문이 완료되었습니다.,"{""ord_no"": ""0247734"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""KRX 매수주문이 완료되었습니다.""}"
-0248699,005850,SELL,2,70200,매도주문이 완료되었습니다.,"{""ord_no"": ""0248699"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""매도주문이 완료되었습니다.""}"
