@@ -255,7 +255,7 @@ Implement broker/kiwoom_client.py using the official Kiwoom REST API docs. Keep 
 trading:
   dry_run: true
   market_open: "09:00"
-  buy_start: "09:10"
+  buy_start: "09:10=-3
   buy_end: "11:30"
   force_sell_time: "13:00"
   max_buy_count: 3

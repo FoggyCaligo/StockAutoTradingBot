@@ -2,6 +2,36 @@ import Daily_bot.broker.kiwoom_client as kiwoom_module
 from Daily_bot.broker.kiwoom_client import KiwoomClient
 
 
+def test_get_orderable_cash_prefers_stock_buying_power(monkeypatch):
+    client = KiwoomClient(base_url="https://example.com")
+    response = {
+        "elwdpst_evlta": "000000000211315",
+        "pymn_alow_amt": "000000000024449",
+        "ord_alow_amt": "000000000024449",
+        "100stk_ord_alow_amt": "000000000211315",
+        "return_code": 0,
+    }
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: response)
+
+    result = client.get_orderable_cash()
+
+    assert result == 211315
+
+
+def test_get_orderable_cash_falls_back_to_generic_amount_when_stock_buying_power_missing(monkeypatch):
+    client = KiwoomClient(base_url="https://example.com")
+    response = {
+        "pymn_alow_amt": "000000000024449",
+        "ord_alow_amt": "000000000024449",
+        "return_code": 0,
+    }
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: response)
+
+    result = client.get_orderable_cash()
+
+    assert result == 24449
+
+
 def test_wait_buy_filled_requires_full_quantity(monkeypatch):
     client = KiwoomClient(base_url="https://example.com")
     responses = [

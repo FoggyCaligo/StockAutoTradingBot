@@ -200,12 +200,12 @@ class KiwoomClient:
         return self._parse_positions(raw)
 
     def get_orderable_cash(self) -> int:
-        """Return current orderable cash (KRW) from account endpoint."""
+        """Return conservative stock-buying power (KRW) from account endpoint."""
         payload = {
             "qry_tp": "2",  # 일반조회
         }
         raw = self._request("POST", self.DOMESTIC_ACCOUNT_PATH, api_id=self.TR_KT00001_CASH, json=payload)
-        return self._extract_number(raw, ["ord_alow_amt", "ord_alowa", "wthd_alowa", "pymn_alow_amt"])
+        return self._extract_orderable_cash(raw)
 
     def get_open_orders(self) -> list[dict[str, Any]]:
         payload = {
@@ -399,6 +399,29 @@ class KiwoomClient:
                 return abs(int(float(cleaned)))
             except ValueError:
                 return 0
+
+    def _extract_orderable_cash(self, raw: Any) -> int:
+        # Kiwoom's generic ord_alow_amt can be much lower than stock-buying power.
+        # Prefer the conservative "100% margin stock orderable amount", then fall back.
+        preferred_keys = [
+            "100stk_ord_alow_amt",
+            "100_stk_ord_alow_amt",
+            "stock_100_ord_alow_amt",
+            "elwdpst_evlta",
+        ]
+        preferred_value = self._extract_number(raw, preferred_keys)
+        if preferred_value > 0:
+            return preferred_value
+
+        return self._extract_number(
+            raw,
+            [
+                "ord_alow_amt",
+                "ord_alowa",
+                "wthd_alowa",
+                "pymn_alow_amt",
+            ],
+        )
 
     def _normalize_ticker(self, ticker: str) -> str:
         normalized = ticker.strip()

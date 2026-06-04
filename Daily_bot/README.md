@@ -58,7 +58,8 @@
 - 전체 후보를 기대수익률 내림차순으로 정렬합니다.
 - 그중 상위 `20%`(`top_ratio: 0.20`)만 1차 후보로 남깁니다.
 - 이후 현재 주문가능현금과 슬롯 수를 기준으로 실제 매수 가능한 조합만 다시 고릅니다.
-- 최종적으로 최대 `3종목`(`max_buy_count: 3`, `max_position_count: 3`)까지 매수 대상으로 선택합니다.
+- 목표 종목 수는 `min_slot_count`, `target_budget_ratio_per_stock`, `max_budget_per_stock_krw`를 기준으로 자금에 따라 유동적으로 줄고 늘어납니다.
+- `max_buy_count: 0`, `max_position_count: 0`이면 고정 상한 없이 자금 규모에 따라 종목 수가 계속 늘어납니다.
 - 비싼 종목 때문에 슬롯이 비면, 더 아래의 저렴한 후보로 내려가며 채웁니다.
 
 ### 2. 실매매 시간대: 09:30 ~ 13:00
@@ -84,8 +85,10 @@
 #### 매수 방식
 
 - 종목별 지정가 매수
-- 주문가능현금을 기준으로 종목 수에 맞춰 예산을 분배
-- 현재는 최대 `3종목`까지 진입
+- 최소 `3슬롯`을 기본으로 깔고, 주문가능현금의 약 `33%`를 종목당 목표 예산으로 삼아 종목 수를 계산
+- 종목당 목표 예산은 최대 `500만원`으로 제한
+- 실제 주문 때는 주문가능현금을 기준으로 선택된 종목 수에 맞춰 예산을 분배
+- 현재는 고정 종목 수 상한 없이, 자금과 후보 수에 맞춰 진입
 
 #### 매도 조건
 
@@ -128,14 +131,17 @@ market:
 
 strategy:
   top_ratio: 0.20
-  max_buy_count: 3
+  max_buy_count: 0
   min_expected_return_percent: 0.25
   max_spread_percent: 0.7
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
 risk:
-  max_position_count: 3
+  max_position_count: 0
+  min_slot_count: 3
+  target_budget_ratio_per_stock: 0.33
+  max_budget_per_stock_krw: 5000000
   stop_loss_percent: 5.0
   daily_loss_limit_percent: 10.0
 ```

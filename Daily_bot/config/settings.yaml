@@ -18,7 +18,7 @@ trend_filter:
 
 strategy:
   top_ratio: 0.20
-  max_buy_count: 3
+  max_buy_count: 0
   min_expected_return_percent: 0.25
   max_spread_percent: 0.7
   sell_tick_offset: 1
@@ -26,9 +26,11 @@ strategy:
 
 risk:
   dry_run: false
-  max_position_count: 3
+  max_position_count: 0
+  min_slot_count: 3
+  target_budget_ratio_per_stock: 0.33
   max_budget_per_cycle_krw: 0
-  max_budget_per_stock_krw: 0
+  max_budget_per_stock_krw: 5000000
   stop_loss_percent: 5.0
   daily_loss_limit_percent: 10.0
   daily_loss_limit_krw: 10000

@@ -43,6 +43,45 @@ def build_universe_config(cfg: dict) -> UniverseConfig:
     )
 
 
+def resolve_target_budget_per_stock(cfg: dict, planning_cash: int) -> int:
+    if planning_cash <= 0:
+        return 0
+
+    ratio = float(cfg["risk"].get("target_budget_ratio_per_stock", 0) or 0)
+    budget_from_ratio = int(planning_cash * ratio) if ratio > 0 else 0
+    max_budget_per_stock = int(cfg["risk"].get("max_budget_per_stock_krw", 0) or 0)
+
+    if max_budget_per_stock > 0 and budget_from_ratio > 0:
+        return min(budget_from_ratio, max_budget_per_stock)
+    if budget_from_ratio > 0:
+        return budget_from_ratio
+    if max_budget_per_stock > 0:
+        return max_budget_per_stock
+    return 0
+
+
+def resolve_buy_count(cfg: dict, empty_slots: int, planning_cash: int) -> int:
+    configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
+    slot_limited_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
+    if slot_limited_count <= 0:
+        return 0
+
+    min_slot_count = max(1, int(cfg["risk"].get("min_slot_count", 1) or 1))
+    target_budget_per_stock = resolve_target_budget_per_stock(cfg, planning_cash)
+    if target_budget_per_stock <= 0:
+        return slot_limited_count
+
+    affordable_count = max(1, planning_cash // target_budget_per_stock) if planning_cash > 0 else 0
+    desired_count = max(min_slot_count, affordable_count)
+    return min(slot_limited_count, desired_count)
+
+
+def resolve_empty_slots(max_position_count: int, active_count: int, candidate_count: int = 0) -> int:
+    if max_position_count <= 0:
+        return max(candidate_count, 0)
+    return max(0, max_position_count - active_count)
+
+
 def warm_universe(cfg: dict) -> None:
     get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
 
@@ -452,8 +491,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             continue
 
         max_position_count = int(cfg["risk"].get("max_position_count", cfg["strategy"]["max_buy_count"]) or 0)
-        empty_slots = max(0, max_position_count - len(active_tickers))
-        if empty_slots <= 0:
+        if max_position_count > 0 and len(active_tickers) >= max_position_count:
             time.sleep(5)
             continue
 
@@ -474,8 +512,10 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
         for candidate in filtered:
             watchlist[_ticker_key(candidate.ticker)] = candidate
-        configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
-        buy_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
+        empty_slots = resolve_empty_slots(max_position_count, len(active_tickers), len(filtered))
+        if empty_slots <= 0:
+            time.sleep(cfg["strategy"]["scan_interval_seconds"])
+            continue
         try:
             orderable_cash = client.get_orderable_cash()
         except Exception as exc:
@@ -483,6 +523,10 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             time.sleep(cfg["strategy"]["scan_interval_seconds"])
             continue
         planning_cash = min(orderable_cash, cfg["risk"].get("max_budget_per_cycle_krw", 0)) if cfg["risk"].get("max_budget_per_cycle_krw", 0) > 0 else orderable_cash
+        buy_count = resolve_buy_count(cfg, empty_slots, planning_cash)
+        if buy_count <= 0:
+            time.sleep(cfg["strategy"]["scan_interval_seconds"])
+            continue
         targets = select_affordable_targets(
             filtered,
             buy_count,

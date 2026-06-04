@@ -1,6 +1,13 @@
 from dataclasses import dataclass
 
-from Daily_bot.main import activate_buy, estimate_account_value, is_daily_loss_limit_reached
+from Daily_bot.main import (
+    activate_buy,
+    estimate_account_value,
+    is_daily_loss_limit_reached,
+    resolve_buy_count,
+    resolve_empty_slots,
+    resolve_target_budget_per_stock,
+)
 from Daily_bot.models import Candidate, Fill, OrderResult
 
 
@@ -239,10 +246,53 @@ def test_daily_loss_limit_ignores_cash_reserved_by_open_buy_orders():
 def test_slot_refill_buy_count_respects_empty_slots_when_strategy_limit_is_unlimited():
     cfg = {
         "strategy": {"max_buy_count": 0},
+        "risk": {"min_slot_count": 1, "target_budget_ratio_per_stock": 0, "max_budget_per_stock_krw": 0},
     }
     empty_slots = 2
-
-    configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
-    buy_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
+    buy_count = resolve_buy_count(cfg, empty_slots, planning_cash=500_000)
 
     assert buy_count == 2
+
+
+def test_resolve_target_budget_per_stock_prefers_ratio_and_caps_with_max():
+    cfg = {
+        "risk": {"target_budget_ratio_per_stock": 0.33, "max_budget_per_stock_krw": 5_000_000},
+    }
+
+    assert resolve_target_budget_per_stock(cfg, planning_cash=210_000) == 69_300
+    assert resolve_target_budget_per_stock(cfg, planning_cash=20_000_000) == 5_000_000
+
+
+def test_resolve_buy_count_scales_with_cash_using_ratio_and_min_slots():
+    cfg = {
+        "strategy": {"max_buy_count": 0},
+        "risk": {
+            "min_slot_count": 3,
+            "target_budget_ratio_per_stock": 0.33,
+            "max_budget_per_stock_krw": 5_000_000,
+        },
+    }
+
+    assert resolve_buy_count(cfg, empty_slots=3, planning_cash=80_000) == 3
+    assert resolve_buy_count(cfg, empty_slots=5, planning_cash=300_000) == 3
+    assert resolve_buy_count(cfg, empty_slots=40, planning_cash=20_000_000) == 4
+    assert resolve_buy_count(cfg, empty_slots=40, planning_cash=60_000_000) == 12
+
+
+def test_resolve_buy_count_respects_empty_slots_and_explicit_max_buy_count():
+    cfg = {
+        "strategy": {"max_buy_count": 3},
+        "risk": {
+            "min_slot_count": 3,
+            "target_budget_ratio_per_stock": 0.33,
+            "max_budget_per_stock_krw": 5_000_000,
+        },
+    }
+
+    assert resolve_buy_count(cfg, empty_slots=2, planning_cash=300_000) == 2
+    assert resolve_buy_count(cfg, empty_slots=5, planning_cash=300_000) == 3
+
+
+def test_resolve_empty_slots_treats_zero_position_limit_as_unlimited():
+    assert resolve_empty_slots(max_position_count=0, active_count=3, candidate_count=12) == 12
+    assert resolve_empty_slots(max_position_count=5, active_count=3, candidate_count=12) == 2
