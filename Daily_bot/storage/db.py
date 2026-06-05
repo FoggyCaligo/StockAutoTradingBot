@@ -101,10 +101,12 @@ ACCOUNT_TRACE_EXTRA_COLUMNS = {
 
 
 class Recorder:
-    def __init__(self, path: str | Path = "bot.sqlite3", log_dir: str | Path = "Daily_bot/logs"):
+    def __init__(self, path: str | Path = "bot.sqlite3", log_dir: str | Path | None = None):
         self.path = Path(path)
-        self.log_dir = Path(log_dir)
+        self.log_dir = Path(log_dir) if log_dir is not None else self.path.parent / "logs"
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        if log_dir is None:
+            self._migrate_legacy_logs()
         self.conn = sqlite3.connect(self.path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
@@ -118,6 +120,52 @@ class Recorder:
         for column_name, column_type in ACCOUNT_TRACE_EXTRA_COLUMNS.items():
             if column_name not in existing_columns:
                 self.conn.execute(f"ALTER TABLE account_traces ADD COLUMN {column_name} {column_type}")
+
+    def _migrate_legacy_logs(self) -> None:
+        legacy_dir = self.path.parent / "Daily_bot" / "logs"
+        if legacy_dir.resolve() == self.log_dir.resolve() or not legacy_dir.exists():
+            return
+
+        for legacy_path in legacy_dir.iterdir():
+            if not legacy_path.is_file():
+                continue
+            target_path = self.log_dir / legacy_path.name
+            if not target_path.exists():
+                legacy_path.replace(target_path)
+                continue
+            if legacy_path.suffix.lower() != ".csv":
+                target_path = self.log_dir / f"legacy_{legacy_path.name}"
+                legacy_path.replace(target_path)
+                continue
+            self._merge_csv_file(legacy_path, target_path)
+            legacy_path.unlink()
+
+        try:
+            legacy_dir.rmdir()
+            legacy_parent = legacy_dir.parent
+            if legacy_parent != self.path.parent:
+                legacy_parent.rmdir()
+        except OSError:
+            pass
+
+    def _merge_csv_file(self, source_path: Path, target_path: Path) -> None:
+        source_text = source_path.read_text(encoding="utf-8-sig")
+        if not source_text.strip():
+            return
+
+        source_lines = source_text.splitlines()
+        if not target_path.exists() or target_path.stat().st_size == 0:
+            target_path.write_text(source_text, encoding="utf-8-sig", newline="")
+            return
+
+        payload_lines = source_lines[1:] if len(source_lines) > 1 else []
+        if not payload_lines:
+            return
+
+        with target_path.open("a", encoding="utf-8-sig", newline="") as fp:
+            if target_path.stat().st_size > 0:
+                fp.write("\n")
+            fp.write("\n".join(payload_lines))
 
     def _daily_csv_path(self, prefix: str) -> Path:
         from datetime import datetime
