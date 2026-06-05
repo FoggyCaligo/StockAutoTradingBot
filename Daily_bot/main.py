@@ -310,6 +310,7 @@ def is_daily_loss_limit_reached(
     session_started_at: datetime | None = None,
     positions: list | None = None,
     open_orders: list[dict] | None = None,
+    recorder: Recorder | None = None,
 ) -> bool:
     limit_percent = float(cfg["risk"].get("daily_loss_limit_percent", 0) or 0)
     if limit_percent <= 0 or initial_account_value <= 0:
@@ -318,7 +319,27 @@ def is_daily_loss_limit_reached(
     current_value = estimate_account_value(client, positions, open_orders)
     external_cash_flow = get_external_cash_flow_since(cfg, session_started_at) if session_started_at is not None else 0
     adjusted_current_value = current_value - external_cash_flow
+    adjusted_pnl = adjusted_current_value - initial_account_value
     loss_percent = (initial_account_value - adjusted_current_value) / initial_account_value * 100
+
+    if recorder is not None:
+        try:
+            cash = client.get_orderable_cash()
+        except Exception as exc:
+            print(f"Failed to fetch cash for account trace: {exc}")
+            cash = 0
+        recorder.save_account_trace(
+            phase="daily_loss_check",
+            cash=cash,
+            account_value=current_value,
+            positions=positions or [],
+            open_orders=open_orders or [],
+            external_cash_flow=external_cash_flow,
+            adjusted_account_value=adjusted_current_value,
+            adjusted_pnl=adjusted_pnl,
+            loss_percent=loss_percent,
+        )
+
     if loss_percent >= limit_percent:
         print(
             f"Daily loss limit reached: initial={initial_account_value} "
@@ -530,7 +551,15 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 time.sleep(1)
                 continue
 
-        if is_daily_loss_limit_reached(client, cfg, initial_account_value, session_started_at, positions, open_orders):
+        if is_daily_loss_limit_reached(
+            client,
+            cfg,
+            initial_account_value,
+            session_started_at,
+            positions,
+            open_orders,
+            recorder=recorder,
+        ):
             time.sleep(5)
             continue
 
