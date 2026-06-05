@@ -81,11 +81,23 @@ CREATE TABLE IF NOT EXISTS account_traces (
     phase TEXT NOT NULL,
     cash INTEGER,
     account_value INTEGER,
+    external_cash_flow INTEGER DEFAULT 0,
+    adjusted_account_value INTEGER,
+    adjusted_pnl INTEGER,
+    loss_percent REAL,
     positions_json TEXT,
     open_orders_json TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 """
+
+
+ACCOUNT_TRACE_EXTRA_COLUMNS = {
+    "external_cash_flow": "INTEGER DEFAULT 0",
+    "adjusted_account_value": "INTEGER",
+    "adjusted_pnl": "INTEGER",
+    "loss_percent": "REAL",
+}
 
 
 class Recorder:
@@ -96,7 +108,16 @@ class Recorder:
         self.conn = sqlite3.connect(self.path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        self._ensure_account_trace_columns()
         self.conn.commit()
+
+    def _ensure_account_trace_columns(self) -> None:
+        existing_columns = {
+            row["name"] for row in self.conn.execute("PRAGMA table_info(account_traces)").fetchall()
+        }
+        for column_name, column_type in ACCOUNT_TRACE_EXTRA_COLUMNS.items():
+            if column_name not in existing_columns:
+                self.conn.execute(f"ALTER TABLE account_traces ADD COLUMN {column_name} {column_type}")
 
     def _daily_csv_path(self, prefix: str) -> Path:
         from datetime import datetime
@@ -229,6 +250,10 @@ class Recorder:
         account_value: int,
         positions: list[Any],
         open_orders: list[dict[str, Any]],
+        external_cash_flow: int = 0,
+        adjusted_account_value: int | None = None,
+        adjusted_pnl: int | None = None,
+        loss_percent: float | None = None,
     ) -> None:
         from datetime import datetime
 
@@ -240,20 +265,29 @@ class Recorder:
             "phase": phase,
             "cash": cash,
             "account_value": account_value,
+            "external_cash_flow": external_cash_flow,
+            "adjusted_account_value": adjusted_account_value if adjusted_account_value is not None else account_value - external_cash_flow,
+            "adjusted_pnl": adjusted_pnl,
+            "loss_percent": loss_percent,
             "positions_json": positions_json,
             "open_orders_json": open_orders_json,
         }
         self.conn.execute(
             """
             INSERT INTO account_traces
-            (session_date, phase, cash, account_value, positions_json, open_orders_json)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (session_date, phase, cash, account_value, external_cash_flow, adjusted_account_value,
+             adjusted_pnl, loss_percent, positions_json, open_orders_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row["session_date"],
                 row["phase"],
                 row["cash"],
                 row["account_value"],
+                row["external_cash_flow"],
+                row["adjusted_account_value"],
+                row["adjusted_pnl"],
+                row["loss_percent"],
                 row["positions_json"],
                 row["open_orders_json"],
             ),
@@ -261,7 +295,18 @@ class Recorder:
         self.conn.commit()
         self._append_csv_row(
             self._daily_csv_path("account_traces"),
-            ["session_date", "phase", "cash", "account_value", "positions_json", "open_orders_json"],
+            [
+                "session_date",
+                "phase",
+                "cash",
+                "account_value",
+                "external_cash_flow",
+                "adjusted_account_value",
+                "adjusted_pnl",
+                "loss_percent",
+                "positions_json",
+                "open_orders_json",
+            ],
             row,
         )
 
