@@ -38,3 +38,11 @@ risk:
 api:
   quote_rate_limit_per_second: 5
   order_rate_limit_per_second: 5
+
+accounting:
+  cash_flows: []
+  # Example:
+  # cash_flows:
+  #   - effective_at: "2026-06-05T10:15:00+09:00"
+  #     amount_krw: 2000000
+  #     note: "intraday deposit"

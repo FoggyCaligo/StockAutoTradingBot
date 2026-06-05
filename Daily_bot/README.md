@@ -107,6 +107,7 @@
 4. 매수 미체결 시 취소 후 부분체결 복구 로직 수행
 5. 주문 상태 조회 실패 시 실제 보유 수량 기준 목표 매도 복구
 6. `force_sell_time` 이후 미체결 정리 후 전량 강제 청산
+7. 장중 입금/출금은 `accounting.cash_flows`에 기록하면 손익 판단에서 제외
 
 ### 3. 13:00 ~ 15:00: 신규 매수 중단, 보유/주문 관리만 유지
 
@@ -144,6 +145,28 @@ risk:
   max_budget_per_stock_krw: 5000000
   stop_loss_percent: 5.0
   daily_loss_limit_percent: 10.0
+
+accounting:
+  cash_flows: []
+```
+
+## 입출금 기록
+
+- 장외에 입금된 돈이 다음 세션 시작 전에 반영되면, 그 금액은 그냥 다음 날 시작 자본금으로 잡힙니다.
+- 장중 입금이나 출금은 `accounting.cash_flows`에 기록해두면, 일일 손실률 판단에서 수익/손실로 보지 않고 제외합니다.
+- `amount_krw`는 입금이면 양수, 출금이면 음수입니다.
+
+예시:
+
+```yaml
+accounting:
+  cash_flows:
+    - effective_at: "2026-06-05T10:15:00+09:00"
+      amount_krw: 2000000
+      note: "intraday deposit"
+    - effective_at: "2026-06-05T13:20:00+09:00"
+      amount_krw: -500000
+      note: "intraday withdrawal"
 ```
 
 ## 실행

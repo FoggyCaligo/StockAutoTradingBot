@@ -1,8 +1,11 @@
+from datetime import datetime
+
 from dataclasses import dataclass
 
 from Daily_bot.main import (
     activate_buy,
     estimate_account_value,
+    get_external_cash_flow_since,
     is_daily_loss_limit_reached,
     resolve_buy_count,
     resolve_empty_slots,
@@ -241,6 +244,72 @@ def test_daily_loss_limit_ignores_cash_reserved_by_open_buy_orders():
     reached = is_daily_loss_limit_reached(client, cfg, initial_account_value=100_000, positions=client.positions, open_orders=client.open_orders)
 
     assert reached is False
+
+
+def test_get_external_cash_flow_since_counts_only_flows_after_session_start():
+    cfg = {
+        "accounting": {
+            "cash_flows": [
+                {"effective_at": "2026-06-05T08:40:00+09:00", "amount_krw": 200_000},
+                {"effective_at": "2026-06-05T10:15:00+09:00", "amount_krw": 300_000},
+                {"effective_at": "2026-06-05T10:20:00+09:00", "amount_krw": -50_000},
+            ]
+        }
+    }
+
+    result = get_external_cash_flow_since(
+        cfg,
+        since=datetime.fromisoformat("2026-06-05T09:00:00+09:00"),
+        until=datetime.fromisoformat("2026-06-05T10:30:00+09:00"),
+    )
+
+    assert result == 250_000
+
+
+def test_daily_loss_limit_ignores_intraday_deposit_when_measuring_loss():
+    client = _ClientStub(orderable_cash=130_000)
+    cfg = {
+        "risk": {"daily_loss_limit_percent": 10.0},
+        "accounting": {
+            "cash_flows": [
+                {"effective_at": "2026-06-04T10:15:00+09:00", "amount_krw": 30_000},
+            ]
+        },
+    }
+
+    reached = is_daily_loss_limit_reached(
+        client,
+        cfg,
+        initial_account_value=100_000,
+        session_started_at=datetime.fromisoformat("2026-06-04T09:00:00+09:00"),
+        positions=[],
+        open_orders=[],
+    )
+
+    assert reached is False
+
+
+def test_daily_loss_limit_still_triggers_after_adjusting_for_intraday_deposit():
+    client = _ClientStub(orderable_cash=115_000)
+    cfg = {
+        "risk": {"daily_loss_limit_percent": 10.0},
+        "accounting": {
+            "cash_flows": [
+                {"effective_at": "2026-06-04T10:15:00+09:00", "amount_krw": 30_000},
+            ]
+        },
+    }
+
+    reached = is_daily_loss_limit_reached(
+        client,
+        cfg,
+        initial_account_value=100_000,
+        session_started_at=datetime.fromisoformat("2026-06-04T09:00:00+09:00"),
+        positions=[],
+        open_orders=[],
+    )
+
+    assert reached is True
 
 
 def test_slot_refill_buy_count_respects_empty_slots_when_strategy_limit_is_unlimited():

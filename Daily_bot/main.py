@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -58,6 +59,44 @@ def resolve_target_budget_per_stock(cfg: dict, planning_cash: int) -> int:
     if max_budget_per_stock > 0:
         return max_budget_per_stock
     return 0
+
+
+def _normalize_local_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.astimezone().replace(tzinfo=None)
+
+
+def _parse_cash_flow_effective_at(value: object) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return _normalize_local_datetime(parsed)
+
+
+def get_external_cash_flow_since(cfg: dict, since: datetime, until: datetime | None = None) -> int:
+    accounting_cfg = cfg.get("accounting", {}) if isinstance(cfg, dict) else {}
+    cash_flows = accounting_cfg.get("cash_flows", []) or []
+    start = _normalize_local_datetime(since)
+    end = _normalize_local_datetime(until or datetime.now())
+    total = 0
+
+    for item in cash_flows:
+        if not isinstance(item, dict):
+            continue
+        effective_at = _parse_cash_flow_effective_at(item.get("effective_at") or item.get("date"))
+        if effective_at is None or effective_at <= start or effective_at > end:
+            continue
+        try:
+            total += int(item.get("amount_krw", item.get("amount", 0)) or 0)
+        except (TypeError, ValueError):
+            continue
+
+    return total
 
 
 def resolve_buy_count(cfg: dict, empty_slots: int, planning_cash: int) -> int:
@@ -268,6 +307,7 @@ def is_daily_loss_limit_reached(
     client,
     cfg: dict,
     initial_account_value: int,
+    session_started_at: datetime | None = None,
     positions: list | None = None,
     open_orders: list[dict] | None = None,
 ) -> bool:
@@ -276,11 +316,14 @@ def is_daily_loss_limit_reached(
         return False
 
     current_value = estimate_account_value(client, positions, open_orders)
-    loss_percent = (initial_account_value - current_value) / initial_account_value * 100
+    external_cash_flow = get_external_cash_flow_since(cfg, session_started_at) if session_started_at is not None else 0
+    adjusted_current_value = current_value - external_cash_flow
+    loss_percent = (initial_account_value - adjusted_current_value) / initial_account_value * 100
     if loss_percent >= limit_percent:
         print(
             f"Daily loss limit reached: initial={initial_account_value} "
-            f"current={current_value} loss_percent={loss_percent:.2f}% "
+            f"current={current_value} adjusted_current={adjusted_current_value} "
+            f"external_cash_flow={external_cash_flow} loss_percent={loss_percent:.2f}% "
             f"limit={limit_percent:.2f}%. Blocking new buys only."
         )
         return True
@@ -441,6 +484,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     force_sell_done = False
     warmed_session = False
     watchlist: dict[str, Candidate] = {}
+    session_started_at = datetime.now()
     initial_account_value = estimate_account_value(client)
     print(f"Initial account value estimate: {initial_account_value}")
 
@@ -486,7 +530,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 time.sleep(1)
                 continue
 
-        if is_daily_loss_limit_reached(client, cfg, initial_account_value, positions, open_orders):
+        if is_daily_loss_limit_reached(client, cfg, initial_account_value, session_started_at, positions, open_orders):
             time.sleep(5)
             continue
 
