@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from Daily_bot.models import Candidate, Fill, HogaSnapshot, OrderResult
+from Daily_bot.storage.audit_csv import append_fill_audit_csv
 
 
 SCHEMA = """
@@ -104,6 +105,7 @@ class Recorder:
     def __init__(self, path: str | Path = "bot.sqlite3", log_dir: str | Path | None = None):
         self.path = Path(path)
         self.log_dir = Path(log_dir) if log_dir is not None else self.path.parent / "logs"
+        self.audit_fill_csv_path = self.log_dir / "trade_fills_audit.csv"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         if log_dir is None:
             self._migrate_legacy_logs()
@@ -180,6 +182,17 @@ class Recorder:
             if should_write_header:
                 writer.writeheader()
             writer.writerow({field: row.get(field, "") for field in fieldnames})
+
+    def _latest_account_trace(self) -> dict[str, Any] | None:
+        row = self.conn.execute(
+            """
+            SELECT cash, account_value, adjusted_account_value, adjusted_pnl, loss_percent
+            FROM account_traces
+            ORDER BY id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        return dict(row) if row is not None else None
 
     def save_snapshot(self, candidate: Candidate, snapshot: HogaSnapshot) -> None:
         self.conn.execute(
@@ -426,6 +439,16 @@ class Recorder:
                 "raw_json": raw_json,
             },
         )
+        try:
+            append_fill_audit_csv(
+                self.audit_fill_csv_path,
+                fill,
+                side=side,
+                source=source,
+                account_snapshot=self._latest_account_trace(),
+            )
+        except Exception as exc:
+            print(f"Failed to append fill audit CSV for {fill.ticker}: {exc}")
         print(
             f"FILL {side} {fill.ticker} qty={fill.quantity} price={fill.price} "
             f"filled_at={filled_at} source={source} order_id={fill.order_id}"
