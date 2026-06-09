@@ -70,6 +70,30 @@ def _record_fill_safely(client, recorder: Recorder, order_id: str, side: str, so
         print(f"Warning: Failed to record immediate fill for {side} order {order_id} ({source}): {exc}")
 
 
+def _poll_fill_until_recorded(
+    client,
+    recorder: Recorder,
+    order_id: str,
+    side: str,
+    source: str,
+    timeout_seconds: int = 10,
+    poll_seconds: float = 1.0,
+) -> None:
+    if not order_id or not hasattr(client, "get_order_fill"):
+        return
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        try:
+            fill = client.get_order_fill(order_id)
+        except Exception as exc:
+            print(f"Warning: Failed to poll fill for {side} order {order_id} ({source}): {exc}")
+            return
+        if fill:
+            recorder.save_fill(fill, side=side, source=source)
+            return
+        time.sleep(poll_seconds)
+
+
 def sell_all_positions_at_current_price(client, recorder: Recorder | None = None) -> None:
     for position in client.get_positions():
         if position.quantity <= 0:
@@ -91,7 +115,9 @@ def sell_all_positions_at_current_price(client, recorder: Recorder | None = None
 
         if recorder is not None:
             recorder.save_order(sell_order)
-            _record_fill_safely(client, recorder, _get_order_id(sell_order.__dict__), "SELL", "force_sell")
+            sell_order_id = _get_order_id(sell_order.__dict__)
+            _record_fill_safely(client, recorder, sell_order_id, "SELL", "force_sell")
+            _poll_fill_until_recorded(client, recorder, sell_order_id, "SELL", "force_sell_safety_poll")
 
 
 def force_sell(client, recorder: Recorder | None = None) -> None:
