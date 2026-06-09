@@ -46,12 +46,45 @@ if (Test-Path $lockPath) {
 Set-Content -Path $lockPath -Value "pid=$PID`nstarted_at=$(Get-Date -Format o)" -Encoding ascii
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $logPath = Join-Path $logDir "run_real_$timestamp.log"
+$stdoutPath = Join-Path $logDir "run_real_$timestamp.stdout.tmp"
+$stderrPath = Join-Path $logDir "run_real_$timestamp.stderr.tmp"
 
 Push-Location $botRoot
 try {
-    & $pythonPath $mainPath --real *>&1 | Tee-Object -FilePath $logPath
+    $process = Start-Process `
+        -FilePath $pythonPath `
+        -ArgumentList @($mainPath, "--real") `
+        -WorkingDirectory $botRoot `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $stdoutPath `
+        -RedirectStandardError $stderrPath `
+        -PassThru
+
+    Wait-Process -Id $process.Id
+    $process.Refresh()
+
+    if (Test-Path $stdoutPath) {
+        Get-Content $stdoutPath | Set-Content -Path $logPath -Encoding utf8
+    }
+    else {
+        Set-Content -Path $logPath -Value "" -Encoding utf8
+    }
+
+    if (Test-Path $stderrPath) {
+        Get-Content $stderrPath | Add-Content -Path $logPath -Encoding utf8
+    }
+
+    if ($process.ExitCode -ne 0) {
+        throw "Daily_bot exited with code $($process.ExitCode). See log: $logPath"
+    }
 }
 finally {
+    if (Test-Path $stdoutPath) {
+        Remove-Item $stdoutPath -Force
+    }
+    if (Test-Path $stderrPath) {
+        Remove-Item $stderrPath -Force
+    }
     if (Test-Path $lockPath) {
         Remove-Item $lockPath -Force
     }
