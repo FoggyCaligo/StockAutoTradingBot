@@ -31,7 +31,7 @@ risk:
   target_budget_ratio_per_stock: 0.33
   max_budget_per_cycle_krw: 0
   max_budget_per_stock_krw: 5000000
-  stop_loss_percent: 3.5
+  stop_loss_percent: 4.0
   daily_loss_limit_percent: 10.0
   daily_loss_limit_krw: 10000
 
