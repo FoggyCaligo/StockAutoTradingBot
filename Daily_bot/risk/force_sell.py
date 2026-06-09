@@ -18,6 +18,15 @@ def _get_order_id(order: dict) -> str:
     return str(order.get("order_id") or order.get("ord_no") or order.get("id") or "").strip()
 
 
+def _get_order_id_from_object(order: object) -> str:
+    return str(
+        getattr(order, "order_id", None)
+        or getattr(order, "ord_no", None)
+        or getattr(order, "id", None)
+        or ""
+    ).strip()
+
+
 def _get_ticker(order: dict) -> str:
     return str(order.get("ticker") or order.get("stk_cd") or order.get("pdno") or "").strip()
 
@@ -59,15 +68,17 @@ def _get_current_price(client, ticker: str) -> int:
     return _to_int(getattr(snapshot, "current_price", 0), default=0)
 
 
-def _record_fill_safely(client, recorder: Recorder, order_id: str, side: str, source: str) -> None:
+def _record_fill_safely(client, recorder: Recorder, order_id: str, side: str, source: str) -> bool:
     if not order_id or not hasattr(client, "get_order_fill"):
-        return
+        return False
     try:
         fill = client.get_order_fill(order_id)
         if fill:
             recorder.save_fill(fill, side=side, source=source)
+            return True
     except Exception as exc:
         print(f"Warning: Failed to record immediate fill for {side} order {order_id} ({source}): {exc}")
+    return False
 
 
 def _poll_fill_until_recorded(
@@ -115,9 +126,9 @@ def sell_all_positions_at_current_price(client, recorder: Recorder | None = None
 
         if recorder is not None:
             recorder.save_order(sell_order)
-            sell_order_id = _get_order_id(sell_order.__dict__)
-            _record_fill_safely(client, recorder, sell_order_id, "SELL", "force_sell")
-            _poll_fill_until_recorded(client, recorder, sell_order_id, "SELL", "force_sell_safety_poll")
+            sell_order_id = _get_order_id_from_object(sell_order)
+            if not _record_fill_safely(client, recorder, sell_order_id, "SELL", "force_sell"):
+                _poll_fill_until_recorded(client, recorder, sell_order_id, "SELL", "force_sell_safety_poll")
 
 
 def force_sell(client, recorder: Recorder | None = None) -> None:

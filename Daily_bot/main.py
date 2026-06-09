@@ -180,6 +180,43 @@ def _safe_target_sell_price(candidate: Candidate, tick_offset: int, buy_referenc
     return target_price
 
 
+def _record_fill_safely(client, recorder: Recorder, order_id: str, side: str, source: str) -> bool:
+    if not order_id or not hasattr(client, "get_order_fill"):
+        return False
+    try:
+        fill = client.get_order_fill(order_id)
+        if fill:
+            recorder.save_fill(fill, side=side, source=source)
+            return True
+    except Exception as exc:
+        print(f"Warning: Failed to record immediate fill for {side} order {order_id} ({source}): {exc}")
+    return False
+
+
+def _poll_fill_until_recorded(
+    client,
+    recorder: Recorder,
+    order_id: str,
+    side: str,
+    source: str,
+    timeout_seconds: int = 10,
+    poll_seconds: float = 1.0,
+) -> None:
+    if not order_id or not hasattr(client, "get_order_fill"):
+        return
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        try:
+            fill = client.get_order_fill(order_id)
+        except Exception as exc:
+            print(f"Warning: Failed to poll fill for {side} order {order_id} ({source}): {exc}")
+            return
+        if fill:
+            recorder.save_fill(fill, side=side, source=source)
+            return
+        time.sleep(poll_seconds)
+
+
 def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, tick_offset: int, order_limiter: RateLimiter) -> None:
     decision_fill_price = _resolve_buy_fill_price(fill, candidate.price, candidate.ticker)
     target_price = _safe_target_sell_price(candidate, tick_offset, decision_fill_price)
@@ -188,7 +225,10 @@ def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, ti
         f"target_price={target_price} decision_fill_price={decision_fill_price} raw_fill={fill.raw}"
     )
     order_limiter.wait()
-    recorder.save_order(client.sell_limit(candidate.ticker, fill.quantity, target_price))
+    sell_order = client.sell_limit(candidate.ticker, fill.quantity, target_price)
+    recorder.save_order(sell_order)
+    if not _record_fill_safely(client, recorder, sell_order.order_id, "SELL", "target_exit"):
+        _poll_fill_until_recorded(client, recorder, sell_order.order_id, "SELL", "target_exit_safety_poll")
 
 
 def _refresh_remaining_cash(client, budget_per_cycle: int) -> int | None:
@@ -412,7 +452,10 @@ def submit_target_exit_order_from_position_if_present(
         f"quantity={quantity} target_price={target_price}. Submitting target limit sell."
     )
     order_limiter.wait()
-    recorder.save_order(client.sell_limit(candidate.ticker, quantity, target_price))
+    sell_order = client.sell_limit(candidate.ticker, quantity, target_price)
+    recorder.save_order(sell_order)
+    if not _record_fill_safely(client, recorder, sell_order.order_id, "SELL", "target_exit_recovery"):
+        _poll_fill_until_recorded(client, recorder, sell_order.order_id, "SELL", "target_exit_recovery_safety_poll")
     return True
 
 

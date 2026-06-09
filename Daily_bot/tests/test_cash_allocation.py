@@ -17,12 +17,15 @@ from Daily_bot.models import Candidate, Fill, OrderResult
 @dataclass
 class _RecorderStub:
     orders: list[OrderResult]
+    fills: list[tuple[Fill, str, str]] | None = None
 
     def save_order(self, order: OrderResult) -> None:
         self.orders.append(order)
 
     def save_fill(self, fill, side: str, source: str = "broker") -> None:
-        pass
+        if self.fills is None:
+            self.fills = []
+        self.fills.append((fill, side, source))
 
 
 class _ClientStub:
@@ -38,6 +41,7 @@ class _ClientStub:
         self.sell_calls: list[tuple[str, int, int]] = []
         self.market_sell_calls: list[tuple[str, int]] = []
         self.cancel_calls: list[tuple[str, str, int]] = []
+        self.sell_fill_sequence: list[Fill | None] | None = None
 
     def get_orderable_cash(self) -> int:
         if self.orderable_cash_sequence:
@@ -79,6 +83,11 @@ class _ClientStub:
         self.market_sell_calls.append((ticker, quantity))
         return OrderResult(order_id=f"MSELL-{len(self.market_sell_calls)}", ticker=ticker, side="SELL", quantity=quantity, price=0, status="FILLED")
 
+    def get_order_fill(self, order_id: str) -> Fill | None:
+        if self.sell_fill_sequence:
+            return self.sell_fill_sequence.pop(0)
+        return None
+
     def get_positions(self):
         return self.positions
 
@@ -110,7 +119,7 @@ def _unlimited_cfg() -> dict:
 
 def test_activate_buy_uses_orderable_cash_and_cycle_budget():
     client = _ClientStub(orderable_cash=120_000)
-    recorder = _RecorderStub(orders=[])
+    recorder = _RecorderStub(orders=[], fills=[])
     targets = [
         Candidate(ticker="005930", price=10_000, expect_price=10_200),
         Candidate(ticker="000660", price=10_000, expect_price=10_200),
@@ -126,7 +135,7 @@ def test_activate_buy_uses_orderable_cash_and_cycle_budget():
 
 def test_activate_buy_skips_when_orderable_cash_is_zero():
     client = _ClientStub(orderable_cash=0)
-    recorder = _RecorderStub(orders=[])
+    recorder = _RecorderStub(orders=[], fills=[])
     targets = [Candidate(ticker="005930", price=10_000, expect_price=10_200)]
 
     activate_buy(client, recorder, targets, _cfg())
@@ -141,7 +150,7 @@ def test_activate_buy_refreshes_cash_after_unfilled_buy_cancel():
         None,
         Fill(order_id="BUY-2", ticker="000660", quantity=10, price=10_000),
     ]
-    recorder = _RecorderStub(orders=[])
+    recorder = _RecorderStub(orders=[], fills=[])
     targets = [
         Candidate(ticker="005930", price=10_000, expect_price=10_200),
         Candidate(ticker="000660", price=10_000, expect_price=10_200),
@@ -161,7 +170,7 @@ def test_activate_buy_places_exit_order_for_partial_fill_after_cancel():
     client.orderable_cash_sequence = [120_000]
     client.fill_sequence = [None]
     client.buy_fill_sequence = [Fill(order_id="BUY-1", ticker="005930", quantity=3, price=10_000)]
-    recorder = _RecorderStub(orders=[])
+    recorder = _RecorderStub(orders=[], fills=[])
     targets = [Candidate(ticker="005930", price=10_000, expect_price=10_200)]
 
     activate_buy(client, recorder, targets, _cfg())
@@ -175,7 +184,7 @@ def test_activate_buy_uses_buy_limit_price_when_partial_fill_price_is_anomalousl
     client.orderable_cash_sequence = [120_000]
     client.fill_sequence = [None]
     client.buy_fill_sequence = [Fill(order_id="BUY-1", ticker="005930", quantity=3, price=10_300, raw={"cntr_pric": "10300"})]
-    recorder = _RecorderStub(orders=[])
+    recorder = _RecorderStub(orders=[], fills=[])
     targets = [Candidate(ticker="005930", price=10_000, expect_price=10_200)]
 
     activate_buy(client, recorder, targets, _cfg())
@@ -187,7 +196,7 @@ def test_activate_buy_uses_buy_limit_price_when_partial_fill_price_is_anomalousl
 
 def test_activate_buy_distributes_full_cash_across_all_targets_when_limits_removed():
     client = _ClientStub(orderable_cash=300_000)
-    recorder = _RecorderStub(orders=[])
+    recorder = _RecorderStub(orders=[], fills=[])
     targets = [
         Candidate(ticker="005930", price=10_000, expect_price=10_200),
         Candidate(ticker="000660", price=10_000, expect_price=10_200),
@@ -208,7 +217,7 @@ def test_activate_buy_stops_new_buys_after_exception_when_position_exists():
     client.fill_sequence = [Fill(order_id="BUY-1", ticker="005930", quantity=10, price=10_000)]
     client.sell_limit_error = RuntimeError("sell api failed")
     client.positions = [type("Position", (), {"ticker": "005930", "quantity": 10, "avg_price": 10_000})()]
-    recorder = _RecorderStub(orders=[])
+    recorder = _RecorderStub(orders=[], fills=[])
     targets = [
         Candidate(ticker="005930", price=10_000, expect_price=10_200),
         Candidate(ticker="000660", price=10_000, expect_price=10_200),
@@ -217,6 +226,20 @@ def test_activate_buy_stops_new_buys_after_exception_when_position_exists():
     activate_buy(client, recorder, targets, _unlimited_cfg())
 
     assert client.buy_calls == [("005930", 15, 10_000)]
+
+
+def test_activate_buy_records_target_exit_fill_when_sell_fill_is_available():
+    client = _ClientStub(orderable_cash=120_000)
+    client.fill_sequence = [Fill(order_id="BUY-1", ticker="005930", quantity=10, price=10_000)]
+    client.sell_fill_sequence = [Fill(order_id="SELL-1", ticker="005930", quantity=10, price=10_150)]
+    recorder = _RecorderStub(orders=[], fills=[])
+    targets = [Candidate(ticker="005930", price=10_000, expect_price=10_200)]
+
+    activate_buy(client, recorder, targets, _cfg())
+
+    assert client.sell_calls == [("005930", 10, 10150)]
+    assert recorder.fills is not None
+    assert any(side == "SELL" and source == "target_exit" for _fill, side, source in recorder.fills)
 
 
 def test_estimate_account_value_includes_open_buy_orders():
