@@ -1,127 +1,13 @@
 # Daily Bot
 
-키움 REST API를 이용해 KOSPI200 종목을 장중 스캔하고, 호가 기반 예상가로 단기 매매를 수행하는 데일리 자동매매 봇입니다.
+Daily Bot은 키움 REST API를 이용해 KOSPI200 후보군을 스캔하고, 20호가 기반 예상가를 바탕으로 당일 단타를 수행하는 자동매매 봇입니다.
 
-## 시간대별 작동 구조
+현재 운영 기준은 다음 두 가지입니다.
 
-### 1. 유니버스 워밍업: 08:55 ~ 09:30
+- 전략 잠재수익률은 과소평가하지 않는다.
+- 체결, 손익, 감사용 기록은 브로커 원본 기준으로 엄격하게 검증한다.
 
-- `prewarm_start_time`: `08:55`
-- `start_buy_time`: `09:30`
-- 이 구간에서는 실제 매수는 하지 않고, 당일 스캔에 사용할 유니버스와 후보 계산 준비만 수행합니다.
-
-이 시간대에 준비하는 종목 선정 기준은 아래와 같습니다.
-
-#### 유니버스 기준
-
-- 기본 대상: `KOSPI200`
-- 시가총액 하한: `300,000,000,000원` 이상
-- 거래대금 하한: `5,000,000,000원` 이상
-- 데이터 소스: 당일 갱신 가능한 경우 `FinanceDataReader`, 실패 시 로컬 캐시/CSV fallback
-
-#### 추세 필터 기준
-
-- `trend_filter.enabled: true`
-- 최근 일봉 기준으로
-  - `5일 이동평균선 기울기 > 0` 또는
-  - `20일 이동평균선 기울기 > 0`
-- 계산에 필요한 데이터가 너무 짧으면 제외됩니다.
-
-#### 호가 예측 알고리즘 작동 원리
-
-- 각 종목의 20호가 스냅샷을 조회합니다.
-- 매수호가 잔량과 매도호가 잔량을 `1:1`로 차감해가며 상쇄합니다.
-- 한쪽 호가가 먼저 소진되면 그 시점의 bid/ask frontier를 기준으로 가격대를 잡습니다.
-- 최종 예상가는 그 frontier의 중간값을 호가단위에 맞게 절사한 값입니다.
-- 목표 매도가는 `예상가 - 1틱`으로 계산합니다.
-
-#### 기대수익률 계산 기준
-
-- 현재가: 호가 응답의 `current_price`
-- 예상가: 위 호가 예측 알고리즘 결과
-- 목표 매도가: `예상가 - 1틱`
-- 기대수익률:
-
-```text
-(목표 매도가 - 현재가) / 현재가 * 100
-```
-
-#### 최종 후보 필터 기준
-
-- 기대수익률 하한: `0.25%` 이상
-- 스프레드 상한: `0.7%` 이하
-- 목표 매도가(`예상가 - 1틱`)가 현재가보다 높아야 함
-- 이미 보유 중이거나 미체결 주문이 걸린 종목은 제외
-
-#### 정렬과 최종 매수 대상 선정 방식
-
-- 전체 후보를 기대수익률 내림차순으로 정렬합니다.
-- 그중 상위 `20%`(`top_ratio: 0.20`)만 1차 후보로 남깁니다.
-- 이후 현재 주문가능현금과 슬롯 수를 기준으로 실제 매수 가능한 조합만 다시 고릅니다.
-- 목표 종목 수는 `min_slot_count`, `target_budget_ratio_per_stock`, `max_budget_per_stock_krw`를 기준으로 자금에 따라 유동적으로 줄고 늘어납니다.
-- `max_buy_count: 0`, `max_position_count: 0`이면 고정 상한 없이 자금 규모에 따라 종목 수가 계속 늘어납니다.
-- 비싼 종목 때문에 슬롯이 비면, 더 아래의 저렴한 후보로 내려가며 채웁니다.
-
-### 2. 실매매 시간대: 09:30 ~ 13:00
-
-- `stop_buy_time`: `13:00`
-- 이 구간이 실제 매수/매도 관리가 이루어지는 핵심 시간대입니다.
-- 루프는 `scan_interval_seconds: 60` 기준으로 반복됩니다.
-
-#### 매수 조건
-
-- KOSPI200 유니버스 기준 통과
-- 시가총액 `3000억 이상`
-- 거래대금 `50억 이상`
-- 추세 필터 통과
-- 기대수익률 `0.25% 이상`
-- 스프레드 `0.7% 이하`
-- 목표 매도가가 현재가보다 높음
-- 현재 보유/미체결과 중복되지 않음
-- 일일 손실률 제한에 걸리지 않음
-- 남은 포지션 슬롯이 있음
-- 현재 현금으로 실제 1주 이상 매수 가능
-
-#### 매수 방식
-
-- 종목별 지정가 매수
-- 최소 `3슬롯`을 기본으로 깔고, 주문가능현금의 약 `33%`를 종목당 목표 예산으로 삼아 종목 수를 계산
-- 종목당 목표 예산은 최대 `500만원`으로 제한
-- 실제 주문 때는 주문가능현금을 기준으로 선택된 종목 수에 맞춰 예산을 분배
-- 현재는 고정 종목 수 상한 없이, 자금과 후보 수에 맞춰 진입
-
-#### 매도 조건
-
-- 매수 체결 직후: 목표 지정가 매도 주문
-- 목표 매도가 기준: `예상가 - 1틱`
-- 장중 손절 조건 충족 시: 시장가 매도
-- 강제 청산 시간 도달 시: 미체결 취소 후 시장가 전량 매도
-
-#### 안전장치
-
-현재 주요 안전장치는 아래 `6개`입니다.
-
-1. `max_position_count`로 동시 보유 종목 수 제한
-2. `daily_loss_limit_percent`로 일일 손실률 초과 시 신규 매수 차단
-3. `stop_loss_percent`로 보유 종목 손절
-4. 매수 미체결 시 취소 후 부분체결 복구 로직 수행
-5. 주문 상태 조회 실패 시 실제 보유 수량 기준 목표 매도 복구
-6. `force_sell_time` 이후 미체결 정리 후 전량 강제 청산
-7. 장중 입금/출금은 `accounting.cash_flows`에 기록하면 손익 판단에서 제외
-
-### 3. 13:00 ~ 15:00: 신규 매수 중단, 보유/주문 관리만 유지
-
-- `13:00` 이후에는 신규 매수를 더 하지 않습니다.
-- 다만 이미 보유 중인 종목의 손절 감시와 기존 주문 상태 관리는 계속 수행합니다.
-
-### 4. 15:00 이후: 강제 청산 후 종료
-
-- `force_sell_time`: `15:00`
-- 남아 있는 미체결 주문을 취소합니다.
-- 남은 보유 종목을 시장가로 전량 매도합니다.
-- 체결 내역을 기록한 뒤 당일 세션을 종료합니다.
-
-## 현재 기본 설정값
+## 핵심 운영 시간
 
 ```yaml
 market:
@@ -129,7 +15,51 @@ market:
   start_buy_time: "09:30"
   stop_buy_time: "13:00"
   force_sell_time: "15:00"
+  reconcile_time: "15:15"
+  end_time: "15:20"
+```
 
+- `08:55 ~ 09:30`
+  유니버스 준비와 후보 스캔용 워밍업 구간입니다.
+- `09:30 ~ 13:00`
+  신규 매수와 체결 기반 목표매도 관리가 이뤄집니다.
+- `13:00 ~ 15:00`
+  신규 매수는 중단하고 기존 보유/주문만 관리합니다.
+- `15:00`
+  미체결 주문을 정리하고 보유분을 강제청산합니다.
+- `15:15`
+  키움 브로커 체결내역과 로컬 기록을 일괄 대조합니다.
+- `15:20`
+  대조 완료 후 세션을 종료합니다.
+
+## 전략 요약
+
+### 1. 유니버스 구성
+
+- 기본 대상: `KOSPI200`
+- 시가총액 하한: `3000억 원`
+- 거래대금 하한: `50억 원`
+- 추세 필터: `trend_filter.enabled: true`
+- 데이터 소스:
+  - 우선 `data/kospi200_latest.csv`
+  - 필요 시 `data/kospi200.csv`
+
+### 2. 예상가 계산
+
+각 종목에 대해 20호가 스냅샷을 한 번 조회한 뒤, 매수/매도 잔량 균형이 맞는 구간을 찾고 그 구간의 중간값을 예상가로 사용합니다.
+
+- 목표 매도가: `expect_price - 1 tick`
+- 기대수익률:
+
+```text
+(target_sell_price - current_price) / current_price * 100
+```
+
+### 3. 매수 후보 필터
+
+현재 기본 설정:
+
+```yaml
 strategy:
   top_ratio: 0.20
   max_buy_count: 0
@@ -137,171 +67,150 @@ strategy:
   max_spread_percent: 0.7
   sell_tick_offset: 1
   scan_interval_seconds: 60
-
-risk:
-  max_position_count: 0
-  min_slot_count: 3
-  target_budget_ratio_per_stock: 0.33
-  max_budget_per_stock_krw: 5000000
-  stop_loss_percent: 5.0
-  daily_loss_limit_percent: 10.0
-
-accounting:
-  cash_flows: []
 ```
 
-## 입출금 기록
+주요 조건:
 
-- 장외에 입금된 돈이 다음 세션 시작 전에 반영되면, 그 금액은 그냥 다음 날 시작 자본금으로 잡힙니다.
-- 장중 입금이나 출금은 `accounting.cash_flows`에 기록해두면, 일일 손실률 판단에서 수익/손실로 보지 않고 제외합니다.
-- `amount_krw`는 입금이면 양수, 출금이면 음수입니다.
+- 기대수익률 `0.25%` 이상
+- 스프레드 `0.7%` 이하
+- `target_sell_price > current_price`
+- 이미 보유 중이거나 미체결 주문이 걸린 종목 제외
+- 현재 주문가능현금으로 1주 이상 매수 가능해야 함
 
-예시:
+### 4. 자금 배분
+
+현재 기본 설정:
 
 ```yaml
-accounting:
-  cash_flows:
-    - effective_at: "2026-06-05T10:15:00+09:00"
-      amount_krw: 2000000
-      note: "intraday deposit"
-    - effective_at: "2026-06-05T13:20:00+09:00"
-      amount_krw: -500000
-      note: "intraday withdrawal"
+risk:
+  min_slot_count: 3
+  target_budget_ratio_per_stock: 0.33
+  max_budget_per_cycle_krw: 0
+  max_budget_per_stock_krw: 5000000
+  max_position_count: 0
 ```
+
+해석:
+
+- 최소 3슬롯 기준으로 예산을 나눕니다.
+- 종목당 목표 비중은 약 33%입니다.
+- 종목당 최대 500만 원을 넘기지 않습니다.
+- `max_buy_count: 0`, `max_position_count: 0`은 고정 개수 제한 없이 자금과 조건에 따라 유연하게 진입한다는 뜻입니다.
+
+## 주문/체결 흐름
+
+```text
+NO_POSITION
+-> SCANNING
+-> BUY_ORDER
+-> WAIT_BUY_FILLED
+-> SELL_LIMIT_ORDER
+-> WAIT_SELL_FILLED
+-> NO_POSITION
+
+15:00 이후
+-> CANCEL_OPEN_ORDERS
+-> MARKET_SELL_ALL
+-> 15:15 EOD_RECONCILIATION
+-> STOPPED
+```
+
+핵심 규칙:
+
+- 매수 체결 전에는 매도 주문을 넣지 않습니다.
+- 매수 체결 직후 목표 지정가 매도 주문을 넣습니다.
+- 손절 조건 도달 시 시장가 매도로 청산할 수 있습니다.
+- `15:00` 이후에는 신규 매수를 하지 않습니다.
+
+## 체결기록과 감사용 로그
+
+### 원장 우선순위
+
+신뢰 우선순위는 아래와 같습니다.
+
+1. 키움 브로커 원본 응답
+2. SQLite `fills` 테이블
+3. `fills_YYYYMMDD.csv`
+4. `trade_fills_audit.csv`
+
+### 체결 저장 방식
+
+- 장중에는 `ka10076` 체결조회로 주문별 체결을 직접 찾습니다.
+- `ka10076`의 `ord_no`는 정확한 주문번호 필터가 아니라 과거 조회용 커서이므로, 당일 체결목록을 조회한 뒤 로컬에서 주문번호를 매칭합니다.
+- 분할체결이면 가중평균 체결가를 저장합니다.
+- 수수료/세금은 가능하면 브로커 원본 `tdy_trde_cmsn`, `tdy_trde_tax`를 사용합니다.
+
+### 15:15 마감 대조
+
+장 마감 후에는 브로커 체결 전체를 다시 조회해 로컬 체결 원장을 정정합니다.
+
+- 빠진 `SELL` 체결을 채웁니다.
+- 잘못 저장된 가격/시간/source를 덮어씁니다.
+- 그 뒤 `fills_YYYYMMDD.csv`와 `trade_fills_audit.csv`를 DB 기준으로 다시 생성합니다.
+
+즉, 장중 기록보다 `15:15` 이후 기록이 더 신뢰도가 높습니다.
+
+### `trade_fills_audit.csv` 주의사항
+
+이 파일은 감사용 누적 원장입니다.
+
+- 종목별 누적 매수/매도/손익 상태를 담습니다.
+- 가족이나 제3자가 엑셀로 필터링해 보기 좋게 만든 파일입니다.
+- `SELL` 행을 단순 합산하면 종목별 누적값이 중복되어 총손익이 과대계산될 수 있습니다.
+
+따라서 이 파일은 "거래 증빙" 용도로 좋고, "총손익 집계"는 별도 요약 로직이나 브로커 API와 함께 봐야 합니다.
+
+## 장중 숫자와 마감 후 숫자
+
+- 장중 손익: `MTS 우선`
+- 마감 후 체결/감사 기록: `15:15 대조 후 로컬 기록 우선`
+
+현재 운영 원칙:
+
+- 전략 성과는 과소평가하지 않는다.
+- 숫자는 MTS, 브로커 응답, DB, CSV를 서로 대조하면서 검증한다.
+
+## 과거 성과 확인
+
+과거 성과는 아래 API 조합으로 확인합니다.
+
+- `ka10074`
+  기간 실현손익, 매수/매도금액, 수수료, 세금
+- `kt00002`
+  기간별 예수금/추정예탁자산 추이
+- `kt00005`
+  현재 평가손익과 보유 포지션 상태
+- `ka10076`
+  당일 체결 상세
+
+권장 해석:
+
+- 기간 실현손익: `ka10074`
+- 현재 실현+미실현 총손익: `ka10074 + kt00005`
+- 시작자산 대비 수익률: `kt00002` 첫날 예수금 또는 추정예탁자산 기준
 
 ## 실행
 
-### 실거래
+실거래:
 
 ```bash
-python main.py --real
+python .\Daily_bot\main.py --real
 ```
 
-### 드라이런
+드라이런:
 
 ```bash
-python main.py --dry-run
+python .\Daily_bot\main.py --dry-run
 ```
-
-## 백테스트 / 리플레이
-
-`Daily_bot`은 현재 두 가지 방식으로 과거 데이터를 다시 볼 수 있습니다.
-
-### 1. market_traces 리플레이
-
-파일:
-
-```text
-Daily_bot/backtest/replay_market_traces.py
-```
-
-용도:
-
-- 장중에 기록된 `market_traces`를 바탕으로
-- 어떤 종목에 진입했을지
-- `take_profit`, `stop_loss` 기준으로 결과가 어땠을지를
-- 가볍게 재생하는 리플레이형 백테스트입니다.
-
-기본적으로는 실제로 `selected=1`로 기록된 종목이 있으면 그 종목을 우선 사용합니다.
-
-예시:
-
-```bash
-.\.venv\Scripts\python.exe .\Daily_bot\backtest\replay_market_traces.py ^
-  --db .\Daily_bot\bot.sqlite3 ^
-  --min-expected-return 0.25 ^
-  --max-spread 0.7 ^
-  --top-n 3 ^
-  --take-profit 0.25 ^
-  --stop-loss 6.0 ^
-  --out .\Daily_bot\logs\backtest_replay.csv
-```
-
-실제 선택 신호를 무시하고, 순수 필터/랭킹 기준으로만 다시 고르고 싶으면:
-
-```bash
-.\.venv\Scripts\python.exe .\Daily_bot\backtest\replay_market_traces.py ^
-  --db .\Daily_bot\bot.sqlite3 ^
-  --ignore-selected-signals
-```
-
-### 2. 설정값 스윕 비교
-
-파일:
-
-```text
-Daily_bot/backtest/sweep_replay_configs.py
-```
-
-용도:
-
-아래 설정값을 여러 조합으로 바꿔가며 리플레이 결과를 비교합니다.
-
-- `min_expected_return_percent`
-- `max_spread_percent`
-- `top_n_per_day` (`max_buy_count`에 대응)
-- `stop_loss_percent`
-
-출력:
-
-- CSV 요약 파일
-- 각 조합별 거래 수 / 승률 / 평균 손익률 / 누적 손익률
-
-예시:
-
-```bash
-.\.venv\Scripts\python.exe .\Daily_bot\backtest\sweep_replay_configs.py ^
-  --db .\Daily_bot\bot.sqlite3 ^
-  --min-expected-returns 0.2,0.25,0.3 ^
-  --max-spreads 0.5,0.7 ^
-  --top-ns 1,2,3 ^
-  --take-profit 0.25 ^
-  --stop-losses 5.0,6.0,7.0 ^
-  --out .\Daily_bot\logs\backtest_replay_sweep.csv
-```
-
-실제 선택 신호를 무시하고 필터/랭킹만으로 비교하고 싶으면:
-
-```bash
-.\.venv\Scripts\python.exe .\Daily_bot\backtest\sweep_replay_configs.py ^
-  --db .\Daily_bot\bot.sqlite3 ^
-  --ignore-selected-signals
-```
-
-## 빠른 점검 포인트
-
-### 봇이 살아 있는지 확인
-
-- `Daily_bot/logs/run_real.lock`의 PID와 시작 시각 확인
-
-### 스캔/주문이 실제로 돌고 있는지 확인
-
-- `Daily_bot/bot.sqlite3`
-- `hoga_snapshots`
-- `signals`
-- `orders`
-- `fills`
-- `market_traces`
-- `account_traces`
-
-이 테이블들의 건수가 증가하면 실제 로직이 진행 중인 것입니다.
-
-### 계좌 상태 확인
-
-- 보유 종목
-- 미체결 주문
-- 주문가능현금
-
-이 세 가지를 함께 봐야
-
-- 아직 시작 전인지
-- 슬롯이 찬 상태인지
-- 후보는 있었지만 자금 때문에 일부만 매수된 건지
-
-를 구분하기 쉽습니다.
 
 ## 테스트
 
 ```bash
 .\.venv\Scripts\python.exe -m pytest Daily_bot\tests
 ```
+
+## 운영 팁
+
+- `Daily_bot/logs/run_real.lock`에서 현재 실행 PID를 확인할 수 있습니다.
+- 장중에는 로그보다 MTS 숫자를 우선 확인하는 편이 안전합니다.
+- 마감 후 기록 검증은 `fills_YYYYMMDD.csv`, `trade_fills_audit.csv`, `bot.sqlite3`의 `fills` 테이블 순서로 확인하면 됩니다.
