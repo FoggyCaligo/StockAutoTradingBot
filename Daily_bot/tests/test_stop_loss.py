@@ -2,7 +2,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from Daily_bot.models import Fill, HogaLevel, HogaSnapshot
-from Daily_bot.risk.stop_loss import is_stop_loss_triggered, monitor_stop_loss
+from Daily_bot.risk.stop_loss import (
+    get_position_loss_percent,
+    get_stop_loss_reference_price,
+    is_stop_loss_triggered,
+    monitor_stop_loss,
+)
 
 
 @dataclass
@@ -66,6 +71,24 @@ def test_is_stop_loss_triggered_when_price_falls_two_percent():
     assert is_stop_loss_triggered(position, current_price=9801, stop_loss_percent=2.0) is False
 
 
+def test_get_stop_loss_reference_price_prefers_best_bid():
+    snapshot = HogaSnapshot(
+        ticker="005930",
+        current_price=9850,
+        bids=[HogaLevel(9790, 100)],
+        asks=[HogaLevel(9850, 100)],
+    )
+
+    assert get_stop_loss_reference_price(snapshot) == 9790
+
+
+def test_get_position_loss_percent_prefers_position_raw_profit_rate():
+    position = _Position(ticker="005930", quantity=3, avg_price=10000)
+    position.raw = {"prft_rt": "-5.12"}
+
+    assert get_position_loss_percent(position) == -5.12
+
+
 def test_monitor_stop_loss_cancels_existing_orders_then_market_sells():
     client = _ClientStub()
     recorder = _RecorderStub()
@@ -87,3 +110,42 @@ def test_monitor_stop_loss_cancels_existing_orders_then_market_sells():
     assert source == "stop_loss"
     assert fill.ticker == "005930"
     assert fill.price == 9800
+
+
+def test_monitor_stop_loss_triggers_on_best_bid_even_if_last_price_is_higher():
+    client = _ClientStub()
+    client.current_price = 9850
+    recorder = _RecorderStub()
+    positions = [_Position(ticker="005930", quantity=3, avg_price=10000)]
+    open_orders = client.get_open_orders()
+    cfg = {"risk": {"stop_loss_percent": 2.0}}
+
+    original_get_20hoga = client.get_20hoga
+
+    def _snapshot_with_lower_bid(ticker: str):
+        snapshot = original_get_20hoga(ticker)
+        snapshot.bids = [HogaLevel(9790, 100)]
+        snapshot.asks = [HogaLevel(9850, 100)]
+        return snapshot
+
+    client.get_20hoga = _snapshot_with_lower_bid
+
+    triggered = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+
+    assert triggered is True
+    assert client.market_sell_calls == [("005930", 3)]
+
+
+def test_monitor_stop_loss_triggers_from_account_snapshot_loss_rate_without_hoga_drop():
+    client = _ClientStub()
+    client.current_price = 9990
+    recorder = _RecorderStub()
+    position = _Position(ticker="005930", quantity=3, avg_price=10000)
+    position.raw = {"prft_rt": "-5.10", "cur_prc": "9990"}
+    open_orders = client.get_open_orders()
+    cfg = {"risk": {"stop_loss_percent": 4.0}}
+
+    triggered = monitor_stop_loss(client, recorder, [position], open_orders, cfg)
+
+    assert triggered is True
+    assert client.market_sell_calls == [("005930", 3)]

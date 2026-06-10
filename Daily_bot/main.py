@@ -717,6 +717,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     session_started_at = datetime.now()
     initial_account_value = estimate_account_value(client)
     print(f"Initial account value estimate: {initial_account_value}")
+    active_poll_seconds = min(5, max(1, int(cfg["strategy"].get("scan_interval_seconds", 60))))
 
     while True:
         if force_sell_done and not eod_reconciliation_done and is_after_now(cfg["market"].get("reconcile_time", "15:15")):
@@ -794,7 +795,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
         max_position_count = int(cfg["risk"].get("max_position_count", cfg["strategy"]["max_buy_count"]) or 0)
         if max_position_count > 0 and len(active_tickers) >= max_position_count:
-            time.sleep(5)
+            time.sleep(active_poll_seconds if active_tickers else 5)
             continue
 
         state = BotState.SCANNING
@@ -827,7 +828,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         planning_cash = min(orderable_cash, cfg["risk"].get("max_budget_per_cycle_krw", 0)) if cfg["risk"].get("max_budget_per_cycle_krw", 0) > 0 else orderable_cash
         buy_count = resolve_buy_count(cfg, empty_slots, planning_cash)
         if buy_count <= 0:
-            time.sleep(cfg["strategy"]["scan_interval_seconds"])
+            time.sleep(active_poll_seconds if active_tickers else cfg["strategy"]["scan_interval_seconds"])
             continue
         targets = select_affordable_targets(
             filtered,
@@ -844,7 +845,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             state = BotState.BUYING
             activate_buy(client, recorder, targets, cfg)
             state = BotState.SELLING
-        time.sleep(cfg["strategy"]["scan_interval_seconds"])
+        time.sleep(active_poll_seconds if active_tickers else cfg["strategy"]["scan_interval_seconds"])
 
 
 def parse_args():

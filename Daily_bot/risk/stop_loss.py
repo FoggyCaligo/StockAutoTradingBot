@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-from Daily_bot.models import Position
+from Daily_bot.models import HogaSnapshot, Position
 from Daily_bot.storage.db import Recorder
 
 
@@ -31,11 +31,43 @@ def _get_remaining_quantity(order: dict) -> int:
         return 0
 
 
+def _to_float(value) -> float:
+    try:
+        return float(str(value).replace(",", "").strip())
+    except (TypeError, ValueError, AttributeError):
+        return 0.0
+
+
+def get_position_loss_percent(position: Position) -> float | None:
+    raw_attr = getattr(position, "raw", None)
+    raw = raw_attr if isinstance(raw_attr, dict) else {}
+    if "prft_rt" in raw:
+        return _to_float(raw.get("prft_rt"))
+    if position.avg_price <= 0:
+        return None
+    current_price = _to_float(raw.get("cur_prc"))
+    if current_price <= 0:
+        return None
+    return ((current_price - position.avg_price) / position.avg_price) * 100
+
+
 def is_stop_loss_triggered(position: Position, current_price: int, stop_loss_percent: float) -> bool:
     if position.avg_price <= 0 or current_price <= 0 or stop_loss_percent <= 0:
         return False
     threshold_price = position.avg_price * (1 - stop_loss_percent / 100)
     return current_price <= threshold_price
+
+
+def get_stop_loss_reference_price(snapshot: HogaSnapshot) -> int:
+    """Use a conservative executable price for stop-loss checks.
+
+    A market sell is much closer to the best bid than to the latest last-trade
+    price, so prefer the top bid when available.
+    """
+    best_bid = snapshot.bids[0].price if snapshot.bids else 0
+    if best_bid > 0:
+        return best_bid
+    return int(snapshot.current_price or 0)
 
 
 def wait_until_no_open_orders_for_ticker(
@@ -96,9 +128,24 @@ def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], ope
         return False
 
     for position in positions:
-        snapshot = client.get_20hoga(position.ticker)
-        if not is_stop_loss_triggered(position, snapshot.current_price, stop_loss_percent):
-            continue
+        loss_percent = get_position_loss_percent(position)
+        if loss_percent is not None and loss_percent <= -stop_loss_percent:
+            print(
+                "Stop-loss triggered from account snapshot: "
+                f"{position.ticker} avg={position.avg_price} loss_percent={loss_percent:.2f}"
+            )
+        else:
+            snapshot = client.get_20hoga(position.ticker)
+            reference_price = get_stop_loss_reference_price(snapshot)
+            if not is_stop_loss_triggered(position, reference_price, stop_loss_percent):
+                continue
+
+            threshold_price = position.avg_price * (1 - stop_loss_percent / 100)
+            print(
+                "Stop-loss triggered from hoga snapshot: "
+                f"{position.ticker} avg={position.avg_price} "
+                f"ref_price={reference_price} threshold={int(threshold_price)}"
+            )
 
         for order in open_orders:
             if _get_ticker(order) != position.ticker:
