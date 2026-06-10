@@ -720,6 +720,9 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     active_poll_seconds = min(5, max(1, int(cfg["strategy"].get("scan_interval_seconds", 60))))
 
     while True:
+        in_buy_window = is_between_now(cfg["market"]["start_buy_time"], cfg["market"]["stop_buy_time"])
+        buy_window_started = is_after_now(cfg["market"]["start_buy_time"])
+
         if force_sell_done and not eod_reconciliation_done and is_after_now(cfg["market"].get("reconcile_time", "15:15")):
             try:
                 summary = reconcile_broker_fills(client, recorder)
@@ -757,7 +760,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             except Exception as exc:
                 print(f"Universe warm-up failed: {exc}")
 
-        if not is_between_now(cfg["market"]["start_buy_time"], cfg["market"]["stop_buy_time"]):
+        if not buy_window_started:
             time.sleep(5)
             continue
 
@@ -791,6 +794,10 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             recorder=recorder,
         ):
             time.sleep(5)
+            continue
+
+        if not in_buy_window:
+            time.sleep(active_poll_seconds if active_tickers else 5)
             continue
 
         max_position_count = int(cfg["risk"].get("max_position_count", cfg["strategy"]["max_buy_count"]) or 0)
