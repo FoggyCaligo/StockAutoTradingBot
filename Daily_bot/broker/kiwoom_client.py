@@ -105,6 +105,29 @@ class KiwoomClient:
         response.raise_for_status()
         return response.json()
 
+    def _request_response(
+        self,
+        method: str,
+        path: str,
+        api_id: str,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        cont_yn: str = "N",
+        next_key: str = "",
+    ) -> requests.Response:
+        self._limiter.wait()
+        url = self._build_url(path)
+        response = self.session.request(
+            method,
+            url,
+            headers=self._headers(api_id=api_id, cont_yn=cont_yn, next_key=next_key),
+            params=params,
+            json=json,
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response
+
     def get_20hoga(self, ticker: str) -> HogaSnapshot:
         payload = {"stk_cd": ticker}
         raw = self._request(
@@ -219,22 +242,61 @@ class KiwoomClient:
         return orders if isinstance(orders, list) else []
 
     def get_order_status(self, order_id: str) -> dict[str, Any]:
+        rows = self.get_fills()
+        matching_rows = self._filter_rows_for_order(rows, order_id)
+        return {"cntr": matching_rows}
+
+    def get_fills(
+        self,
+        ticker: str = "",
+        sell_tp: str = "0",
+        limit_pages: int = 10,
+    ) -> list[dict[str, Any]]:
+        """
+        Fetch today's fills from ka10076.
+
+        Note: ka10076's `ord_no` is a cursor for older fills, not an exact order-id filter.
+        We therefore query the recent fill list and search within the returned rows.
+        """
         payload = {
-            "stk_cd": "",
-            "qry_tp": "0",
-            "sell_tp": "0",
-            "ord_no": order_id,
+            "stk_cd": self._normalize_ticker(ticker),
+            "qry_tp": "1" if ticker else "0",
+            "sell_tp": sell_tp,
+            "ord_no": "",
             "stex_tp": self.default_stex_tp,
         }
-        return self._request("POST", self.DOMESTIC_ACCOUNT_PATH, api_id=self.TR_KA10076_FILLS, json=payload)
+        rows: list[dict[str, Any]] = []
+        cont_yn = "N"
+        next_key = ""
+
+        for _ in range(max(1, limit_pages)):
+            response = self._request_response(
+                "POST",
+                self.DOMESTIC_ACCOUNT_PATH,
+                api_id=self.TR_KA10076_FILLS,
+                json=payload,
+                cont_yn=cont_yn,
+                next_key=next_key,
+            )
+            body = response.json()
+            page_rows = self._extract_list(body, ["cntr"]) or []
+            if isinstance(page_rows, list):
+                rows.extend(page_rows)
+
+            cont_yn = str(response.headers.get("cont-yn") or "N").strip().upper()
+            next_key = str(response.headers.get("next-key") or "").strip()
+            if cont_yn != "Y" or not next_key:
+                break
+
+        return rows
 
     def get_buy_fill(self, order_id: str) -> Fill | None:
-        raw = self.get_order_status(order_id)
-        return self._build_fill_from_status(raw, order_id)
+        rows = self.get_fills(sell_tp="2")
+        return self._build_fill_from_rows(rows, order_id)
 
     def get_order_fill(self, order_id: str) -> Fill | None:
-        raw = self.get_order_status(order_id)
-        return self._build_fill_from_status(raw, order_id)
+        rows = self.get_fills()
+        return self._build_fill_from_rows(rows, order_id)
 
     def wait_buy_filled(
         self,
@@ -244,8 +306,7 @@ class KiwoomClient:
     ) -> Fill | None:
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
-            raw = self.get_order_status(order_id)
-            fill = self._build_fill_from_status(raw, order_id)
+            fill = self.get_buy_fill(order_id)
             if fill is not None and (expected_quantity is None or fill.quantity >= expected_quantity):
                 return fill
             time.sleep(2)
@@ -290,29 +351,48 @@ class KiwoomClient:
                 positions.append(Position(ticker=ticker, quantity=quantity, avg_price=avg_price, raw=item))
         return positions
 
-    def _build_fill_from_status(self, raw: dict[str, Any], order_id: str) -> Fill | None:
-        rows = self._extract_list(raw, ["cntr"]) or []
-        if not rows:
-            return None
-
+    def _build_fill_from_rows(self, rows: list[dict[str, Any]], order_id: str) -> Fill | None:
         matching_rows = self._filter_rows_for_order(rows, order_id)
         if not matching_rows:
             return None
 
         total_quantity = sum(self._extract_number(row, ["cntr_qty"]) for row in matching_rows)
         latest_row = matching_rows[-1]
-        price = self._extract_number(latest_row, ["cntr_pric", "ord_pric"])
+        total_amount = sum(
+            self._extract_number(row, ["cntr_pric", "ord_pric"]) * self._extract_number(row, ["cntr_qty"])
+            for row in matching_rows
+        )
+        price = int(round(total_amount / total_quantity)) if total_quantity > 0 and total_amount > 0 else 0
         ticker = self._normalize_ticker(self._extract_value(latest_row, ["stk_cd"]) or "")
         if total_quantity <= 0 or price <= 0:
             return None
+        filled_at = self._parse_fill_time(latest_row)
 
         return Fill(
             order_id=order_id,
             ticker=ticker,
             quantity=total_quantity,
             price=price,
-            raw=latest_row,
+            filled_at=filled_at,
+            raw={"rows": matching_rows, "latest_row": latest_row},
         )
+
+    def _parse_fill_time(self, row: dict[str, Any]) -> datetime:
+        raw_time = str(row.get("ord_tm") or row.get("tm") or "").strip()
+        if re.fullmatch(r"\d{6}", raw_time):
+            now = datetime.now()
+            try:
+                return datetime(
+                    year=now.year,
+                    month=now.month,
+                    day=now.day,
+                    hour=int(raw_time[0:2]),
+                    minute=int(raw_time[2:4]),
+                    second=int(raw_time[4:6]),
+                )
+            except ValueError:
+                pass
+        return datetime.now()
 
     def _filter_rows_for_order(self, rows: list[dict[str, Any]], order_id: str) -> list[dict[str, Any]]:
         normalized_order_id = str(order_id).strip()

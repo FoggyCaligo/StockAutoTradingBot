@@ -7,6 +7,7 @@ from Daily_bot.main import (
     estimate_account_value,
     get_external_cash_flow_since,
     is_daily_loss_limit_reached,
+    poll_and_record_new_fills,
     resolve_buy_count,
     resolve_empty_slots,
     resolve_target_budget_per_stock,
@@ -26,6 +27,9 @@ class _RecorderStub:
         if self.fills is None:
             self.fills = []
         self.fills.append((fill, side, source))
+
+    def get_orders_needing_fill_poll(self):
+        return []
 
 
 class _ClientStub:
@@ -240,6 +244,37 @@ def test_activate_buy_records_target_exit_fill_when_sell_fill_is_available():
     assert client.sell_calls == [("005930", 10, 10150)]
     assert recorder.fills is not None
     assert any(side == "SELL" and source == "target_exit" for _fill, side, source in recorder.fills)
+
+
+def test_poll_and_record_new_fills_reconciles_missing_sell_fill_when_position_is_gone():
+    client = _ClientStub(orderable_cash=0)
+    client.positions = []
+    client.open_orders = []
+    recorder = _RecorderStub(orders=[], fills=[])
+
+    recorder.get_orders_needing_fill_poll = lambda: [
+        {
+            "broker_order_id": "SELL-1",
+            "ticker": "008770",
+            "side": "SELL",
+            "quantity": 3,
+            "price": 53900,
+            "recorded_fill_quantity": 0,
+        }
+    ]
+
+    poll_and_record_new_fills(client, recorder)
+
+    assert recorder.fills is not None
+    assert len(recorder.fills) == 1
+    fill, side, source = recorder.fills[0]
+    assert side == "SELL"
+    assert source == "sell_reconciliation"
+    assert fill.order_id == "SELL-1"
+    assert fill.ticker == "008770"
+    assert fill.quantity == 3
+    assert fill.price == 53900
+    assert fill.raw == {"source": "sell_reconciliation", "reason": "fill_lookup_missing"}
 
 
 def test_estimate_account_value_includes_open_buy_orders():

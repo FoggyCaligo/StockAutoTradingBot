@@ -258,6 +258,50 @@ def _get_open_order_ticker(order: dict) -> str:
     return _ticker_key(order.get("ticker") or order.get("stk_cd") or order.get("pdno") or "")
 
 
+def _get_position_quantity_by_ticker(positions: list) -> dict[str, int]:
+    quantities: dict[str, int] = {}
+    for position in positions:
+        ticker = _ticker_key(getattr(position, "ticker", ""))
+        quantity = max(0, int(getattr(position, "quantity", 0) or 0))
+        if not ticker:
+            continue
+        quantities[ticker] = quantities.get(ticker, 0) + quantity
+    return quantities
+
+
+def _get_open_orders_by_id(open_orders: list[dict]) -> dict[str, dict]:
+    indexed: dict[str, dict] = {}
+    for order in open_orders:
+        order_id = str(order.get("order_id") or order.get("ord_no") or order.get("id") or "").strip()
+        if order_id:
+            indexed[order_id] = order
+    return indexed
+
+
+def _infer_sell_fill_quantity(
+    order: dict[str, object],
+    position_quantities: dict[str, int],
+    open_orders_by_id: dict[str, dict],
+) -> int:
+    total_quantity = max(0, int(order.get("quantity") or 0))
+    if total_quantity <= 0:
+        return 0
+
+    open_order = open_orders_by_id.get(str(order.get("broker_order_id") or "").strip())
+    if open_order is not None:
+        remaining_open_quantity = _to_int(
+            open_order.get("oso_qty")
+            or open_order.get("remaining_qty")
+            or open_order.get("rmn_qty")
+            or open_order.get("ord_qty")
+        )
+        return max(0, min(total_quantity, total_quantity - remaining_open_quantity))
+
+    ticker = _ticker_key(str(order.get("ticker") or ""))
+    remaining_position_quantity = min(total_quantity, position_quantities.get(ticker, 0))
+    return max(0, total_quantity - remaining_position_quantity)
+
+
 def _get_active_tickers(positions: list, open_orders: list[dict]) -> set[str]:
     tickers = {
         _ticker_key(getattr(position, "ticker", ""))
@@ -394,6 +438,18 @@ def is_daily_loss_limit_reached(
 def poll_and_record_new_fills(client, recorder: Recorder) -> None:
     if not hasattr(client, "get_order_fill"):
         return
+    try:
+        positions = client.get_positions()
+    except Exception as exc:
+        print(f"Failed to fetch positions for fill reconciliation: {exc}")
+        positions = []
+    try:
+        open_orders = client.get_open_orders()
+    except Exception as exc:
+        print(f"Failed to fetch open orders for fill reconciliation: {exc}")
+        open_orders = []
+    position_quantities = _get_position_quantity_by_ticker(positions)
+    open_orders_by_id = _get_open_orders_by_id(open_orders)
     for order in recorder.get_orders_needing_fill_poll():
         order_id = str(order.get("broker_order_id") or "").strip()
         side = str(order.get("side") or "").strip().upper()
@@ -406,6 +462,19 @@ def poll_and_record_new_fills(client, recorder: Recorder) -> None:
             print(f"Failed to poll fill for order_id={order_id} ticker={order.get('ticker')}: {exc}")
             continue
         if fill is None or fill.quantity <= already_recorded:
+            if side != "SELL":
+                continue
+            inferred_total_quantity = _infer_sell_fill_quantity(order, position_quantities, open_orders_by_id)
+            if inferred_total_quantity <= already_recorded:
+                continue
+            delta_fill = Fill(
+                order_id=order_id,
+                ticker=str(order.get("ticker") or ""),
+                quantity=inferred_total_quantity - already_recorded,
+                price=int(order.get("price") or 0),
+                raw={"source": "sell_reconciliation", "reason": "fill_lookup_missing"},
+            )
+            recorder.save_fill(delta_fill, side=side, source="sell_reconciliation")
             continue
         delta_quantity = fill.quantity - already_recorded
         delta_fill = Fill(
