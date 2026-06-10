@@ -102,6 +102,43 @@ def _snapshot_value(account_snapshot: dict[str, Any] | None, key: str) -> Any:
     return "" if value is None else value
 
 
+def _extract_actual_costs(fill: Fill, side_upper: str) -> tuple[float | None, float | None]:
+    raw = fill.raw if isinstance(fill.raw, dict) else {}
+    rows = []
+    if isinstance(raw.get("rows"), list):
+        rows = [row for row in raw["rows"] if isinstance(row, dict)]
+    latest_row = raw.get("latest_row")
+    if isinstance(latest_row, dict):
+        rows.append(latest_row)
+    if not rows and raw:
+        rows = [raw]
+
+    seen: set[tuple[str, str, str]] = set()
+    total_fee = 0.0
+    total_tax = 0.0
+    found = False
+    for row in rows:
+        key = (
+            str(row.get("ord_no") or ""),
+            str(row.get("cntr_no") or ""),
+            str(row.get("ord_tm") or row.get("tm") or ""),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        fee = _to_float(row.get("tdy_trde_cmsn"))
+        tax = _to_float(row.get("tdy_trde_tax"))
+        if fee or tax or "tdy_trde_cmsn" in row or "tdy_trde_tax" in row:
+            found = True
+            total_fee += fee
+            total_tax += tax
+    if not found:
+        return None, None
+    if side_upper != "SELL":
+        total_tax = 0.0
+    return total_fee, total_tax
+
+
 def append_fill_audit_csv(
     path: Path,
     fill: Fill,
@@ -122,8 +159,9 @@ def append_fill_audit_csv(
     quantity = int(fill.quantity or 0)
     price = int(fill.price or 0)
     amount = quantity * price
-    estimated_fee = round(amount * fee_rate, 4)
-    estimated_tax = round(amount * sell_tax_rate, 4) if side_upper == "SELL" else 0.0
+    actual_fee, actual_tax = _extract_actual_costs(fill, side_upper)
+    estimated_fee = round(actual_fee, 4) if actual_fee is not None else round(amount * fee_rate, 4)
+    estimated_tax = round(actual_tax, 4) if actual_tax is not None else (round(amount * sell_tax_rate, 4) if side_upper == "SELL" else 0.0)
     estimated_total_cost = estimated_fee + estimated_tax
     filled_at = fill.filled_at if fill.filled_at is not None else datetime.now()
 
