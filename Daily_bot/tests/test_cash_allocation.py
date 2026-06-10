@@ -87,7 +87,7 @@ class _ClientStub:
         self.market_sell_calls.append((ticker, quantity))
         return OrderResult(order_id=f"MSELL-{len(self.market_sell_calls)}", ticker=ticker, side="SELL", quantity=quantity, price=0, status="FILLED")
 
-    def get_order_fill(self, order_id: str) -> Fill | None:
+    def get_order_fill(self, order_id: str, ticker: str = "", side: str = "") -> Fill | None:
         if self.sell_fill_sequence:
             return self.sell_fill_sequence.pop(0)
         return None
@@ -275,6 +275,41 @@ def test_poll_and_record_new_fills_reconciles_missing_sell_fill_when_position_is
     assert fill.quantity == 3
     assert fill.price == 53900
     assert fill.raw == {"source": "sell_reconciliation", "reason": "fill_lookup_missing"}
+
+
+def test_poll_and_record_new_fills_prefers_direct_sell_fill_before_reconciliation(monkeypatch):
+    client = _ClientStub(orderable_cash=0)
+    client.positions = []
+    client.open_orders = []
+    client.sell_fill_sequence = [
+        None,
+        Fill(order_id="SELL-1", ticker="008770", quantity=3, price=53850),
+    ]
+    recorder = _RecorderStub(orders=[], fills=[])
+
+    recorder.get_orders_needing_fill_poll = lambda: [
+        {
+            "broker_order_id": "SELL-1",
+            "ticker": "008770",
+            "side": "SELL",
+            "quantity": 3,
+            "price": 53900,
+            "recorded_fill_quantity": 0,
+        }
+    ]
+    monkeypatch.setattr("Daily_bot.main.time.sleep", lambda _: None)
+
+    poll_and_record_new_fills(client, recorder)
+
+    assert recorder.fills is not None
+    assert len(recorder.fills) == 1
+    fill, side, source = recorder.fills[0]
+    assert side == "SELL"
+    assert source == "poll"
+    assert fill.order_id == "SELL-1"
+    assert fill.ticker == "008770"
+    assert fill.quantity == 3
+    assert fill.price == 53850
 
 
 def test_estimate_account_value_includes_open_buy_orders():

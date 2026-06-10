@@ -184,7 +184,7 @@ def _record_fill_safely(client, recorder: Recorder, order_id: str, side: str, so
     if not order_id or not hasattr(client, "get_order_fill"):
         return False
     try:
-        fill = client.get_order_fill(order_id)
+        fill = _get_order_fill(client, order_id, side=side)
         if fill:
             recorder.save_fill(fill, side=side, source=source)
             return True
@@ -207,7 +207,7 @@ def _poll_fill_until_recorded(
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
         try:
-            fill = client.get_order_fill(order_id)
+            fill = _get_order_fill(client, order_id, side=side)
         except Exception as exc:
             print(f"Warning: Failed to poll fill for {side} order {order_id} ({source}): {exc}")
             return
@@ -256,6 +256,31 @@ def _ticker_key(ticker: str) -> str:
 
 def _get_open_order_ticker(order: dict) -> str:
     return _ticker_key(order.get("ticker") or order.get("stk_cd") or order.get("pdno") or "")
+
+
+def _get_order_fill(client, order_id: str, ticker: str = "", side: str = ""):
+    try:
+        return client.get_order_fill(order_id, ticker=ticker, side=side)
+    except TypeError:
+        return client.get_order_fill(order_id)
+
+
+def _get_order_fill_with_retry(
+    client,
+    order_id: str,
+    ticker: str = "",
+    side: str = "",
+    attempts: int = 5,
+    sleep_seconds: float = 0.7,
+):
+    fill = None
+    for attempt in range(max(1, attempts)):
+        fill = _get_order_fill(client, order_id, ticker=ticker, side=side)
+        if fill is not None:
+            return fill
+        if attempt + 1 < max(1, attempts):
+            time.sleep(sleep_seconds)
+    return fill
 
 
 def _get_position_quantity_by_ticker(positions: list) -> dict[str, int]:
@@ -452,16 +477,42 @@ def poll_and_record_new_fills(client, recorder: Recorder) -> None:
     open_orders_by_id = _get_open_orders_by_id(open_orders)
     for order in recorder.get_orders_needing_fill_poll():
         order_id = str(order.get("broker_order_id") or "").strip()
+        ticker = str(order.get("ticker") or "").strip()
         side = str(order.get("side") or "").strip().upper()
         already_recorded = int(order.get("recorded_fill_quantity") or 0)
         if not order_id or side not in {"BUY", "SELL"}:
             continue
         try:
-            fill = client.get_order_fill(order_id)
+            fill = _get_order_fill(client, order_id, ticker=ticker, side=side)
         except Exception as exc:
             print(f"Failed to poll fill for order_id={order_id} ticker={order.get('ticker')}: {exc}")
             continue
         if fill is None or fill.quantity <= already_recorded:
+            if side == "SELL":
+                try:
+                    fill = _get_order_fill_with_retry(
+                        client,
+                        order_id,
+                        ticker=ticker,
+                        side=side,
+                        attempts=4,
+                        sleep_seconds=0.7,
+                    )
+                except Exception as exc:
+                    print(f"Retry fill lookup failed for order_id={order_id} ticker={ticker}: {exc}")
+                    fill = None
+            if fill is not None and fill.quantity > already_recorded:
+                delta_quantity = fill.quantity - already_recorded
+                delta_fill = Fill(
+                    order_id=fill.order_id,
+                    ticker=fill.ticker,
+                    quantity=delta_quantity,
+                    price=fill.price,
+                    filled_at=fill.filled_at,
+                    raw={"source": "delta_poll", "total_fill_quantity": fill.quantity, "raw": fill.raw},
+                )
+                recorder.save_fill(delta_fill, side=side, source="poll")
+                continue
             if side != "SELL":
                 continue
             inferred_total_quantity = _infer_sell_fill_quantity(order, position_quantities, open_orders_by_id)

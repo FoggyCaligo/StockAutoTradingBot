@@ -241,8 +241,11 @@ class KiwoomClient:
         orders = self._extract_list(raw, ["oso"])
         return orders if isinstance(orders, list) else []
 
-    def get_order_status(self, order_id: str) -> dict[str, Any]:
-        rows = self.get_fills()
+    def get_order_status(self, order_id: str, ticker: str = "", side: str = "") -> dict[str, Any]:
+        rows = self.get_fills(
+            ticker=ticker,
+            sell_tp=self._resolve_sell_tp(side),
+        )
         matching_rows = self._filter_rows_for_order(rows, order_id)
         return {"cntr": matching_rows}
 
@@ -294,8 +297,11 @@ class KiwoomClient:
         rows = self.get_fills(sell_tp="2")
         return self._build_fill_from_rows(rows, order_id)
 
-    def get_order_fill(self, order_id: str) -> Fill | None:
-        rows = self.get_fills()
+    def get_order_fill(self, order_id: str, ticker: str = "", side: str = "") -> Fill | None:
+        rows = self.get_fills(
+            ticker=ticker,
+            sell_tp=self._resolve_sell_tp(side),
+        )
         return self._build_fill_from_rows(rows, order_id)
 
     def wait_buy_filled(
@@ -376,6 +382,14 @@ class KiwoomClient:
             filled_at=filled_at,
             raw={"rows": matching_rows, "latest_row": latest_row},
         )
+
+    def _resolve_sell_tp(self, side: str) -> str:
+        normalized = str(side or "").strip().upper()
+        if normalized == "SELL":
+            return "1"
+        if normalized == "BUY":
+            return "2"
+        return "0"
 
     def _parse_fill_time(self, row: dict[str, Any]) -> datetime:
         raw_time = str(row.get("ord_tm") or row.get("tm") or "").strip()
