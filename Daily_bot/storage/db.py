@@ -3,11 +3,12 @@ from __future__ import annotations
 import csv
 import json
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from Daily_bot.models import Candidate, Fill, HogaSnapshot, OrderResult
-from Daily_bot.storage.audit_csv import append_fill_audit_csv
+from Daily_bot.storage.audit_csv import append_fill_audit_csv, rewrite_fill_audit_csv
 
 
 SCHEMA = """
@@ -405,8 +406,30 @@ class Recorder:
         )
 
     def save_fill(self, fill: Fill, side: str, source: str = "broker") -> None:
+        self._persist_fill(fill, side=side, source=source, replace_existing=False)
+
+    def replace_fill(self, fill: Fill, side: str, source: str = "broker") -> None:
+        self._persist_fill(fill, side=side, source=source, replace_existing=True)
+
+    def _persist_fill(
+        self,
+        fill: Fill,
+        side: str,
+        source: str,
+        replace_existing: bool,
+    ) -> None:
         raw_json = json.dumps(fill.raw or {}, ensure_ascii=False)
         filled_at = fill.filled_at.isoformat()
+        side_upper = str(side or "").strip().upper()
+        if replace_existing:
+            self.conn.execute(
+                """
+                DELETE FROM fills
+                WHERE broker_order_id = ?
+                  AND side = ?
+                """,
+                (fill.order_id, side_upper),
+            )
         self.conn.execute(
             """
             INSERT INTO fills
@@ -416,7 +439,7 @@ class Recorder:
             (
                 fill.order_id,
                 fill.ticker,
-                side,
+                side_upper,
                 fill.quantity,
                 fill.price,
                 filled_at,
@@ -431,7 +454,7 @@ class Recorder:
             {
                 "broker_order_id": fill.order_id,
                 "ticker": fill.ticker,
-                "side": side,
+                "side": side_upper,
                 "quantity": fill.quantity,
                 "price": fill.price,
                 "filled_at": filled_at,
@@ -443,16 +466,105 @@ class Recorder:
             append_fill_audit_csv(
                 self.audit_fill_csv_path,
                 fill,
-                side=side,
+                side=side_upper,
                 source=source,
                 account_snapshot=self._latest_account_trace(),
             )
         except Exception as exc:
             print(f"Failed to append fill audit CSV for {fill.ticker}: {exc}")
         print(
-            f"FILL {side} {fill.ticker} qty={fill.quantity} price={fill.price} "
+            f"FILL {side_upper} {fill.ticker} qty={fill.quantity} price={fill.price} "
             f"filled_at={filled_at} source={source} order_id={fill.order_id}"
         )
+
+    def get_session_fills(self, session_date: str) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            """
+            SELECT broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json, created_at
+            FROM fills
+            WHERE substr(filled_at, 1, 10) = ?
+            ORDER BY filled_at ASC, id ASC
+            """,
+            (session_date,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_fill_index(self, session_date: str) -> dict[tuple[str, str], dict[str, Any]]:
+        index: dict[tuple[str, str], dict[str, Any]] = {}
+        for row in self.get_session_fills(session_date):
+            key = (str(row.get("broker_order_id") or "").strip(), str(row.get("side") or "").strip().upper())
+            if key[0] and key[1]:
+                index[key] = row
+        return index
+
+    def rebuild_session_fill_exports(self, session_date: str) -> None:
+        fill_rows = self.get_session_fills(session_date)
+        fills_csv_path = self.log_dir / f"fills_{session_date.replace('-', '')}.csv"
+        if fills_csv_path.exists():
+            fills_csv_path.unlink()
+
+        fill_fieldnames = ["broker_order_id", "ticker", "side", "quantity", "price", "filled_at", "source", "raw_json"]
+        for row in fill_rows:
+            self._append_csv_row(
+                fills_csv_path,
+                fill_fieldnames,
+                {
+                    "broker_order_id": row["broker_order_id"],
+                    "ticker": row["ticker"],
+                    "side": row["side"],
+                    "quantity": row["quantity"],
+                    "price": row["price"],
+                    "filled_at": row["filled_at"],
+                    "source": row["source"],
+                    "raw_json": row["raw_json"],
+                },
+            )
+
+        existing_snapshot_map = self._read_audit_snapshot_map()
+        audit_entries: list[tuple[Fill, str, str]] = []
+        for row in fill_rows:
+            try:
+                raw = json.loads(row["raw_json"]) if row.get("raw_json") else None
+            except json.JSONDecodeError:
+                raw = {"raw_json": row.get("raw_json", "")}
+            audit_entries.append(
+                (
+                    Fill(
+                        order_id=str(row["broker_order_id"] or ""),
+                        ticker=str(row["ticker"] or ""),
+                        quantity=int(row["quantity"] or 0),
+                        price=int(row["price"] or 0),
+                        filled_at=datetime.fromisoformat(str(row["filled_at"])),
+                        raw=raw,
+                    ),
+                    str(row["side"] or "").upper(),
+                    str(row["source"] or ""),
+                )
+            )
+
+        rewrite_fill_audit_csv(
+            self.audit_fill_csv_path,
+            audit_entries,
+            account_snapshots_by_order_id=existing_snapshot_map,
+        )
+
+    def _read_audit_snapshot_map(self) -> dict[str, dict[str, Any]]:
+        if not self.audit_fill_csv_path.exists() or self.audit_fill_csv_path.stat().st_size == 0:
+            return {}
+        snapshot_map: dict[str, dict[str, Any]] = {}
+        with self.audit_fill_csv_path.open("r", newline="", encoding="utf-8-sig") as fp:
+            for row in csv.DictReader(fp):
+                order_id = str(row.get("broker_order_id") or "").strip()
+                if not order_id:
+                    continue
+                snapshot_map[order_id] = {
+                    "cash": row.get("cash", ""),
+                    "account_value": row.get("account_value", ""),
+                    "adjusted_account_value": row.get("adjusted_account_value", ""),
+                    "adjusted_pnl": row.get("adjusted_pnl", ""),
+                    "loss_percent": row.get("loss_percent", ""),
+                }
+        return snapshot_map
 
     def get_orders_needing_fill_poll(self, limit: int = 200) -> list[dict[str, Any]]:
         rows = self.conn.execute(

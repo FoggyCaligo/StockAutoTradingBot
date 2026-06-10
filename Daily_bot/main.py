@@ -283,6 +283,51 @@ def _get_order_fill_with_retry(
     return fill
 
 
+def _normalize_session_date(value: str | None = None) -> str:
+    if value:
+        return value
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def reconcile_broker_fills(
+    client,
+    recorder: Recorder,
+    session_date: str | None = None,
+) -> dict[str, int]:
+    session = _normalize_session_date(session_date)
+    if not hasattr(client, "get_grouped_fills"):
+        return {"broker_fill_count": 0, "inserted_or_updated": 0}
+
+    broker_entries = [
+        (fill, side)
+        for fill, side in client.get_grouped_fills()
+        if fill.filled_at.strftime("%Y-%m-%d") == session
+    ]
+    existing_index = recorder.get_fill_index(session)
+    updated = 0
+
+    for fill, side in broker_entries:
+        key = (fill.order_id, side)
+        existing = existing_index.get(key)
+        filled_at_iso = fill.filled_at.isoformat()
+        if (
+            existing is not None
+            and int(existing.get("quantity") or 0) == fill.quantity
+            and int(existing.get("price") or 0) == fill.price
+            and str(existing.get("filled_at") or "") == filled_at_iso
+            and str(existing.get("source") or "") == "eod_reconciliation"
+        ):
+            continue
+        recorder.replace_fill(fill, side=side, source="eod_reconciliation")
+        updated += 1
+
+    recorder.rebuild_session_fill_exports(session)
+    return {
+        "broker_fill_count": len(broker_entries),
+        "inserted_or_updated": updated,
+    }
+
+
 def _get_position_quantity_by_ticker(positions: list) -> dict[str, int]:
     quantities: dict[str, int] = {}
     for position in positions:
@@ -666,6 +711,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     client.auth()
     state = BotState.NO_POSITION
     force_sell_done = False
+    eod_reconciliation_done = False
     warmed_session = False
     watchlist: dict[str, Candidate] = {}
     session_started_at = datetime.now()
@@ -673,14 +719,34 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     print(f"Initial account value estimate: {initial_account_value}")
 
     while True:
+        if force_sell_done and not eod_reconciliation_done and is_after_now(cfg["market"].get("reconcile_time", "15:15")):
+            try:
+                summary = reconcile_broker_fills(client, recorder)
+                eod_reconciliation_done = True
+                print(
+                    "End-of-day reconciliation completed: "
+                    f"broker_fills={summary['broker_fill_count']} updated={summary['inserted_or_updated']}"
+                )
+            except Exception as exc:
+                print(f"End-of-day reconciliation failed: {exc}")
+            if is_after_now(cfg["market"].get("end_time", "15:20")) or eod_reconciliation_done:
+                break
+
         if is_after_now(cfg["market"]["force_sell_time"]) and not force_sell_done:
             state = BotState.FORCE_SELLING
             force_sell(client, recorder=recorder)
             poll_and_record_new_fills(client, recorder)
             force_sell_done = True
             state = BotState.STOPPED
-            print("Force sell completed. Stop trading for today.")
-            break
+            print("Force sell completed. Waiting for end-of-day reconciliation.")
+            time.sleep(5)
+            continue
+
+        if force_sell_done:
+            if is_after_now(cfg["market"].get("end_time", "15:20")):
+                break
+            time.sleep(5)
+            continue
 
         if is_between_now(cfg["market"].get("prewarm_start_time", cfg["market"]["start_buy_time"]), cfg["market"]["start_buy_time"]) and not warmed_session:
             try:

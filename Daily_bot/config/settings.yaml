@@ -3,6 +3,7 @@ market:
   start_buy_time: "09:30"
   stop_buy_time: "13:00"
   force_sell_time: "15:00"
+  reconcile_time: "15:15"
   end_time: "15:20"
 
 universe:

@@ -8,6 +8,7 @@ from Daily_bot.main import (
     get_external_cash_flow_since,
     is_daily_loss_limit_reached,
     poll_and_record_new_fills,
+    reconcile_broker_fills,
     resolve_buy_count,
     resolve_empty_slots,
     resolve_target_budget_per_stock,
@@ -30,6 +31,15 @@ class _RecorderStub:
 
     def get_orders_needing_fill_poll(self):
         return []
+
+    def get_fill_index(self, session_date: str):
+        return {}
+
+    def replace_fill(self, fill, side: str, source: str = "broker") -> None:
+        self.save_fill(fill, side=side, source=source)
+
+    def rebuild_session_fill_exports(self, session_date: str) -> None:
+        self.rebuilt_session_date = session_date
 
 
 class _ClientStub:
@@ -310,6 +320,46 @@ def test_poll_and_record_new_fills_prefers_direct_sell_fill_before_reconciliatio
     assert fill.ticker == "008770"
     assert fill.quantity == 3
     assert fill.price == 53850
+
+
+def test_reconcile_broker_fills_replaces_existing_fill_and_rebuilds_exports():
+    fill = Fill(
+        order_id="SELL-1",
+        ticker="008770",
+        quantity=3,
+        price=53900,
+        filled_at=datetime.fromisoformat("2026-06-10T09:42:49"),
+    )
+    client = type(
+        "ClientStub",
+        (),
+        {
+            "get_grouped_fills": lambda self: [(fill, "SELL")],
+        },
+    )()
+    recorder = _RecorderStub(orders=[], fills=[])
+    recorder.get_fill_index = lambda session_date: {
+        ("SELL-1", "SELL"): {
+            "broker_order_id": "SELL-1",
+            "side": "SELL",
+            "quantity": 3,
+            "price": 53900,
+            "filled_at": "2026-06-10T09:57:06.263650",
+            "source": "sell_reconciliation",
+        }
+    }
+
+    summary = reconcile_broker_fills(client, recorder, session_date="2026-06-10")
+
+    assert summary == {"broker_fill_count": 1, "inserted_or_updated": 1}
+    assert recorder.fills is not None
+    saved_fill, side, source = recorder.fills[0]
+    assert saved_fill.order_id == "SELL-1"
+    assert saved_fill.price == 53900
+    assert saved_fill.filled_at == datetime.fromisoformat("2026-06-10T09:42:49")
+    assert side == "SELL"
+    assert source == "eod_reconciliation"
+    assert recorder.rebuilt_session_date == "2026-06-10"
 
 
 def test_estimate_account_value_includes_open_buy_orders():

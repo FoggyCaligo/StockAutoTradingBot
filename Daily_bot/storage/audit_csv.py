@@ -189,3 +189,30 @@ def append_fill_audit_csv(
             "position_status": position_status,
         },
     )
+
+
+def rewrite_fill_audit_csv(
+    path: Path,
+    entries: list[tuple[Fill, str, str]],
+    account_snapshots_by_order_id: dict[str, dict[str, Any] | None] | None = None,
+    fee_rate: float = DEFAULT_FEE_RATE,
+    sell_tax_rate: float = DEFAULT_SELL_TAX_RATE,
+) -> None:
+    if path.exists():
+        path.unlink()
+
+    snapshot_map = account_snapshots_by_order_id or {}
+    ordered_entries = sorted(
+        entries,
+        key=lambda item: (item[0].filled_at, item[0].order_id, item[1], item[2]),
+    )
+    for fill, side, source in ordered_entries:
+        append_fill_audit_csv(
+            path,
+            fill,
+            side=side,
+            source=source,
+            account_snapshot=snapshot_map.get(fill.order_id),
+            fee_rate=fee_rate,
+            sell_tax_rate=sell_tax_rate,
+        )

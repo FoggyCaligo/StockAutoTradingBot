@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 import time
+from collections import OrderedDict
 from datetime import datetime
 from typing import Any
 
@@ -304,6 +305,28 @@ class KiwoomClient:
         )
         return self._build_fill_from_rows(rows, order_id)
 
+    def get_grouped_fills(
+        self,
+        ticker: str = "",
+        sell_tp: str = "0",
+    ) -> list[tuple[Fill, str]]:
+        rows = self.get_fills(ticker=ticker, sell_tp=sell_tp)
+        grouped: OrderedDict[tuple[str, str], list[dict[str, Any]]] = OrderedDict()
+        for row in rows:
+            order_id = str(row.get("ord_no") or "").strip()
+            side = self._resolve_side_from_row(row)
+            if not order_id or side not in {"BUY", "SELL"}:
+                continue
+            grouped.setdefault((order_id, side), []).append(row)
+
+        fills: list[tuple[Fill, str]] = []
+        for (order_id, side), grouped_rows in grouped.items():
+            fill = self._build_fill_from_rows(grouped_rows, order_id)
+            if fill is not None:
+                fills.append((fill, side))
+        fills.sort(key=lambda item: (item[0].filled_at, item[0].order_id, item[1]))
+        return fills
+
     def wait_buy_filled(
         self,
         order_id: str,
@@ -361,6 +384,7 @@ class KiwoomClient:
         matching_rows = self._filter_rows_for_order(rows, order_id)
         if not matching_rows:
             return None
+        matching_rows = sorted(matching_rows, key=self._fill_sort_key)
 
         total_quantity = sum(self._extract_number(row, ["cntr_qty"]) for row in matching_rows)
         latest_row = matching_rows[-1]
@@ -390,6 +414,19 @@ class KiwoomClient:
         if normalized == "BUY":
             return "2"
         return "0"
+
+    def _resolve_side_from_row(self, row: dict[str, Any]) -> str:
+        side_text = str(row.get("io_tp_nm") or row.get("side") or "").strip().upper()
+        if "SELL" in side_text or "매도" in side_text or side_text.startswith("-"):
+            return "SELL"
+        if "BUY" in side_text or "매수" in side_text or side_text.startswith("+"):
+            return "BUY"
+        return ""
+
+    def _fill_sort_key(self, row: dict[str, Any]) -> tuple[str, str]:
+        order_time = str(row.get("ord_tm") or row.get("tm") or "").strip()
+        contract_no = str(row.get("cntr_no") or "").strip()
+        return order_time, contract_no
 
     def _parse_fill_time(self, row: dict[str, Any]) -> datetime:
         raw_time = str(row.get("ord_tm") or row.get("tm") or "").strip()
