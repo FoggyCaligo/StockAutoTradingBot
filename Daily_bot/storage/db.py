@@ -567,6 +567,34 @@ class Recorder:
                 index[key] = row
         return index
 
+    def has_recorded_sell_fill_after(
+        self,
+        ticker: str,
+        created_at: str | None,
+        exclude_order_id: str,
+        minimum_quantity: int = 1,
+    ) -> bool:
+        normalized_created_at = str(created_at or "").strip().replace(" ", "T")
+        rows = self.conn.execute(
+            """
+            SELECT quantity, filled_at
+            FROM fills
+            WHERE side = 'SELL'
+              AND ticker = ?
+              AND broker_order_id != ?
+              AND source != 'sell_reconciliation'
+            ORDER BY filled_at ASC, id ASC
+            """,
+            (ticker, exclude_order_id),
+        ).fetchall()
+        for row in rows:
+            filled_at = str(row["filled_at"] or "").strip()
+            if normalized_created_at and filled_at and filled_at < normalized_created_at:
+                continue
+            if int(row["quantity"] or 0) >= max(1, minimum_quantity):
+                return True
+        return False
+
     def rebuild_session_fill_exports(self, session_date: str) -> None:
         fill_rows = self.get_session_fills(session_date)
         fills_csv_path = self.log_dir / f"fills_{session_date.replace('-', '')}.csv"
@@ -591,12 +619,20 @@ class Recorder:
             )
 
         existing_snapshot_map = self._read_audit_snapshot_map()
+        audit_rows = self.conn.execute(
+            """
+            SELECT broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json
+            FROM fills
+            ORDER BY filled_at ASC, id ASC
+            """
+        ).fetchall()
         audit_entries: list[tuple[Fill, str, str]] = []
-        for row in fill_rows:
+        for row in audit_rows:
+            raw_json = row["raw_json"]
             try:
-                raw = json.loads(row["raw_json"]) if row.get("raw_json") else None
+                raw = json.loads(raw_json) if raw_json else None
             except json.JSONDecodeError:
-                raw = {"raw_json": row.get("raw_json", "")}
+                raw = {"raw_json": raw_json or ""}
             audit_entries.append(
                 (
                     Fill(
@@ -661,3 +697,48 @@ class Recorder:
             (limit,),
         ).fetchall()
         return [dict(row) for row in rows]
+
+    def purge_superseded_sell_reconciliation_fills(self, session_date: str | None = None) -> int:
+        params: list[Any] = []
+        session_filter = ""
+        if session_date:
+            session_filter = "AND substr(sr.filled_at, 1, 10) = ?"
+            params.append(session_date)
+
+        rows = self.conn.execute(
+            f"""
+            SELECT
+                sr.id,
+                sr.broker_order_id,
+                sr.ticker,
+                sr.quantity,
+                COALESCE(o.created_at, sr.filled_at) AS order_created_at
+            FROM fills sr
+            LEFT JOIN orders o
+              ON o.broker_order_id = sr.broker_order_id
+             AND o.side = 'SELL'
+            WHERE sr.side = 'SELL'
+              AND sr.source = 'sell_reconciliation'
+              {session_filter}
+            ORDER BY sr.id ASC
+            """,
+            params,
+        ).fetchall()
+
+        stale_ids: list[int] = []
+        for row in rows:
+            if self.has_recorded_sell_fill_after(
+                ticker=str(row["ticker"] or ""),
+                created_at=str(row["order_created_at"] or ""),
+                exclude_order_id=str(row["broker_order_id"] or ""),
+                minimum_quantity=int(row["quantity"] or 0),
+            ):
+                stale_ids.append(int(row["id"]))
+
+        if not stale_ids:
+            return 0
+
+        placeholders = ",".join("?" for _ in stale_ids)
+        self.conn.execute(f"DELETE FROM fills WHERE id IN ({placeholders})", stale_ids)
+        self.conn.commit()
+        return len(stale_ids)

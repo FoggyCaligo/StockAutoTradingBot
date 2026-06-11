@@ -41,6 +41,15 @@ class _RecorderStub:
     def rebuild_session_fill_exports(self, session_date: str) -> None:
         self.rebuilt_session_date = session_date
 
+    def has_recorded_sell_fill_after(
+        self,
+        ticker: str,
+        created_at: str | None,
+        exclude_order_id: str,
+        minimum_quantity: int = 1,
+    ) -> bool:
+        return False
+
 
 class _ClientStub:
     def __init__(self, orderable_cash: int):
@@ -320,6 +329,30 @@ def test_poll_and_record_new_fills_prefers_direct_sell_fill_before_reconciliatio
     assert fill.ticker == "008770"
     assert fill.quantity == 3
     assert fill.price == 53850
+
+
+def test_poll_and_record_new_fills_skips_sell_reconciliation_when_replacement_sell_was_already_recorded():
+    client = _ClientStub(orderable_cash=0)
+    client.positions = []
+    client.open_orders = []
+    recorder = _RecorderStub(orders=[], fills=[])
+
+    recorder.get_orders_needing_fill_poll = lambda: [
+        {
+            "broker_order_id": "SELL-1",
+            "ticker": "008770",
+            "side": "SELL",
+            "quantity": 3,
+            "price": 53900,
+            "created_at": "2026-06-11 09:12:00",
+            "recorded_fill_quantity": 0,
+        }
+    ]
+    recorder.has_recorded_sell_fill_after = lambda ticker, created_at, exclude_order_id, minimum_quantity=1: True
+
+    poll_and_record_new_fills(client, recorder)
+
+    assert recorder.fills == []
 
 
 def test_reconcile_broker_fills_replaces_existing_fill_and_rebuilds_exports():

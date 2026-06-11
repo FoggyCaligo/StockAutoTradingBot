@@ -395,6 +395,30 @@ def _infer_sell_fill_quantity(
     return max(0, total_quantity - remaining_position_quantity)
 
 
+def _has_superseding_sell_fill(
+    recorder: Recorder,
+    order: dict[str, object],
+    minimum_quantity: int,
+) -> bool:
+    if minimum_quantity <= 0 or not hasattr(recorder, "has_recorded_sell_fill_after"):
+        return False
+    try:
+        return bool(
+            recorder.has_recorded_sell_fill_after(
+                ticker=str(order.get("ticker") or ""),
+                created_at=str(order.get("created_at") or ""),
+                exclude_order_id=str(order.get("broker_order_id") or ""),
+                minimum_quantity=minimum_quantity,
+            )
+        )
+    except Exception as exc:
+        print(
+            "Failed to check for superseding sell fill "
+            f"for order_id={order.get('broker_order_id')} ticker={order.get('ticker')}: {exc}"
+        )
+        return False
+
+
 def _get_active_tickers(positions: list, open_orders: list[dict]) -> set[str]:
     tickers = {
         _ticker_key(getattr(position, "ticker", ""))
@@ -588,10 +612,13 @@ def poll_and_record_new_fills(client, recorder: Recorder) -> None:
             inferred_total_quantity = _infer_sell_fill_quantity(order, position_quantities, open_orders_by_id)
             if inferred_total_quantity <= already_recorded:
                 continue
+            delta_quantity = inferred_total_quantity - already_recorded
+            if _has_superseding_sell_fill(recorder, order, delta_quantity):
+                continue
             delta_fill = Fill(
                 order_id=order_id,
                 ticker=str(order.get("ticker") or ""),
-                quantity=inferred_total_quantity - already_recorded,
+                quantity=delta_quantity,
                 price=int(order.get("price") or 0),
                 raw={"source": "sell_reconciliation", "reason": "fill_lookup_missing"},
             )

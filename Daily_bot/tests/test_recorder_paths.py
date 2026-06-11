@@ -136,3 +136,37 @@ def test_recorder_persists_kospi_change_percent_for_account_and_fill_audit(tmp_p
     assert "kospi_change_percent" in audit_text
     assert "-0.87" in audit_text
     recorder.conn.close()
+
+
+def test_rebuild_session_fill_exports_keeps_other_sessions_in_trade_fill_audit(tmp_path):
+    recorder = Recorder(tmp_path / "bot.sqlite3")
+    recorder.save_fill(
+        Fill(
+            order_id="SELL-OLD",
+            ticker="000001",
+            quantity=1,
+            price=1000,
+            filled_at=datetime(2026, 6, 10, 15, 0, 0),
+        ),
+        side="SELL",
+        source="test",
+    )
+    recorder.save_fill(
+        Fill(
+            order_id="SELL-NEW",
+            ticker="000002",
+            quantity=2,
+            price=2000,
+            filled_at=datetime(2026, 6, 11, 15, 0, 0),
+        ),
+        side="SELL",
+        source="test",
+    )
+
+    recorder.rebuild_session_fill_exports("2026-06-11")
+
+    audit_csv = tmp_path / "logs" / "trade_fills_audit.csv"
+    audit_text = audit_csv.read_text(encoding="utf-8-sig")
+    assert "SELL-OLD" in audit_text
+    assert "SELL-NEW" in audit_text
+    recorder.conn.close()
