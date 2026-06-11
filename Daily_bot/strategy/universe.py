@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -140,6 +141,35 @@ def get_kospi200_list(
     raise RuntimeError(
         "Failed to load universe. Enable network access for FinanceDataReader or provide data/kospi200.csv."
     )
+
+
+def get_kospi_change_percent() -> float | None:
+    try:
+        import FinanceDataReader as fdr  # type: ignore[import]
+    except Exception:
+        return None
+
+    today = pd.Timestamp("today").normalize()
+    start = today - timedelta(days=7)
+    end = today + timedelta(days=1)
+
+    for symbol in ("KS11", "KOSPI"):
+        try:
+            df = fdr.DataReader(symbol, start=start, end=end)
+        except Exception:
+            continue
+        if not isinstance(df, pd.DataFrame) or df.empty or "Close" not in df.columns:
+            continue
+        close_series = pd.to_numeric(df["Close"], errors="coerce").dropna()
+        if len(close_series) < 2:
+            continue
+        previous_close = float(close_series.iloc[-2])
+        latest_close = float(close_series.iloc[-1])
+        if previous_close <= 0:
+            continue
+        return ((latest_close - previous_close) / previous_close) * 100
+
+    return None
 
 
 def filter_by_market_cap(df: pd.DataFrame, min_market_cap_krw: int) -> pd.DataFrame:

@@ -22,7 +22,7 @@ from Daily_bot.risk.stop_loss import monitor_stop_loss
 from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import calc_expected_return, final_filter, get_candidates_top
-from Daily_bot.strategy.universe import UniverseConfig, get_candidates
+from Daily_bot.strategy.universe import UniverseConfig, get_candidates, get_kospi_change_percent
 from Daily_bot.telemetry.trace_helpers import trace_candidate_watchlist
 from Daily_bot.utils import RateLimiter, get_tick_size, is_after_now, is_between_now, load_yaml, round_to_tick
 
@@ -48,9 +48,15 @@ def resolve_target_budget_per_stock(cfg: dict, planning_cash: int) -> int:
     if planning_cash <= 0:
         return 0
 
+    slot_budget_unit = int(cfg["risk"].get("slot_budget_unit_krw", 0) or 0)
+    max_budget_per_stock = int(cfg["risk"].get("max_budget_per_stock_krw", 0) or 0)
+    if slot_budget_unit > 0:
+        if max_budget_per_stock > 0:
+            return min(slot_budget_unit, max_budget_per_stock)
+        return slot_budget_unit
+
     ratio = float(cfg["risk"].get("target_budget_ratio_per_stock", 0) or 0)
     budget_from_ratio = int(planning_cash * ratio) if ratio > 0 else 0
-    max_budget_per_stock = int(cfg["risk"].get("max_budget_per_stock_krw", 0) or 0)
 
     if max_budget_per_stock > 0 and budget_from_ratio > 0:
         return min(budget_from_ratio, max_budget_per_stock)
@@ -125,18 +131,35 @@ def warm_universe(cfg: dict) -> None:
     get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
 
 
-def scan_and_rank(client, recorder: Recorder, cfg: dict) -> list[Candidate]:
+def resolve_kospi_change_percent() -> float | None:
+    try:
+        return get_kospi_change_percent()
+    except Exception as exc:
+        print(f"Failed to resolve KOSPI change percent: {exc}")
+        return None
+
+
+def scan_and_rank(client, recorder: Recorder, cfg: dict, kospi_change_percent: float | None = None) -> list[Candidate]:
     candidates = get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
     limiter = RateLimiter(cfg["api"]["quote_rate_limit_per_second"])
     calculated: list[Candidate] = []
+    scan_cycle_at = datetime.now()
     for ticker, candidate in candidates.items():
         try:
             limiter.wait()
             snapshot = client.get_20hoga(ticker)
             candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"])
-            recorder.save_snapshot(candidate, snapshot)
-            recorder.save_signal(candidate, selected=False)
-            recorder.save_market_trace(candidate, snapshot, phase="scan_candidate", selected=False, reason="main_scan")
+            recorder.save_snapshot(candidate, snapshot, scan_cycle_at=scan_cycle_at)
+            recorder.save_signal(candidate, selected=False, scan_cycle_at=scan_cycle_at)
+            recorder.save_market_trace(
+                candidate,
+                snapshot,
+                phase="scan_candidate",
+                selected=False,
+                reason="main_scan",
+                scan_cycle_at=scan_cycle_at,
+                kospi_change_percent=kospi_change_percent,
+            )
             calculated.append(candidate)
         except Exception as exc:
             print(f"Skipping {ticker} during scan due to error: {exc}")
@@ -465,6 +488,7 @@ def is_daily_loss_limit_reached(
     positions: list | None = None,
     open_orders: list[dict] | None = None,
     recorder: Recorder | None = None,
+    kospi_change_percent: float | None = None,
 ) -> bool:
     limit_percent = float(cfg["risk"].get("daily_loss_limit_percent", 0) or 0)
     if limit_percent <= 0 or initial_account_value <= 0:
@@ -492,6 +516,7 @@ def is_daily_loss_limit_reached(
             adjusted_account_value=adjusted_current_value,
             adjusted_pnl=adjusted_pnl,
             loss_percent=loss_percent,
+            kospi_change_percent=kospi_change_percent,
         )
 
     if loss_percent >= limit_percent:
@@ -718,6 +743,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     initial_account_value = estimate_account_value(client)
     print(f"Initial account value estimate: {initial_account_value}")
     active_poll_seconds = min(5, max(1, int(cfg["strategy"].get("scan_interval_seconds", 60))))
+    kospi_change_percent = resolve_kospi_change_percent()
 
     while True:
         in_buy_window = is_between_now(cfg["market"]["start_buy_time"], cfg["market"]["stop_buy_time"])
@@ -776,6 +802,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 quote_rate_limit_per_second=cfg["api"]["quote_rate_limit_per_second"],
                 sell_tick_offset=cfg["strategy"]["sell_tick_offset"],
                 selected_keys=active_tickers,
+                kospi_change_percent=kospi_change_percent,
             )
         if has_position(positions):
             stop_loss_executed = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
@@ -792,6 +819,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             positions,
             open_orders,
             recorder=recorder,
+            kospi_change_percent=kospi_change_percent,
         ):
             time.sleep(5)
             continue
@@ -807,7 +835,8 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
         state = BotState.SCANNING
         try:
-            calculated = scan_and_rank(client, recorder, cfg)
+            kospi_change_percent = resolve_kospi_change_percent()
+            calculated = scan_and_rank(client, recorder, cfg, kospi_change_percent=kospi_change_percent)
         except Exception as exc:
             print(f"Scan cycle failed: {exc}")
             time.sleep(cfg["strategy"]["scan_interval_seconds"])

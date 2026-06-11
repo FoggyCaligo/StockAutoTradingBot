@@ -84,7 +84,8 @@ strategy:
 ```yaml
 risk:
   min_slot_count: 3
-  target_budget_ratio_per_stock: 0.33
+  slot_budget_unit_krw: 5000000
+  target_budget_ratio_per_stock: 0.50
   max_budget_per_cycle_krw: 0
   max_budget_per_stock_krw: 5000000
   max_position_count: 0
@@ -92,9 +93,11 @@ risk:
 
 해석:
 
-- 최소 3슬롯 기준으로 예산을 나눕니다.
-- 종목당 목표 비중은 약 33%입니다.
-- 종목당 최대 500만 원을 넘기지 않습니다.
+- 최소 슬롯 수는 항상 3개입니다.
+- `slot_budget_unit_krw`가 설정되어 있으면 슬롯 수는 `planning_cash // slot_budget_unit_krw`를 기준으로 계단식으로 늘어납니다.
+- 예를 들어 `slot_budget_unit_krw: 5000000`이면 `1500만 원 이하 -> 3슬롯`, `2000만 원대 -> 4슬롯`, `2500만 원대 -> 5슬롯`처럼 동작합니다.
+- 종목당 최대 투입 금액은 `max_budget_per_stock_krw`로 제한되며, 현재 기본값은 500만 원입니다.
+- `target_budget_ratio_per_stock`는 `slot_budget_unit_krw`가 0일 때만 사용하는 fallback 비율입니다.
 - `max_buy_count: 0`, `max_position_count: 0`은 고정 개수 제한 없이 자금과 조건에 따라 유연하게 진입한다는 뜻입니다.
 
 ## 주문/체결 흐름
@@ -214,3 +217,28 @@ python .\Daily_bot\main.py --dry-run
 - `Daily_bot/logs/run_real.lock`에서 현재 실행 PID를 확인할 수 있습니다.
 - 장중에는 로그보다 MTS 숫자를 우선 확인하는 편이 안전합니다.
 - 마감 후 기록 검증은 `fills_YYYYMMDD.csv`, `trade_fills_audit.csv`, `bot.sqlite3`의 `fills` 테이블 순서로 확인하면 됩니다.
+## 성과 측정 기준
+
+과거 로그는 포맷 변경, 누락 복구, 재시작, 일부 기간 데이터 폐기 이력이 있으므로 장기 평균 수익률을 해석할 때 그대로 신뢰하지 않는다.
+
+현재부터는 아래 기준을 공식 기준으로 사용한다.
+
+1. 장중 체감 손익 확인은 `MTS`를 우선한다.
+2. 당일 공식 체결 기록은 `15:15` 이후 `EOD reconciliation`이 끝난 뒤의 `bot.sqlite3` `fills` 테이블을 기준으로 본다.
+3. `fills_YYYYMMDD.csv`와 `trade_fills_audit.csv`는 위 DB 기준 결과를 사람이 보기 쉽게 다시 내보낸 산출물로 본다.
+4. 장기 성과 평가는 로그 형식이 고정된 이후의 연속 구간만 사용한다.
+5. 일평균 수익률, 월수익률, 승률, 손익비, 최대낙폭은 최소 `20영업일` 연속 데이터가 쌓인 뒤 판단한다.
+6. 중간에 로그 형식, 수익 계산 방식, 체결 복구 로직이 바뀐 경우 그 시점 전후 구간은 분리해서 해석한다.
+
+즉, 앞으로의 공식 성과 평가는 아래 순서를 따른다.
+
+1. 장중: `MTS`로 체감 손익 확인
+2. 마감 후: `15:15` 이후 `bot.sqlite3` `fills` 기준 확정
+3. 검산: `fills_YYYYMMDD.csv`, `trade_fills_audit.csv`와 대조
+4. 통계 평가: 포맷 고정 이후 `20영업일` 이상 연속 데이터만 사용
+
+현재 판단 원칙:
+
+- `일 0.15%` 목표는 가능성이 있지만, 연속 실측 데이터가 더 쌓이기 전까지는 확정 평균으로 단정하지 않는다.
+- 반대로, 과거 일부 로그만으로 전략 수익률을 과소평가하지도 않는다.
+- 전략의 기대값과 로그의 신뢰도는 분리해서 해석한다.

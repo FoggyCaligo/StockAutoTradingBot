@@ -9,13 +9,22 @@ class _RecorderStub:
     snapshots: list[str]
     signals: list[str]
 
-    def save_snapshot(self, candidate, snapshot) -> None:
+    def save_snapshot(self, candidate, snapshot, scan_cycle_at=None) -> None:
         self.snapshots.append(candidate.ticker)
 
-    def save_signal(self, candidate, selected: bool = False) -> None:
+    def save_signal(self, candidate, selected: bool = False, scan_cycle_at=None) -> None:
         self.signals.append(candidate.ticker)
 
-    def save_market_trace(self, candidate, snapshot, phase: str, selected: bool = False, reason: str = "") -> None:
+    def save_market_trace(
+        self,
+        candidate,
+        snapshot,
+        phase: str,
+        selected: bool = False,
+        reason: str = "",
+        scan_cycle_at=None,
+        kospi_change_percent=None,
+    ) -> None:
         pass
 
 

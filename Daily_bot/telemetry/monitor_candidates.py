@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,7 +17,7 @@ from Daily_bot.broker.kiwoom_client import KiwoomClient
 from Daily_bot.broker.mock_client import MockKiwoomClient
 from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.signal import calc_expected_return, final_filter, get_candidates_top
-from Daily_bot.strategy.universe import UniverseConfig, get_candidates
+from Daily_bot.strategy.universe import UniverseConfig, get_candidates, get_kospi_change_percent
 from Daily_bot.telemetry.trace_helpers import ticker_key, trace_candidate_watchlist
 from Daily_bot.utils import RateLimiter, is_after_now, is_between_now, load_yaml
 
@@ -38,23 +39,39 @@ def build_universe_config(cfg: dict) -> UniverseConfig:
     )
 
 
-def scan_filtered_candidates(client, recorder: Recorder, cfg: dict) -> dict[str, object]:
+def resolve_kospi_change_percent() -> float | None:
+    try:
+        return get_kospi_change_percent()
+    except Exception as exc:
+        print(f"Failed to resolve KOSPI change percent for monitor: {exc}")
+        return None
+
+
+def scan_filtered_candidates(
+    client,
+    recorder: Recorder,
+    cfg: dict,
+    kospi_change_percent: float | None = None,
+) -> dict[str, object]:
     candidates = get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
     limiter = RateLimiter(cfg["api"]["quote_rate_limit_per_second"])
     calculated = []
+    scan_cycle_at = datetime.now()
     for ticker, candidate in candidates.items():
         try:
             limiter.wait()
             snapshot = client.get_20hoga(ticker)
             calculated_candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"])
-            recorder.save_snapshot(calculated_candidate, snapshot)
-            recorder.save_signal(calculated_candidate, selected=False)
+            recorder.save_snapshot(calculated_candidate, snapshot, scan_cycle_at=scan_cycle_at)
+            recorder.save_signal(calculated_candidate, selected=False, scan_cycle_at=scan_cycle_at)
             recorder.save_market_trace(
                 calculated_candidate,
                 snapshot,
                 phase="candidate_scan",
                 selected=False,
                 reason="monitor_scan",
+                scan_cycle_at=scan_cycle_at,
+                kospi_change_percent=kospi_change_percent,
             )
             calculated.append(calculated_candidate)
         except Exception as exc:
@@ -90,7 +107,13 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             continue
 
         try:
-            filtered = scan_filtered_candidates(client, recorder, cfg)
+            kospi_change_percent = resolve_kospi_change_percent()
+            filtered = scan_filtered_candidates(
+                client,
+                recorder,
+                cfg,
+                kospi_change_percent=kospi_change_percent,
+            )
             watchlist.update(filtered)
             if watchlist:
                 watchlist = trace_candidate_watchlist(
@@ -100,6 +123,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                     quote_rate_limit_per_second=cfg["api"]["quote_rate_limit_per_second"],
                     sell_tick_offset=cfg["strategy"]["sell_tick_offset"],
                     selected_keys=set(filtered.keys()),
+                    kospi_change_percent=kospi_change_percent,
                 )
             print(f"Candidate monitor traced {len(watchlist)} candidates; latest filtered={len(filtered)}")
         except Exception as exc:

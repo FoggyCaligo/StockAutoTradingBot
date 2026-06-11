@@ -475,20 +475,34 @@ def test_resolve_target_budget_per_stock_prefers_ratio_and_caps_with_max():
     assert resolve_target_budget_per_stock(cfg, planning_cash=20_000_000) == 5_000_000
 
 
-def test_resolve_buy_count_scales_with_cash_using_ratio_and_min_slots():
+def test_resolve_target_budget_per_stock_prefers_slot_unit_when_configured():
+    cfg = {
+        "risk": {
+            "slot_budget_unit_krw": 5_000_000,
+            "target_budget_ratio_per_stock": 0.33,
+            "max_budget_per_stock_krw": 7_000_000,
+        },
+    }
+
+    assert resolve_target_budget_per_stock(cfg, planning_cash=20_000_000) == 5_000_000
+
+
+def test_resolve_buy_count_scales_with_cash_using_slot_unit_and_min_slots():
     cfg = {
         "strategy": {"max_buy_count": 0},
         "risk": {
             "min_slot_count": 3,
-            "target_budget_ratio_per_stock": 0.33,
+            "slot_budget_unit_krw": 5_000_000,
             "max_budget_per_stock_krw": 5_000_000,
         },
     }
 
-    assert resolve_buy_count(cfg, empty_slots=3, planning_cash=80_000) == 3
-    assert resolve_buy_count(cfg, empty_slots=5, planning_cash=300_000) == 3
+    assert resolve_buy_count(cfg, empty_slots=3, planning_cash=10_000_000) == 3
+    assert resolve_buy_count(cfg, empty_slots=5, planning_cash=15_000_000) == 3
     assert resolve_buy_count(cfg, empty_slots=40, planning_cash=20_000_000) == 4
-    assert resolve_buy_count(cfg, empty_slots=40, planning_cash=60_000_000) == 12
+    assert resolve_buy_count(cfg, empty_slots=40, planning_cash=25_000_000) == 5
+    assert resolve_buy_count(cfg, empty_slots=40, planning_cash=50_000_000) == 10
+    assert resolve_buy_count(cfg, empty_slots=40, planning_cash=100_000_000) == 20
 
 
 def test_resolve_buy_count_respects_empty_slots_and_explicit_max_buy_count():

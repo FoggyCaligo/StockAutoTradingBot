@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS hoga_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ticker TEXT NOT NULL,
     captured_at TEXT NOT NULL,
+    scan_cycle_at TEXT,
     current_price INTEGER,
     expect_price INTEGER,
     expect_revenue_percent REAL,
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS signals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ticker TEXT NOT NULL,
     created_at TEXT NOT NULL,
+    scan_cycle_at TEXT,
     price INTEGER,
     expect_price INTEGER,
     expect_revenue_percent REAL,
@@ -64,6 +66,7 @@ CREATE TABLE IF NOT EXISTS market_traces (
     session_date TEXT NOT NULL,
     phase TEXT NOT NULL,
     ticker TEXT NOT NULL,
+    scan_cycle_at TEXT,
     selected INTEGER DEFAULT 0,
     reason TEXT,
     price INTEGER,
@@ -73,6 +76,7 @@ CREATE TABLE IF NOT EXISTS market_traces (
     expect_price INTEGER,
     expect_revenue_percent REAL,
     spread_percent REAL,
+    kospi_change_percent REAL,
     raw_json TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -87,6 +91,7 @@ CREATE TABLE IF NOT EXISTS account_traces (
     adjusted_account_value INTEGER,
     adjusted_pnl INTEGER,
     loss_percent REAL,
+    kospi_change_percent REAL,
     positions_json TEXT,
     open_orders_json TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -99,6 +104,20 @@ ACCOUNT_TRACE_EXTRA_COLUMNS = {
     "adjusted_account_value": "INTEGER",
     "adjusted_pnl": "INTEGER",
     "loss_percent": "REAL",
+    "kospi_change_percent": "REAL",
+}
+
+TABLE_EXTRA_COLUMNS = {
+    "hoga_snapshots": {
+        "scan_cycle_at": "TEXT",
+    },
+    "signals": {
+        "scan_cycle_at": "TEXT",
+    },
+    "market_traces": {
+        "scan_cycle_at": "TEXT",
+        "kospi_change_percent": "REAL",
+    },
 }
 
 
@@ -113,8 +132,18 @@ class Recorder:
         self.conn = sqlite3.connect(self.path)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        self._ensure_table_columns()
         self._ensure_account_trace_columns()
         self.conn.commit()
+
+    def _ensure_table_columns(self) -> None:
+        for table_name, extra_columns in TABLE_EXTRA_COLUMNS.items():
+            existing_columns = {
+                row["name"] for row in self.conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+            }
+            for column_name, column_type in extra_columns.items():
+                if column_name not in existing_columns:
+                    self.conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
 
     def _ensure_account_trace_columns(self) -> None:
         existing_columns = {
@@ -177,6 +206,12 @@ class Recorder:
 
     def _append_csv_row(self, path: Path, fieldnames: list[str], row: dict[str, Any]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists() and path.stat().st_size > 0:
+            with path.open("r", newline="", encoding="utf-8-sig") as fp:
+                reader = csv.reader(fp)
+                existing_header = next(reader, [])
+            if existing_header != fieldnames:
+                self._rewrite_csv_with_new_header(path, fieldnames)
         should_write_header = not path.exists() or path.stat().st_size == 0
         with path.open("a", newline="", encoding="utf-8-sig") as fp:
             writer = csv.DictWriter(fp, fieldnames=fieldnames)
@@ -184,10 +219,21 @@ class Recorder:
                 writer.writeheader()
             writer.writerow({field: row.get(field, "") for field in fieldnames})
 
+    def _rewrite_csv_with_new_header(self, path: Path, fieldnames: list[str]) -> None:
+        if not path.exists() or path.stat().st_size == 0:
+            return
+        with path.open("r", newline="", encoding="utf-8-sig") as fp:
+            rows = list(csv.DictReader(fp))
+        with path.open("w", newline="", encoding="utf-8-sig") as fp:
+            writer = csv.DictWriter(fp, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in rows:
+                writer.writerow({field: row.get(field, "") for field in fieldnames})
+
     def _latest_account_trace(self) -> dict[str, Any] | None:
         row = self.conn.execute(
             """
-            SELECT cash, account_value, adjusted_account_value, adjusted_pnl, loss_percent
+            SELECT cash, account_value, adjusted_account_value, adjusted_pnl, loss_percent, kospi_change_percent
             FROM account_traces
             ORDER BY id DESC
             LIMIT 1
@@ -195,16 +241,22 @@ class Recorder:
         ).fetchone()
         return dict(row) if row is not None else None
 
-    def save_snapshot(self, candidate: Candidate, snapshot: HogaSnapshot) -> None:
+    def save_snapshot(
+        self,
+        candidate: Candidate,
+        snapshot: HogaSnapshot,
+        scan_cycle_at: datetime | None = None,
+    ) -> None:
         self.conn.execute(
             """
             INSERT INTO hoga_snapshots
-            (ticker, captured_at, current_price, expect_price, expect_revenue_percent, spread_percent, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (ticker, captured_at, scan_cycle_at, current_price, expect_price, expect_revenue_percent, spread_percent, raw_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 candidate.ticker,
                 snapshot.captured_at.isoformat(),
+                scan_cycle_at.isoformat() if scan_cycle_at is not None else None,
                 snapshot.current_price,
                 candidate.expect_price,
                 candidate.expect_revenue_percent,
@@ -214,15 +266,21 @@ class Recorder:
         )
         self.conn.commit()
 
-    def save_signal(self, candidate: Candidate, selected: bool = False) -> None:
+    def save_signal(
+        self,
+        candidate: Candidate,
+        selected: bool = False,
+        scan_cycle_at: datetime | None = None,
+    ) -> None:
         self.conn.execute(
             """
             INSERT INTO signals
-            (ticker, created_at, price, expect_price, expect_revenue_percent, spread_percent, selected)
-            VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)
+            (ticker, created_at, scan_cycle_at, price, expect_price, expect_revenue_percent, spread_percent, selected)
+            VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)
             """,
             (
                 candidate.ticker,
+                scan_cycle_at.isoformat() if scan_cycle_at is not None else None,
                 candidate.price,
                 candidate.expect_price,
                 candidate.expect_revenue_percent,
@@ -239,6 +297,8 @@ class Recorder:
         phase: str,
         selected: bool = False,
         reason: str = "",
+        scan_cycle_at: datetime | None = None,
+        kospi_change_percent: float | None = None,
     ) -> None:
         from datetime import datetime
 
@@ -250,6 +310,7 @@ class Recorder:
             "session_date": session_date,
             "phase": phase,
             "ticker": candidate.ticker,
+            "scan_cycle_at": scan_cycle_at.isoformat() if scan_cycle_at is not None else None,
             "selected": 1 if selected else 0,
             "reason": reason,
             "price": candidate.price,
@@ -259,19 +320,21 @@ class Recorder:
             "expect_price": candidate.expect_price,
             "expect_revenue_percent": candidate.expect_revenue_percent,
             "spread_percent": candidate.spread_percent,
+            "kospi_change_percent": kospi_change_percent,
             "raw_json": raw_json,
         }
         self.conn.execute(
             """
             INSERT INTO market_traces
-            (session_date, phase, ticker, selected, reason, price, current_price, best_bid, best_ask,
-             expect_price, expect_revenue_percent, spread_percent, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (session_date, phase, ticker, scan_cycle_at, selected, reason, price, current_price, best_bid, best_ask,
+             expect_price, expect_revenue_percent, spread_percent, kospi_change_percent, raw_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row["session_date"],
                 row["phase"],
                 row["ticker"],
+                row["scan_cycle_at"],
                 row["selected"],
                 row["reason"],
                 row["price"],
@@ -281,6 +344,7 @@ class Recorder:
                 row["expect_price"],
                 row["expect_revenue_percent"],
                 row["spread_percent"],
+                row["kospi_change_percent"],
                 row["raw_json"],
             ),
         )
@@ -291,6 +355,7 @@ class Recorder:
                 "session_date",
                 "phase",
                 "ticker",
+                "scan_cycle_at",
                 "selected",
                 "reason",
                 "price",
@@ -300,6 +365,7 @@ class Recorder:
                 "expect_price",
                 "expect_revenue_percent",
                 "spread_percent",
+                "kospi_change_percent",
                 "raw_json",
             ],
             row,
@@ -316,6 +382,7 @@ class Recorder:
         adjusted_account_value: int | None = None,
         adjusted_pnl: int | None = None,
         loss_percent: float | None = None,
+        kospi_change_percent: float | None = None,
     ) -> None:
         from datetime import datetime
 
@@ -331,6 +398,7 @@ class Recorder:
             "adjusted_account_value": adjusted_account_value if adjusted_account_value is not None else account_value - external_cash_flow,
             "adjusted_pnl": adjusted_pnl,
             "loss_percent": loss_percent,
+            "kospi_change_percent": kospi_change_percent,
             "positions_json": positions_json,
             "open_orders_json": open_orders_json,
         }
@@ -338,8 +406,8 @@ class Recorder:
             """
             INSERT INTO account_traces
             (session_date, phase, cash, account_value, external_cash_flow, adjusted_account_value,
-             adjusted_pnl, loss_percent, positions_json, open_orders_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             adjusted_pnl, loss_percent, kospi_change_percent, positions_json, open_orders_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row["session_date"],
@@ -350,6 +418,7 @@ class Recorder:
                 row["adjusted_account_value"],
                 row["adjusted_pnl"],
                 row["loss_percent"],
+                row["kospi_change_percent"],
                 row["positions_json"],
                 row["open_orders_json"],
             ),
@@ -366,6 +435,7 @@ class Recorder:
                 "adjusted_account_value",
                 "adjusted_pnl",
                 "loss_percent",
+                "kospi_change_percent",
                 "positions_json",
                 "open_orders_json",
             ],
@@ -563,6 +633,7 @@ class Recorder:
                     "adjusted_account_value": row.get("adjusted_account_value", ""),
                     "adjusted_pnl": row.get("adjusted_pnl", ""),
                     "loss_percent": row.get("loss_percent", ""),
+                    "kospi_change_percent": row.get("kospi_change_percent", ""),
                 }
         return snapshot_map
 
