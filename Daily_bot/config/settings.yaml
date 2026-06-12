@@ -34,7 +34,9 @@ risk:
   # Ratio-based sizing is kept as a fallback when slot_budget_unit_krw is 0.
   target_budget_ratio_per_stock: 0.50
   max_budget_per_cycle_krw: 0
-  max_budget_per_stock_krw: 5000000
+  # Keep this at 0 for equal remaining-cash / remaining-slot allocation.
+  # Set a positive value only when a hard per-stock cap is needed.
+  max_budget_per_stock_krw: 0
   stop_loss_percent: 3.7
   daily_loss_limit_percent: 10.0
 
