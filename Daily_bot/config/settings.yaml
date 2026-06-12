@@ -29,14 +29,13 @@ risk:
   dry_run: false
   max_position_count: 0
   min_slot_count: 3
-  # When set, slot count scales by planning_cash // slot_budget_unit_krw, with min_slot_count as the floor.
+  # Used as the target slot unit when deriving how many slots the account can support.
   slot_budget_unit_krw: 5000000
   # Ratio-based sizing is kept as a fallback when slot_budget_unit_krw is 0.
   target_budget_ratio_per_stock: 0.50
   max_budget_per_cycle_krw: 0
-  # Keep this at 0 for equal remaining-cash / remaining-slot allocation.
-  # Set a positive value only when a hard per-stock cap is needed.
-  max_budget_per_stock_krw: 0
+  # Hard cap per stock. Actual buy budget is derived from tradeable cash / slots, then capped by this value.
+  max_budget_per_stock_krw: 5000000
   stop_loss_percent: 3.7
   daily_loss_limit_percent: 10.0
 
