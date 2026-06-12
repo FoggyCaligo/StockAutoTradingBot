@@ -46,6 +46,16 @@ def trim_targets(
     return result
 
 
+def resolve_equal_slot_budget(remaining_cash_krw: int, remaining_slots: int, max_budget_per_stock_krw: int = 0) -> int:
+    """Return the buy budget for the next slot using equal remaining-slot splitting."""
+    if remaining_cash_krw <= 0 or remaining_slots <= 0:
+        return 0
+    per_slot_budget = remaining_cash_krw // remaining_slots
+    if max_budget_per_stock_krw > 0:
+        return min(per_slot_budget, max_budget_per_stock_krw)
+    return per_slot_budget
+
+
 def select_affordable_targets(
     candidates: list[Candidate],
     max_buy_count: int,
@@ -66,13 +76,7 @@ def select_affordable_targets(
         selected: list[Candidate] = []
         for candidate in eligible:
             remaining_slots = target_count - len(selected)
-            if remaining_slots <= 0:
-                break
-
-            if budget_per_stock_krw > 0:
-                per_stock_budget = min(budget_per_stock_krw, remaining_cash)
-            else:
-                per_stock_budget = remaining_cash if remaining_slots <= 1 else remaining_cash // remaining_slots
+            per_stock_budget = resolve_equal_slot_budget(remaining_cash, remaining_slots, budget_per_stock_krw)
 
             qty = calc_order_quantity(candidate, per_stock_budget)
             estimated_cost = qty * candidate.price
