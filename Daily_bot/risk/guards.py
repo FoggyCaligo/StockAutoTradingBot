@@ -46,8 +46,30 @@ def trim_targets(
     return result
 
 
+def resolve_slot_count_by_cap(
+    tradeable_cash_krw: int,
+    per_stock_cap_krw: int,
+    min_slot_count: int = 1,
+    max_slot_count: int = 0,
+) -> int:
+    """Derive the desired slot count from the per-stock cap, then apply slot bounds."""
+    if tradeable_cash_krw <= 0:
+        return 0
+
+    floor_slots = max(1, int(min_slot_count or 1))
+    if per_stock_cap_krw > 0:
+        cap_based_slots = max(1, tradeable_cash_krw // per_stock_cap_krw)
+    else:
+        cap_based_slots = floor_slots
+
+    desired_slots = max(floor_slots, cap_based_slots)
+    if max_slot_count > 0:
+        return min(desired_slots, max_slot_count)
+    return desired_slots
+
+
 def resolve_equal_slot_budget(remaining_cash_krw: int, remaining_slots: int, max_budget_per_stock_krw: int = 0) -> int:
-    """Return the buy budget for the next slot using equal remaining-slot splitting."""
+    """Split tradeable cash across slots, then apply the per-stock hard cap."""
     if remaining_cash_krw <= 0 or remaining_slots <= 0:
         return 0
     per_slot_budget = remaining_cash_krw // remaining_slots
