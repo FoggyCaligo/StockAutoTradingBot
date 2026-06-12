@@ -31,7 +31,9 @@ risk:
   min_slot_count: 3
   target_budget_ratio_per_stock: 0.33
   max_budget_per_cycle_krw: 0
-  max_budget_per_stock_krw: 5000000
+  # Keep this at 0 to split remaining cash evenly across remaining target slots.
+  # A positive value is treated as an absolute per-stock budget cap and can front-load cash into earlier slots.
+  max_budget_per_stock_krw: 0
   stop_loss_percent: 4.0
   daily_loss_limit_percent: 10.0
   daily_loss_limit_krw: 10000
