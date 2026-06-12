@@ -5,6 +5,8 @@ from datetime import datetime
 from Daily_bot.models import Candidate, Position
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 
+PLANNED_BUDGET_ATTR = "planned_budget_krw"
+
 
 def has_position(positions: list[Position]) -> bool:
     return any(p.quantity > 0 for p in positions)
@@ -14,10 +16,18 @@ def has_open_orders(open_orders: list[dict]) -> bool:
     return len(open_orders) > 0
 
 
+def _resolve_candidate_budget(candidate: Candidate, budget_per_stock_krw: int) -> int:
+    planned_budget = int(getattr(candidate, PLANNED_BUDGET_ATTR, 0) or 0)
+    if planned_budget > 0:
+        return min(planned_budget, budget_per_stock_krw) if budget_per_stock_krw > 0 else planned_budget
+    return budget_per_stock_krw
+
+
 def calc_order_quantity(candidate: Candidate, budget_per_stock_krw: int) -> int:
     if candidate.price <= 0:
         return 0
-    return max(0, budget_per_stock_krw // candidate.price)
+    effective_budget = _resolve_candidate_budget(candidate, budget_per_stock_krw)
+    return max(0, effective_budget // candidate.price)
 
 
 def can_buy_candidate(candidate: Candidate, budget_per_stock_krw: int, sell_tick_offset: int) -> bool:
@@ -46,6 +56,38 @@ def trim_targets(
     return result
 
 
+def resolve_slot_count_by_cap(
+    tradeable_cash_krw: int,
+    per_stock_cap_krw: int,
+    min_slot_count: int = 1,
+    max_slot_count: int = 0,
+) -> int:
+    """Derive the desired slot count from the per-stock cap, then apply slot bounds."""
+    if tradeable_cash_krw <= 0:
+        return 0
+
+    floor_slots = max(1, int(min_slot_count or 1))
+    if per_stock_cap_krw > 0:
+        cap_based_slots = max(1, tradeable_cash_krw // per_stock_cap_krw)
+    else:
+        cap_based_slots = floor_slots
+
+    desired_slots = max(floor_slots, cap_based_slots)
+    if max_slot_count > 0:
+        return min(desired_slots, max_slot_count)
+    return desired_slots
+
+
+def resolve_equal_slot_budget(remaining_cash_krw: int, remaining_slots: int, max_budget_per_stock_krw: int = 0) -> int:
+    """Split tradeable cash across slots, then apply the per-stock hard cap."""
+    if remaining_cash_krw <= 0 or remaining_slots <= 0:
+        return 0
+    per_slot_budget = remaining_cash_krw // remaining_slots
+    if max_budget_per_stock_krw > 0:
+        return min(per_slot_budget, max_budget_per_stock_krw)
+    return per_slot_budget
+
+
 def select_affordable_targets(
     candidates: list[Candidate],
     max_buy_count: int,
@@ -66,17 +108,13 @@ def select_affordable_targets(
         selected: list[Candidate] = []
         for candidate in eligible:
             remaining_slots = target_count - len(selected)
-            if remaining_slots <= 0:
-                break
+            per_stock_budget = resolve_equal_slot_budget(remaining_cash, remaining_slots, budget_per_stock_krw)
 
-            if budget_per_stock_krw > 0:
-                per_stock_budget = min(budget_per_stock_krw, remaining_cash)
-            else:
-                per_stock_budget = remaining_cash if remaining_slots <= 1 else remaining_cash // remaining_slots
-
+            setattr(candidate, PLANNED_BUDGET_ATTR, per_stock_budget)
             qty = calc_order_quantity(candidate, per_stock_budget)
             estimated_cost = qty * candidate.price
             if qty <= 0 or estimated_cost <= 0 or estimated_cost > remaining_cash:
+                setattr(candidate, PLANNED_BUDGET_ATTR, 0)
                 continue
 
             selected.append(candidate)
@@ -84,5 +122,8 @@ def select_affordable_targets(
 
         if len(selected) == target_count:
             return selected
+
+        for candidate in selected:
+            setattr(candidate, PLANNED_BUDGET_ATTR, 0)
 
     return []
