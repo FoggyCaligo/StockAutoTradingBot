@@ -11,6 +11,7 @@ from Daily_bot.main import (
     reconcile_broker_fills,
     resolve_buy_count,
     resolve_empty_slots,
+    resolve_total_slot_count,
     resolve_target_budget_per_stock,
 )
 from Daily_bot.models import Candidate, Fill, OrderResult
@@ -265,6 +266,44 @@ def test_activate_buy_records_target_exit_fill_when_sell_fill_is_available():
     assert any(side == "SELL" and source == "target_exit" for _fill, side, source in recorder.fills)
 
 
+def test_activate_buy_uses_session_fixed_slot_budget_per_stock():
+    client = _ClientStub(orderable_cash=120_000)
+    recorder = _RecorderStub(orders=[], fills=[])
+    targets = [
+        Candidate(ticker="005930", price=10_000, expect_price=10_200),
+        Candidate(ticker="000660", price=10_000, expect_price=10_200),
+    ]
+
+    activate_buy(client, recorder, targets, _cfg(), slot_budget_per_stock=40_000)
+
+    assert client.buy_calls == [
+        ("005930", 4, 10_000),
+        ("000660", 4, 10_000),
+    ]
+
+
+def test_activate_buy_stops_when_session_position_limit_is_already_reached():
+    client = _ClientStub(orderable_cash=300_000)
+    client.positions = [
+        type("Position", (), {"ticker": "005930", "quantity": 1, "avg_price": 70_000})(),
+        type("Position", (), {"ticker": "000660", "quantity": 1, "avg_price": 200_000})(),
+        type("Position", (), {"ticker": "035420", "quantity": 1, "avg_price": 50_000})(),
+    ]
+    client.open_orders = [
+        {"order_id": "SELL-1", "ticker": "051910", "side": "SELL", "ord_qty": "1"},
+        {"order_id": "BUY-1", "ticker": "068270", "side": "BUY", "ord_qty": "1"},
+    ]
+    recorder = _RecorderStub(orders=[], fills=[])
+    targets = [
+        Candidate(ticker="207940", price=100_000, expect_price=100_500),
+        Candidate(ticker="105560", price=50_000, expect_price=50_300),
+    ]
+
+    activate_buy(client, recorder, targets, _unlimited_cfg(), position_limit=5, slot_budget_per_stock=100_000)
+
+    assert client.buy_calls == []
+
+
 def test_poll_and_record_new_fills_reconciles_missing_sell_fill_when_position_is_gone():
     client = _ClientStub(orderable_cash=0)
     client.positions = []
@@ -511,12 +550,14 @@ def test_resolve_target_budget_per_stock_prefers_ratio_and_caps_with_max():
 def test_resolve_target_budget_per_stock_prefers_slot_unit_when_configured():
     cfg = {
         "risk": {
+            "min_slot_count": 3,
             "slot_budget_unit_krw": 5_000_000,
             "target_budget_ratio_per_stock": 0.33,
             "max_budget_per_stock_krw": 7_000_000,
         },
     }
 
+    assert resolve_target_budget_per_stock(cfg, planning_cash=12_000_000) == 4_000_000
     assert resolve_target_budget_per_stock(cfg, planning_cash=20_000_000) == 5_000_000
 
 
@@ -536,6 +577,20 @@ def test_resolve_buy_count_scales_with_cash_using_slot_unit_and_min_slots():
     assert resolve_buy_count(cfg, empty_slots=40, planning_cash=25_000_000) == 5
     assert resolve_buy_count(cfg, empty_slots=40, planning_cash=50_000_000) == 10
     assert resolve_buy_count(cfg, empty_slots=40, planning_cash=100_000_000) == 20
+
+
+def test_resolve_total_slot_count_respects_slot_unit_and_min_slots():
+    cfg = {
+        "risk": {
+            "min_slot_count": 3,
+            "slot_budget_unit_krw": 5_000_000,
+        },
+    }
+
+    assert resolve_total_slot_count(cfg, total_capital=12_000_000) == 3
+    assert resolve_total_slot_count(cfg, total_capital=15_000_000) == 3
+    assert resolve_total_slot_count(cfg, total_capital=20_000_000) == 4
+    assert resolve_total_slot_count(cfg, total_capital=25_000_000) == 5
 
 
 def test_resolve_buy_count_respects_empty_slots_and_explicit_max_buy_count():

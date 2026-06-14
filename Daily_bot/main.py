@@ -51,9 +51,13 @@ def resolve_target_budget_per_stock(cfg: dict, planning_cash: int) -> int:
     slot_budget_unit = int(cfg["risk"].get("slot_budget_unit_krw", 0) or 0)
     max_budget_per_stock = int(cfg["risk"].get("max_budget_per_stock_krw", 0) or 0)
     if slot_budget_unit > 0:
+        slot_count = resolve_total_slot_count(cfg, planning_cash)
+        if slot_count <= 0:
+            return 0
+        budget_from_slots = planning_cash // slot_count
         if max_budget_per_stock > 0:
-            return min(slot_budget_unit, max_budget_per_stock)
-        return slot_budget_unit
+            return min(budget_from_slots, max_budget_per_stock)
+        return budget_from_slots
 
     ratio = float(cfg["risk"].get("target_budget_ratio_per_stock", 0) or 0)
     budget_from_ratio = int(planning_cash * ratio) if ratio > 0 else 0
@@ -65,6 +69,32 @@ def resolve_target_budget_per_stock(cfg: dict, planning_cash: int) -> int:
     if max_budget_per_stock > 0:
         return max_budget_per_stock
     return 0
+
+
+def resolve_total_slot_count(cfg: dict, total_capital: int) -> int:
+    if total_capital <= 0:
+        return 0
+
+    min_slot_count = max(1, int(cfg["risk"].get("min_slot_count", 1) or 1))
+    slot_budget_unit = int(cfg["risk"].get("slot_budget_unit_krw", 0) or 0)
+    if slot_budget_unit > 0:
+        return max(min_slot_count, total_capital // slot_budget_unit)
+
+    target_budget_per_stock = resolve_target_budget_per_stock(cfg, total_capital)
+    if target_budget_per_stock <= 0:
+        return min_slot_count
+
+    affordable_count = max(1, total_capital // target_budget_per_stock)
+    return max(min_slot_count, affordable_count)
+
+
+def resolve_position_limit(cfg: dict, slot_count: int) -> int:
+    hard_limit = int(cfg["risk"].get("max_position_count", cfg["strategy"].get("max_buy_count", 0)) or 0)
+    if hard_limit > 0 and slot_count > 0:
+        return min(hard_limit, slot_count)
+    if hard_limit > 0:
+        return hard_limit
+    return slot_count
 
 
 def _normalize_local_datetime(value: datetime) -> datetime:
@@ -105,20 +135,27 @@ def get_external_cash_flow_since(cfg: dict, since: datetime, until: datetime | N
     return total
 
 
-def resolve_buy_count(cfg: dict, empty_slots: int, planning_cash: int) -> int:
+def resolve_buy_count(
+    cfg: dict,
+    empty_slots: int,
+    planning_cash: int,
+    target_budget_per_stock: int | None = None,
+) -> int:
     configured_buy_count = int(cfg["strategy"].get("max_buy_count", 0) or 0)
     slot_limited_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
     if slot_limited_count <= 0:
         return 0
 
-    min_slot_count = max(1, int(cfg["risk"].get("min_slot_count", 1) or 1))
-    target_budget_per_stock = resolve_target_budget_per_stock(cfg, planning_cash)
-    if target_budget_per_stock <= 0:
+    per_stock_budget = (
+        int(target_budget_per_stock)
+        if target_budget_per_stock is not None
+        else resolve_target_budget_per_stock(cfg, planning_cash)
+    )
+    if per_stock_budget <= 0:
         return slot_limited_count
 
-    affordable_count = max(1, planning_cash // target_budget_per_stock) if planning_cash > 0 else 0
-    desired_count = max(min_slot_count, affordable_count)
-    return min(slot_limited_count, desired_count)
+    affordable_count = planning_cash // per_stock_budget if planning_cash > 0 else 0
+    return min(slot_limited_count, max(0, affordable_count))
 
 
 def resolve_empty_slots(max_position_count: int, active_count: int, candidate_count: int = 0) -> int:
@@ -676,9 +713,15 @@ def submit_target_exit_order_from_position_if_present(
     return True
 
 
-def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict) -> None:
+def activate_buy(
+    client,
+    recorder: Recorder,
+    targets: list[Candidate],
+    cfg: dict,
+    slot_budget_per_stock: int | None = None,
+    position_limit: int | None = None,
+) -> None:
     order_limiter = RateLimiter(cfg["api"]["order_rate_limit_per_second"])
-    budget_per_stock = cfg["risk"]["max_budget_per_stock_krw"]
     budget_per_cycle = cfg["risk"].get("max_budget_per_cycle_krw", 0)
     tick_offset = cfg["strategy"]["sell_tick_offset"]
     try:
@@ -690,13 +733,36 @@ def activate_buy(client, recorder: Recorder, targets: list[Candidate], cfg: dict
         print("Orderable cash is zero. Skip buy cycle.")
         return
     remaining_cash = min(orderable_cash, budget_per_cycle) if budget_per_cycle > 0 else orderable_cash
+    fixed_budget_per_stock = int(slot_budget_per_stock) if slot_budget_per_stock is not None else None
+    effective_position_limit = (
+        int(position_limit)
+        if position_limit is not None
+        else int(cfg["risk"].get("max_position_count", cfg["strategy"].get("max_buy_count", 0)) or 0)
+    )
 
     for index, candidate in enumerate(targets):
         try:
-            remaining_target_count = len(targets) - index
-            per_stock_budget = min(budget_per_stock, remaining_cash) if budget_per_stock > 0 else (
-                remaining_cash if remaining_target_count <= 1 else remaining_cash // remaining_target_count
-            )
+            if effective_position_limit > 0:
+                positions, open_orders = _recheck_account_state(client)
+                if positions is None or open_orders is None:
+                    print("Stopping new buys because current position limit could not be confirmed.")
+                    return
+                active_tickers = _get_active_tickers(positions, open_orders)
+                if len(active_tickers) >= effective_position_limit:
+                    print(
+                        f"Max position count reached during buy loop: "
+                        f"active={len(active_tickers)} limit={effective_position_limit}. Stopping new buys."
+                    )
+                    break
+
+            if fixed_budget_per_stock is not None:
+                per_stock_budget = min(fixed_budget_per_stock, remaining_cash) if fixed_budget_per_stock > 0 else remaining_cash
+            else:
+                budget_per_stock = cfg["risk"]["max_budget_per_stock_krw"]
+                remaining_target_count = len(targets) - index
+                per_stock_budget = min(budget_per_stock, remaining_cash) if budget_per_stock > 0 else (
+                    remaining_cash if remaining_target_count <= 1 else remaining_cash // remaining_target_count
+                )
             qty = calc_order_quantity(candidate, per_stock_budget)
             if qty <= 0:
                 continue
@@ -768,6 +834,10 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     watchlist: dict[str, Candidate] = {}
     session_started_at = datetime.now()
     initial_account_value = estimate_account_value(client)
+    session_capital_basis = 0
+    session_slot_count = 0
+    session_slot_budget_per_stock = 0
+    session_position_limit = 0
     print(f"Initial account value estimate: {initial_account_value}")
     active_poll_seconds = min(5, max(1, int(cfg["strategy"].get("scan_interval_seconds", 60))))
     kospi_change_percent = resolve_kospi_change_percent()
@@ -808,14 +878,38 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         if is_between_now(cfg["market"].get("prewarm_start_time", cfg["market"]["start_buy_time"]), cfg["market"]["start_buy_time"]) and not warmed_session:
             try:
                 warm_universe(cfg)
+                session_capital_basis = estimate_account_value(client)
+                session_slot_count = resolve_total_slot_count(cfg, session_capital_basis)
+                session_slot_budget_per_stock = resolve_target_budget_per_stock(cfg, session_capital_basis)
+                session_position_limit = resolve_position_limit(cfg, session_slot_count)
                 warmed_session = True
-                print("Universe warm-up completed.")
+                print(
+                    "Universe warm-up completed. "
+                    f"session_capital_basis={session_capital_basis} "
+                    f"session_slot_count={session_slot_count} "
+                    f"slot_budget_per_stock={session_slot_budget_per_stock} "
+                    f"position_limit={session_position_limit}"
+                )
             except Exception as exc:
                 print(f"Universe warm-up failed: {exc}")
 
         if not buy_window_started:
             time.sleep(5)
             continue
+
+        if not warmed_session:
+            session_capital_basis = estimate_account_value(client)
+            session_slot_count = resolve_total_slot_count(cfg, session_capital_basis)
+            session_slot_budget_per_stock = resolve_target_budget_per_stock(cfg, session_capital_basis)
+            session_position_limit = resolve_position_limit(cfg, session_slot_count)
+            warmed_session = True
+            print(
+                "Session slot plan initialized without prewarm. "
+                f"session_capital_basis={session_capital_basis} "
+                f"session_slot_count={session_slot_count} "
+                f"slot_budget_per_stock={session_slot_budget_per_stock} "
+                f"position_limit={session_position_limit}"
+            )
 
         positions = client.get_positions()
         open_orders = client.get_open_orders()
@@ -855,8 +949,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             time.sleep(active_poll_seconds if active_tickers else 5)
             continue
 
-        max_position_count = int(cfg["risk"].get("max_position_count", cfg["strategy"]["max_buy_count"]) or 0)
-        if max_position_count > 0 and len(active_tickers) >= max_position_count:
+        if session_position_limit > 0 and len(active_tickers) >= session_position_limit:
             time.sleep(active_poll_seconds if active_tickers else 5)
             continue
 
@@ -878,7 +971,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
         for candidate in filtered:
             watchlist[_ticker_key(candidate.ticker)] = candidate
-        empty_slots = resolve_empty_slots(max_position_count, len(active_tickers), len(filtered))
+        empty_slots = resolve_empty_slots(session_position_limit, len(active_tickers), len(filtered))
         if empty_slots <= 0:
             time.sleep(cfg["strategy"]["scan_interval_seconds"])
             continue
@@ -889,7 +982,12 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             time.sleep(cfg["strategy"]["scan_interval_seconds"])
             continue
         planning_cash = min(orderable_cash, cfg["risk"].get("max_budget_per_cycle_krw", 0)) if cfg["risk"].get("max_budget_per_cycle_krw", 0) > 0 else orderable_cash
-        buy_count = resolve_buy_count(cfg, empty_slots, planning_cash)
+        buy_count = resolve_buy_count(
+            cfg,
+            empty_slots,
+            planning_cash,
+            target_budget_per_stock=session_slot_budget_per_stock,
+        )
         if buy_count <= 0:
             time.sleep(active_poll_seconds if active_tickers else cfg["strategy"]["scan_interval_seconds"])
             continue
@@ -897,7 +995,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             filtered,
             buy_count,
             planning_cash,
-            cfg["risk"]["max_budget_per_stock_krw"],
+            session_slot_budget_per_stock,
             cfg["strategy"]["sell_tick_offset"],
         )
         if targets and len(targets) < buy_count:
@@ -906,7 +1004,14 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             recorder.save_signal(target, selected=True)
         if targets:
             state = BotState.BUYING
-            activate_buy(client, recorder, targets, cfg)
+            activate_buy(
+                client,
+                recorder,
+                targets,
+                cfg,
+                slot_budget_per_stock=session_slot_budget_per_stock,
+                position_limit=session_position_limit,
+            )
             state = BotState.SELLING
         time.sleep(active_poll_seconds if active_tickers else cfg["strategy"]["scan_interval_seconds"])
 
