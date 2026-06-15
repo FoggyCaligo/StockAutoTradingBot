@@ -8,6 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 WORKSPACE_ROOT = ROOT.parent
+BOT_DB_PATH = ROOT / "bot.sqlite3"
+BOT_LOG_DIR = ROOT / "logs"
 if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
@@ -980,7 +982,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     cfg = load_yaml(cfg_path)
     dry_run = cfg["risk"]["dry_run"] if dry_run_override is None else dry_run_override
     client = build_client(dry_run)
-    recorder = Recorder(Path("bot.sqlite3"))
+    recorder = Recorder(BOT_DB_PATH, log_dir=BOT_LOG_DIR)
     client.auth()
     state = BotState.NO_POSITION
     force_sell_done = False
