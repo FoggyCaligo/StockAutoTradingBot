@@ -2,12 +2,14 @@ from dataclasses import dataclass
 
 import Daily_bot.main as main
 from Daily_bot.models import Candidate, HogaLevel, HogaSnapshot
+from Daily_bot.telemetry.trace_helpers import trace_active_positions
 
 
 @dataclass
 class _RecorderStub:
     snapshots: list[str]
     signals: list[str]
+    traces: list[tuple[str, str, str]] | None = None
 
     def save_snapshot(self, candidate, snapshot, scan_cycle_at=None) -> None:
         self.snapshots.append(candidate.ticker)
@@ -25,7 +27,9 @@ class _RecorderStub:
         scan_cycle_at=None,
         kospi_change_percent=None,
     ) -> None:
-        pass
+        if self.traces is None:
+            self.traces = []
+        self.traces.append((candidate.ticker, phase, reason))
 
 
 class _ClientStub:
@@ -45,7 +49,7 @@ def test_scan_and_rank_skips_ticker_when_hoga_fetch_fails(monkeypatch):
         "005930": Candidate(ticker="005930", price=10_000),
         "000660": Candidate(ticker="000660", price=10_000),
     }
-    recorder = _RecorderStub(snapshots=[], signals=[])
+    recorder = _RecorderStub(snapshots=[], signals=[], traces=[])
     cfg = {
         "universe": {
             "min_market_cap_krw": 1,
@@ -63,3 +67,21 @@ def test_scan_and_rank_skips_ticker_when_hoga_fetch_fails(monkeypatch):
     assert [candidate.ticker for candidate in ranked] == ["005930"]
     assert recorder.snapshots == ["005930"]
     assert recorder.signals == ["005930"]
+
+
+def test_trace_active_positions_records_remaining_positions_when_one_hoga_fetch_fails():
+    recorder = _RecorderStub(snapshots=[], signals=[], traces=[])
+    positions = [
+        type("Position", (), {"ticker": "005930", "quantity": 3, "avg_price": 10_000})(),
+        type("Position", (), {"ticker": "000660", "quantity": 2, "avg_price": 20_000})(),
+    ]
+
+    trace_active_positions(
+        client=_ClientStub(),
+        recorder=recorder,
+        positions=positions,
+        quote_rate_limit_per_second=1000,
+        kospi_change_percent=-0.5,
+    )
+
+    assert recorder.traces == [("005930", "active_position", "held_position_monitor qty=3")]

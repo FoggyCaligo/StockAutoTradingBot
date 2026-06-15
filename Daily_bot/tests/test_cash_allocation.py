@@ -11,6 +11,7 @@ from Daily_bot.main import (
     reconcile_broker_fills,
     resolve_buy_count,
     resolve_empty_slots,
+    resolve_session_capital_basis,
     resolve_total_slot_count,
     resolve_target_budget_per_stock,
 )
@@ -155,6 +156,15 @@ def test_activate_buy_uses_orderable_cash_and_cycle_budget():
         ("005930", 10, 10_000),
         ("000660", 2, 10_000),
     ]
+
+
+def test_resolve_session_capital_basis_prefers_orderable_cash():
+    client = _ClientStub(orderable_cash=1_800_000)
+    client.positions = [type("Position", (), {"ticker": "005930", "quantity": 90, "avg_price": 10_000})()]
+
+    result = resolve_session_capital_basis(client)
+
+    assert result == 1_800_000
 
 
 def test_activate_buy_skips_when_orderable_cash_is_zero():
@@ -368,6 +378,48 @@ def test_poll_and_record_new_fills_prefers_direct_sell_fill_before_reconciliatio
     assert fill.ticker == "008770"
     assert fill.quantity == 3
     assert fill.price == 53850
+
+
+def test_poll_and_record_new_fills_places_recovery_exit_order_for_late_buy_delta_fill():
+    client = _ClientStub(orderable_cash=0)
+    client.open_orders = [
+        {
+            "order_id": "SELL-OLD",
+            "ticker": "005930",
+            "side": "SELL",
+            "ord_qty": "2",
+            "oso_qty": "2",
+            "ord_pric": "10150",
+        }
+    ]
+    recorder = _RecorderStub(orders=[], fills=[])
+
+    recorder.get_orders_needing_fill_poll = lambda: [
+        {
+            "broker_order_id": "BUY-1",
+            "ticker": "005930",
+            "side": "BUY",
+            "quantity": 6,
+            "price": 10_000,
+            "recorded_fill_quantity": 2,
+        }
+    ]
+
+    def _get_order_fill(order_id: str, ticker: str = "", side: str = ""):
+        if side == "BUY":
+            return Fill(order_id=order_id, ticker=ticker or "005930", quantity=6, price=10_000)
+        if side == "SELL":
+            return Fill(order_id=order_id, ticker=ticker or "005930", quantity=4, price=10_150)
+        return None
+
+    client.get_order_fill = _get_order_fill
+
+    poll_and_record_new_fills(client, recorder, _cfg())
+
+    assert recorder.fills is not None
+    assert any(fill.order_id == "BUY-1" and side == "BUY" and source == "poll" for fill, side, source in recorder.fills)
+    assert any(fill.order_id == "SELL-1" and side == "SELL" and source == "target_exit" for fill, side, source in recorder.fills)
+    assert client.sell_calls == [("005930", 4, 10150)]
 
 
 def test_poll_and_record_new_fills_skips_sell_reconciliation_when_replacement_sell_was_already_recorded():

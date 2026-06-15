@@ -23,7 +23,7 @@ from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import calc_expected_return, final_filter, get_candidates_top
 from Daily_bot.strategy.universe import UniverseConfig, get_candidates, get_kospi_change_percent
-from Daily_bot.telemetry.trace_helpers import trace_candidate_watchlist
+from Daily_bot.telemetry.trace_helpers import trace_active_positions, trace_candidate_watchlist
 from Daily_bot.utils import RateLimiter, get_tick_size, is_after_now, is_between_now, load_yaml, round_to_tick
 
 load_dotenv()
@@ -288,6 +288,21 @@ def _poll_fill_until_recorded(
         time.sleep(poll_seconds)
 
 
+def _submit_limit_exit_order(
+    client,
+    recorder: Recorder,
+    ticker: str,
+    quantity: int,
+    target_price: int,
+    order_limiter: RateLimiter,
+) -> None:
+    order_limiter.wait()
+    sell_order = client.sell_limit(ticker, quantity, target_price)
+    recorder.save_order(sell_order)
+    if not _record_fill_safely(client, recorder, sell_order.order_id, "SELL", "target_exit"):
+        _poll_fill_until_recorded(client, recorder, sell_order.order_id, "SELL", "target_exit_safety_poll")
+
+
 def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, tick_offset: int, order_limiter: RateLimiter) -> None:
     decision_fill_price = _resolve_buy_fill_price(fill, candidate.price, candidate.ticker)
     target_price = _safe_target_sell_price(candidate, tick_offset, decision_fill_price)
@@ -295,11 +310,61 @@ def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, ti
         f"Submitting limit sell for {candidate.ticker}: "
         f"target_price={target_price} decision_fill_price={decision_fill_price} raw_fill={fill.raw}"
     )
-    order_limiter.wait()
-    sell_order = client.sell_limit(candidate.ticker, fill.quantity, target_price)
-    recorder.save_order(sell_order)
-    if not _record_fill_safely(client, recorder, sell_order.order_id, "SELL", "target_exit"):
-        _poll_fill_until_recorded(client, recorder, sell_order.order_id, "SELL", "target_exit_safety_poll")
+    _submit_limit_exit_order(client, recorder, candidate.ticker, fill.quantity, target_price, order_limiter)
+
+
+def _find_existing_open_sell_price(open_orders: list[dict], ticker: str) -> int:
+    ticker_key = _ticker_key(ticker)
+    for order in open_orders:
+        side = str(order.get("io_tp_nm") or order.get("side") or "").strip().upper()
+        if "SELL" not in side and "留ㅻ룄" not in side:
+            continue
+        if _get_open_order_ticker(order) != ticker_key:
+            continue
+        remaining_quantity = _to_int(
+            order.get("oso_qty")
+            or order.get("remaining_qty")
+            or order.get("rmn_qty")
+            or order.get("ord_qty")
+        )
+        if remaining_quantity <= 0:
+            continue
+        return _to_int(order.get("ord_pric") or order.get("price") or order.get("unit_cntr_pric"))
+    return 0
+
+
+def _submit_recovery_exit_order_for_buy_delta_fill(
+    client,
+    recorder: Recorder,
+    order: dict[str, object],
+    delta_fill: Fill,
+    open_orders: list[dict],
+    tick_offset: int,
+    order_limiter: RateLimiter,
+) -> None:
+    buy_limit_price = max(0, int(order.get("price") or 0))
+    reference_price = buy_limit_price or delta_fill.price
+    if reference_price <= 0:
+        print(
+            f"Skipping recovery exit order for {delta_fill.ticker}: "
+            f"invalid reference price order_id={delta_fill.order_id} raw_order={order}"
+        )
+        return
+
+    target_price = _find_existing_open_sell_price(open_orders, delta_fill.ticker)
+    if target_price <= 0:
+        synthetic_candidate = Candidate(
+            ticker=delta_fill.ticker,
+            price=reference_price,
+            expect_price=reference_price,
+        )
+        target_price = _safe_target_sell_price(synthetic_candidate, tick_offset, reference_price)
+    print(
+        f"Recovered additional buy fill for {delta_fill.ticker}: "
+        f"delta_quantity={delta_fill.quantity} total_order_fill={delta_fill.raw.get('total_fill_quantity')} "
+        f"buy_order_id={delta_fill.order_id} target_price={target_price}. Submitting recovery exit order."
+    )
+    _submit_limit_exit_order(client, recorder, delta_fill.ticker, delta_fill.quantity, target_price, order_limiter)
 
 
 def _refresh_remaining_cash(client, budget_per_cycle: int) -> int | None:
@@ -552,6 +617,23 @@ def estimate_account_value(client, positions: list | None = None, open_orders: l
     return max(cash, 0) + position_value + open_buy_order_value
 
 
+def resolve_session_capital_basis(client) -> int:
+    try:
+        orderable_cash = client.get_orderable_cash()
+    except Exception as exc:
+        print(f"Failed to fetch orderable cash for session slot plan: {exc}")
+        orderable_cash = 0
+    if orderable_cash > 0:
+        return orderable_cash
+
+    fallback_value = estimate_account_value(client)
+    print(
+        "Falling back to account value estimate for session slot plan: "
+        f"orderable_cash={orderable_cash} fallback_value={fallback_value}"
+    )
+    return fallback_value
+
+
 def is_daily_loss_limit_reached(
     client,
     cfg: dict,
@@ -602,9 +684,14 @@ def is_daily_loss_limit_reached(
     return False
 
 
-def poll_and_record_new_fills(client, recorder: Recorder) -> None:
+def poll_and_record_new_fills(client, recorder: Recorder, cfg: dict | None = None) -> None:
     if not hasattr(client, "get_order_fill"):
         return
+    order_limiter = None
+    tick_offset = 1
+    if cfg is not None:
+        order_limiter = RateLimiter(cfg["api"]["order_rate_limit_per_second"])
+        tick_offset = int(cfg["strategy"].get("sell_tick_offset", 1) or 1)
     try:
         positions = client.get_positions()
     except Exception as exc:
@@ -654,6 +741,22 @@ def poll_and_record_new_fills(client, recorder: Recorder) -> None:
                     raw={"source": "delta_poll", "total_fill_quantity": fill.quantity, "raw": fill.raw},
                 )
                 recorder.save_fill(delta_fill, side=side, source="poll")
+                if side == "BUY" and order_limiter is not None:
+                    try:
+                        _submit_recovery_exit_order_for_buy_delta_fill(
+                            client,
+                            recorder,
+                            order,
+                            delta_fill,
+                            open_orders,
+                            tick_offset,
+                            order_limiter,
+                        )
+                    except Exception as exc:
+                        print(
+                            f"Failed to submit recovery exit order for "
+                            f"buy delta fill order_id={order_id} ticker={ticker}: {exc}"
+                        )
                 continue
             if side != "SELL":
                 continue
@@ -682,6 +785,22 @@ def poll_and_record_new_fills(client, recorder: Recorder) -> None:
             raw={"source": "delta_poll", "total_fill_quantity": fill.quantity, "raw": fill.raw},
         )
         recorder.save_fill(delta_fill, side=side, source="poll")
+        if side == "BUY" and order_limiter is not None:
+            try:
+                _submit_recovery_exit_order_for_buy_delta_fill(
+                    client,
+                    recorder,
+                    order,
+                    delta_fill,
+                    open_orders,
+                    tick_offset,
+                    order_limiter,
+                )
+            except Exception as exc:
+                print(
+                    f"Failed to submit recovery exit order for "
+                    f"buy delta fill order_id={order_id} ticker={ticker}: {exc}"
+                )
 
 
 def submit_target_exit_order_from_position_if_present(
@@ -876,7 +995,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         if is_after_now(cfg["market"]["force_sell_time"]) and not force_sell_done:
             state = BotState.FORCE_SELLING
             force_sell(client, recorder=recorder)
-            poll_and_record_new_fills(client, recorder)
+            poll_and_record_new_fills(client, recorder, cfg)
             force_sell_done = True
             state = BotState.STOPPED
             print("Force sell completed. Waiting for end-of-day reconciliation.")
@@ -895,7 +1014,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         if is_between_now(cfg["market"].get("prewarm_start_time", cfg["market"]["start_buy_time"]), cfg["market"]["start_buy_time"]) and not warmed_session:
             try:
                 warm_universe(cfg)
-                session_capital_basis = estimate_account_value(client)
+                session_capital_basis = resolve_session_capital_basis(client)
                 session_slot_count = resolve_total_slot_count(cfg, session_capital_basis)
                 session_slot_budget_per_stock = resolve_target_budget_per_stock(cfg, session_capital_basis)
                 session_position_limit = resolve_position_limit(cfg, session_slot_count)
@@ -915,7 +1034,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             continue
 
         if not warmed_session:
-            session_capital_basis = estimate_account_value(client)
+            session_capital_basis = resolve_session_capital_basis(client)
             session_slot_count = resolve_total_slot_count(cfg, session_capital_basis)
             session_slot_budget_per_stock = resolve_target_budget_per_stock(cfg, session_capital_basis)
             session_position_limit = resolve_position_limit(cfg, session_slot_count)
@@ -931,7 +1050,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         positions = client.get_positions()
         open_orders = client.get_open_orders()
         active_tickers = _get_active_tickers(positions, open_orders)
-        poll_and_record_new_fills(client, recorder)
+        poll_and_record_new_fills(client, recorder, cfg)
         if watchlist:
             watchlist = trace_candidate_watchlist(
                 client=client,
@@ -943,8 +1062,16 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 kospi_change_percent=kospi_change_percent,
             )
         if has_position(positions):
+            trace_active_positions(
+                client=client,
+                recorder=recorder,
+                positions=positions,
+                quote_rate_limit_per_second=cfg["api"]["quote_rate_limit_per_second"],
+                kospi_change_percent=kospi_change_percent,
+            )
+        if has_position(positions):
             stop_loss_executed = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
-            poll_and_record_new_fills(client, recorder)
+            poll_and_record_new_fills(client, recorder, cfg)
             if stop_loss_executed:
                 time.sleep(1)
                 continue

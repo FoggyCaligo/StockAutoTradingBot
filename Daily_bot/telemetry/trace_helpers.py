@@ -6,6 +6,7 @@ from typing import Any
 from Daily_bot.models import Candidate
 from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.signal import calc_expected_return
+from Daily_bot.strategy.orderbook_predictor import calc_spread_percent
 from Daily_bot.utils import RateLimiter
 
 
@@ -56,6 +57,45 @@ def trace_candidate_watchlist(
             print(f"Failed to trace candidate {candidate.ticker}: {exc}")
             updated[key] = candidate
     return updated
+
+
+def trace_active_positions(
+    client: Any,
+    recorder: Recorder,
+    positions: list,
+    quote_rate_limit_per_second: int,
+    kospi_change_percent: float | None = None,
+) -> None:
+    if not positions:
+        return
+    limiter = RateLimiter(quote_rate_limit_per_second)
+    scan_cycle_at = datetime.now()
+    for position in positions:
+        quantity = int(getattr(position, "quantity", 0) or 0)
+        ticker = getattr(position, "ticker", "")
+        if quantity <= 0 or not ticker:
+            continue
+        try:
+            limiter.wait()
+            snapshot = client.get_20hoga(ticker)
+            candidate = Candidate(
+                ticker=ticker,
+                price=int(getattr(position, "avg_price", 0) or 0),
+                expect_price=snapshot.current_price,
+                expect_revenue_percent=0.0,
+                spread_percent=calc_spread_percent(snapshot),
+            )
+            recorder.save_market_trace(
+                candidate,
+                snapshot,
+                phase="active_position",
+                selected=True,
+                reason=f"held_position_monitor qty={quantity}",
+                scan_cycle_at=scan_cycle_at,
+                kospi_change_percent=kospi_change_percent,
+            )
+        except Exception as exc:
+            print(f"Failed to trace active position {ticker}: {exc}")
 
 
 def record_account_snapshot(
