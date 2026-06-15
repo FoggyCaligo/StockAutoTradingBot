@@ -1,7 +1,12 @@
 import sqlite3
 from pathlib import Path
 
-from Daily_bot.backtest.replay_market_traces import load_selected_signals, pick_entries, run_backtest
+from Daily_bot.backtest.replay_market_traces import (
+    load_selected_signals,
+    pick_entries,
+    run_backtest,
+    write_backtest_reports,
+)
 
 
 def _create_db(path: Path) -> None:
@@ -557,3 +562,98 @@ def test_run_backtest_applies_orderbook_ask_depth_ratio_when_trace_data_is_avail
     )
 
     assert [trade.ticker for trade in trades] == ["BBB"]
+
+
+def test_write_backtest_reports_emits_daily_rev_and_daily_audit_csv(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-03", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 99, 1.0, 0.2, "{}", "2026-06-03 09:30:00"),
+            ("2026-06-03", "watchlist", "AAA", 0, "", 100, 99, 98, 100, 99, 1.0, 0.2, "{}", "2026-06-03 09:31:00"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=5,
+        stop_loss_percent=6.0,
+        use_selected_signals=False,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=1,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+    )
+
+    out_path = tmp_path / "backtest_replay.csv"
+    report_paths = write_backtest_reports(
+        out_path=out_path,
+        trades=trades,
+        session_capital_by_day=None,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=1,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+        max_position_count=0,
+        target_budget_ratio_per_stock=0.0,
+    )
+
+    daily_rev_text = report_paths["daily_rev"].read_text(encoding="utf-8-sig")
+    daily_audit_text = report_paths["daily_audit"].read_text(encoding="utf-8-sig")
+
+    assert "2026-06-02" in daily_rev_text
+    assert "2026-06-03" in daily_rev_text
+    assert "starting_capital_krw" in daily_rev_text
+    assert "trade_date" in daily_audit_text
+    assert "backtest_replay" in daily_audit_text
+    assert "BUY-2026-06-03-AAA-20260603T093000" in daily_audit_text
+    assert ",10000,1000000,100.0,0,0," in daily_audit_text
+    assert ",20000,2000000,100.0,0,0," not in daily_audit_text

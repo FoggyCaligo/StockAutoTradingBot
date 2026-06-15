@@ -9,8 +9,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import mean
 
-from Daily_bot.models import Candidate
+from Daily_bot.models import Candidate, Fill
 from Daily_bot.risk.guards import calc_order_quantity, passes_orderbook_ask_depth_ratio
+from Daily_bot.storage.audit_csv import (
+    DEFAULT_FEE_RATE,
+    DEFAULT_SELL_TAX_RATE,
+    rewrite_fill_audit_csv,
+)
+from Daily_bot.storage.db import DAILY_REV_FIELDNAMES
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import min_expected_return_with_spread
 from Daily_bot.utils import get_tick_size, round_to_tick
@@ -48,8 +54,11 @@ class BacktestTrade:
     ticker: str
     entry_time: str
     exit_time: str
+    quantity: int
     entry_price: int
     exit_price: int
+    buy_amount_krw: int
+    sell_amount_krw: int
     exit_reason: str
     pnl_percent: float
 
@@ -373,6 +382,20 @@ def _is_after_time(created_at: str, target_time: str) -> bool:
     return bool(time_text) and time_text >= target_time
 
 
+def _parse_timestamp(timestamp_text: str) -> datetime:
+    normalized = str(timestamp_text or "").strip().replace(" ", "T")
+    return datetime.fromisoformat(normalized)
+
+
+def _make_order_id(prefix: str, trade: BacktestTrade) -> str:
+    timestamp = str(trade.entry_time if prefix == "BUY" else trade.exit_time).replace(" ", "T").replace(":", "").replace("-", "")
+    return f"{prefix}-{trade.session_date}-{trade.ticker}-{timestamp}"
+
+
+def _derived_output_path(base_path: Path, suffix: str) -> Path:
+    return base_path.with_name(f"{base_path.stem}_{suffix}{base_path.suffix}")
+
+
 def _selected_tickers_by_day(selected_signals: list[SelectedSignal]) -> dict[str, set[str]]:
     by_day: dict[str, set[str]] = {}
     for signal in selected_signals:
@@ -559,8 +582,11 @@ def replay_trade(
         ticker=entry.ticker,
         entry_time=entry.created_at,
         exit_time=exit_row.created_at,
+        quantity=1,
         entry_price=entry_price,
         exit_price=exit_price,
+        buy_amount_krw=entry_price,
+        sell_amount_krw=exit_price,
         exit_reason=exit_reason,
         pnl_percent=pnl_percent,
     )
@@ -640,8 +666,11 @@ def run_backtest(
                             ticker=ticker,
                             entry_time=position.entry.created_at,
                             exit_time=current_row.created_at,
+                            quantity=position.quantity,
                             entry_price=position.entry_price,
                             exit_price=current_price,
+                            buy_amount_krw=position.invested_amount,
+                            sell_amount_krw=position.quantity * current_price,
                             exit_reason="force_exit_time",
                             pnl_percent=(current_price - position.entry_price) / position.entry_price * 100,
                         )
@@ -657,8 +686,11 @@ def run_backtest(
                             ticker=ticker,
                             entry_time=position.entry.created_at,
                             exit_time=current_row.created_at,
+                            quantity=position.quantity,
                             entry_price=position.entry_price,
                             exit_price=current_price,
+                            buy_amount_krw=position.invested_amount,
+                            sell_amount_krw=position.quantity * current_price,
                             exit_reason="stop_loss",
                             pnl_percent=(current_price - position.entry_price) / position.entry_price * 100,
                         )
@@ -674,8 +706,11 @@ def run_backtest(
                             ticker=ticker,
                             entry_time=position.entry.created_at,
                             exit_time=current_row.created_at,
+                            quantity=position.quantity,
                             entry_price=position.entry_price,
                             exit_price=current_price,
+                            buy_amount_krw=position.invested_amount,
+                            sell_amount_krw=position.quantity * current_price,
                             exit_reason="take_profit",
                             pnl_percent=(current_price - position.entry_price) / position.entry_price * 100,
                         )
@@ -762,8 +797,11 @@ def run_backtest(
                     ticker=ticker,
                     entry_time=position.entry.created_at,
                     exit_time=exit_row.created_at,
+                    quantity=position.quantity,
                     entry_price=position.entry_price,
                     exit_price=exit_price,
+                    buy_amount_krw=position.invested_amount,
+                    sell_amount_krw=position.quantity * exit_price,
                     exit_reason="force_exit_last_trace",
                     pnl_percent=(exit_price - position.entry_price) / position.entry_price * 100,
                 )
@@ -781,8 +819,11 @@ def write_csv(path: Path, trades: list[BacktestTrade]) -> None:
                 "ticker",
                 "entry_time",
                 "exit_time",
+                "quantity",
                 "entry_price",
                 "exit_price",
+                "buy_amount_krw",
+                "sell_amount_krw",
                 "exit_reason",
                 "pnl_percent",
             ],
@@ -790,6 +831,137 @@ def write_csv(path: Path, trades: list[BacktestTrade]) -> None:
         writer.writeheader()
         for trade in trades:
             writer.writerow({**trade.__dict__, "pnl_percent": round(trade.pnl_percent, 4)})
+
+
+def _session_starting_capital_by_day(
+    session_dates: set[str],
+    session_capital_by_day: dict[str, int] | None,
+    default_starting_capital_krw: int,
+    min_slot_count: int,
+    max_slot_count: int,
+    slot_budget_unit_krw: int,
+    max_budget_per_stock_krw: int,
+    max_position_count: int,
+    target_budget_ratio_per_stock: float,
+) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for session_date in sorted(session_dates):
+        plan = resolve_session_capital_plan(
+            session_date=session_date,
+            session_capital_by_day=session_capital_by_day,
+            default_starting_capital_krw=default_starting_capital_krw,
+            min_slot_count=min_slot_count,
+            max_slot_count=max_slot_count,
+            slot_budget_unit_krw=slot_budget_unit_krw,
+            max_budget_per_stock_krw=max_budget_per_stock_krw,
+            max_position_count=max_position_count,
+            target_budget_ratio_per_stock=target_budget_ratio_per_stock,
+        )
+        result[session_date] = plan.session_capital_basis
+    return result
+
+
+def write_backtest_daily_revenue_csv(
+    path: Path,
+    trades: list[BacktestTrade],
+    session_starting_capital_by_day: dict[str, int],
+    fee_rate: float = DEFAULT_FEE_RATE,
+    sell_tax_rate: float = DEFAULT_SELL_TAX_RATE,
+) -> None:
+    rows_by_session: dict[str, dict[str, object]] = {}
+    for trade in sorted(trades, key=lambda item: (item.session_date, item.exit_time, item.ticker)):
+        session_row = rows_by_session.setdefault(
+            trade.session_date,
+            {
+                "session_date": trade.session_date,
+                "starting_capital_krw": int(session_starting_capital_by_day.get(trade.session_date, 0) or 0),
+                "total_profit_krw": 0.0,
+                "total_fee_krw": 0.0,
+                "total_tax_krw": 0.0,
+                "total_buy_amount_krw": 0,
+                "total_sell_amount_krw": 0,
+                "traded_tickers": [],
+                "_ticker_set": set(),
+            },
+        )
+        buy_fee = trade.buy_amount_krw * fee_rate
+        sell_fee = trade.sell_amount_krw * fee_rate
+        sell_tax = trade.sell_amount_krw * sell_tax_rate
+        gross_pnl = trade.sell_amount_krw - trade.buy_amount_krw
+        session_row["total_profit_krw"] = float(session_row["total_profit_krw"]) + gross_pnl - buy_fee - sell_fee - sell_tax
+        session_row["total_fee_krw"] = float(session_row["total_fee_krw"]) + buy_fee + sell_fee
+        session_row["total_tax_krw"] = float(session_row["total_tax_krw"]) + sell_tax
+        session_row["total_buy_amount_krw"] = int(session_row["total_buy_amount_krw"]) + trade.buy_amount_krw
+        session_row["total_sell_amount_krw"] = int(session_row["total_sell_amount_krw"]) + trade.sell_amount_krw
+        ticker_set = session_row["_ticker_set"]
+        if trade.ticker not in ticker_set:
+            ticker_set.add(trade.ticker)
+            session_row["traded_tickers"].append(trade.ticker)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8-sig") as fp:
+        writer = csv.DictWriter(fp, fieldnames=DAILY_REV_FIELDNAMES)
+        writer.writeheader()
+        for session_date in sorted(rows_by_session):
+            row = rows_by_session[session_date]
+            total_buy_amount = int(row["total_buy_amount_krw"])
+            total_profit = int(round(float(row["total_profit_krw"])))
+            starting_capital = int(row["starting_capital_krw"])
+            writer.writerow(
+                {
+                    "session_date": session_date,
+                    "starting_capital_krw": starting_capital,
+                    "total_profit_krw": total_profit,
+                    "total_fee_krw": int(round(float(row["total_fee_krw"]))),
+                    "total_tax_krw": int(round(float(row["total_tax_krw"]))),
+                    "total_buy_amount_krw": total_buy_amount,
+                    "total_sell_amount_krw": int(row["total_sell_amount_krw"]),
+                    "total_return_percent": f"{(total_profit / total_buy_amount * 100) if total_buy_amount > 0 else 0.0:.4f}",
+                    "total_return_percent_on_starting_capital": (
+                        f"{(total_profit / starting_capital * 100) if starting_capital > 0 else 0.0:.4f}"
+                    ),
+                    "traded_tickers": ",".join(row["traded_tickers"]),
+                }
+            )
+
+
+def write_backtest_daily_audit_csv(
+    path: Path,
+    trades: list[BacktestTrade],
+) -> None:
+    audit_entries: list[tuple[Fill, str, str]] = []
+    for trade in sorted(trades, key=lambda item: (item.session_date, item.entry_time, item.exit_time, item.ticker)):
+        entry_dt = _parse_timestamp(trade.entry_time)
+        exit_dt = _parse_timestamp(trade.exit_time)
+        audit_entries.append(
+            (
+                Fill(
+                    order_id=_make_order_id("BUY", trade),
+                    ticker=trade.ticker,
+                    quantity=trade.quantity,
+                    price=trade.entry_price,
+                    filled_at=entry_dt,
+                    raw={},
+                ),
+                "BUY",
+                "backtest_replay",
+            )
+        )
+        audit_entries.append(
+            (
+                Fill(
+                    order_id=_make_order_id("SELL", trade),
+                    ticker=trade.ticker,
+                    quantity=trade.quantity,
+                    price=trade.exit_price,
+                    filled_at=exit_dt,
+                    raw={},
+                ),
+                "SELL",
+                "backtest_replay",
+            )
+        )
+    rewrite_fill_audit_csv(path, audit_entries, reset_by_trade_date=True)
 
 
 def print_summary(trades: list[BacktestTrade]) -> None:
@@ -848,6 +1020,41 @@ def summarize_trades(trades: list[BacktestTrade]) -> BacktestSummary:
     )
 
 
+def write_backtest_reports(
+    out_path: Path,
+    trades: list[BacktestTrade],
+    session_capital_by_day: dict[str, int] | None,
+    default_starting_capital_krw: int,
+    min_slot_count: int,
+    max_slot_count: int,
+    slot_budget_unit_krw: int,
+    max_budget_per_stock_krw: int,
+    max_position_count: int,
+    target_budget_ratio_per_stock: float,
+) -> dict[str, Path]:
+    write_csv(out_path, trades)
+    session_starting_capital = _session_starting_capital_by_day(
+        session_dates={trade.session_date for trade in trades},
+        session_capital_by_day=session_capital_by_day,
+        default_starting_capital_krw=default_starting_capital_krw,
+        min_slot_count=min_slot_count,
+        max_slot_count=max_slot_count,
+        slot_budget_unit_krw=slot_budget_unit_krw,
+        max_budget_per_stock_krw=max_budget_per_stock_krw,
+        max_position_count=max_position_count,
+        target_budget_ratio_per_stock=target_budget_ratio_per_stock,
+    )
+    daily_rev_path = _derived_output_path(out_path, "daily_rev")
+    daily_audit_path = _derived_output_path(out_path, "trade_fills_audit_daily")
+    write_backtest_daily_revenue_csv(daily_rev_path, trades, session_starting_capital)
+    write_backtest_daily_audit_csv(daily_audit_path, trades)
+    return {
+        "trades": out_path,
+        "daily_rev": daily_rev_path,
+        "daily_audit": daily_audit_path,
+    }
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Replay Daily_bot market_traces from bot.sqlite3.")
     parser.add_argument("--db", default="bot.sqlite3")
@@ -878,6 +1085,7 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    session_capital_by_day = load_session_capital_bases(Path(args.db))
     result = run_backtest(
         db_path=Path(args.db),
         min_expected_return_percent=args.min_expected_return,
@@ -888,7 +1096,7 @@ if __name__ == "__main__":
         take_profit_percent=args.take_profit,
         top_ratio=args.top_ratio,
         sell_tick_offset=args.sell_tick_offset,
-        session_capital_by_day=load_session_capital_bases(Path(args.db)),
+        session_capital_by_day=session_capital_by_day,
         default_starting_capital_krw=args.starting_capital_krw,
         min_slot_count=args.min_slot_count,
         max_slot_count=args.max_slot_count,
@@ -903,7 +1111,18 @@ if __name__ == "__main__":
         max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
         missing_ask_depth_policy=args.missing_ask_depth_policy,
     )
-    write_csv(Path(args.out), result)
+    report_paths = write_backtest_reports(
+        out_path=Path(args.out),
+        trades=result,
+        session_capital_by_day=session_capital_by_day,
+        default_starting_capital_krw=args.starting_capital_krw,
+        min_slot_count=args.min_slot_count,
+        max_slot_count=args.max_slot_count,
+        slot_budget_unit_krw=args.slot_budget_unit_krw,
+        max_budget_per_stock_krw=args.max_budget_per_stock_krw,
+        max_position_count=args.max_position_count,
+        target_budget_ratio_per_stock=args.target_budget_ratio_per_stock,
+    )
     print_summary(result)
     coverage = summarize_ask_depth_coverage(
         result,
@@ -912,4 +1131,6 @@ if __name__ == "__main__":
         missing_ask_depth_policy=args.missing_ask_depth_policy,
     )
     print_ask_depth_coverage(coverage, args.missing_ask_depth_policy)
-    print(f"wrote {args.out}")
+    print(f"wrote {report_paths['trades']}")
+    print(f"wrote {report_paths['daily_rev']}")
+    print(f"wrote {report_paths['daily_audit']}")
