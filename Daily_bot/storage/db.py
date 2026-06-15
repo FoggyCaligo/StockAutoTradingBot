@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from Daily_bot.models import Candidate, Fill, HogaSnapshot, OrderResult
-from Daily_bot.storage.audit_csv import append_fill_audit_csv, rewrite_fill_audit_csv
+from Daily_bot.storage.audit_csv import append_fill_audit_csv, rewrite_fill_audit_csv, should_include_in_fill_audit
 
 
 SCHEMA = """
@@ -532,16 +532,17 @@ class Recorder:
                 "raw_json": raw_json,
             },
         )
-        try:
-            append_fill_audit_csv(
-                self.audit_fill_csv_path,
-                fill,
-                side=side_upper,
-                source=source,
-                account_snapshot=self._latest_account_trace(),
-            )
-        except Exception as exc:
-            print(f"Failed to append fill audit CSV for {fill.ticker}: {exc}")
+        if should_include_in_fill_audit(source):
+            try:
+                append_fill_audit_csv(
+                    self.audit_fill_csv_path,
+                    fill,
+                    side=side_upper,
+                    source=source,
+                    account_snapshot=self._latest_account_trace(),
+                )
+            except Exception as exc:
+                print(f"Failed to append fill audit CSV for {fill.ticker}: {exc}")
         print(
             f"FILL {side_upper} {fill.ticker} qty={fill.quantity} price={fill.price} "
             f"filled_at={filled_at} source={source} order_id={fill.order_id}"
@@ -633,6 +634,9 @@ class Recorder:
                 raw = json.loads(raw_json) if raw_json else None
             except json.JSONDecodeError:
                 raw = {"raw_json": raw_json or ""}
+            source = str(row["source"] or "")
+            if not should_include_in_fill_audit(source):
+                continue
             audit_entries.append(
                 (
                     Fill(
@@ -644,7 +648,7 @@ class Recorder:
                         raw=raw,
                     ),
                     str(row["side"] or "").upper(),
-                    str(row["source"] or ""),
+                    source,
                 )
             )
 

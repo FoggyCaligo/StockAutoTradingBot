@@ -42,6 +42,11 @@ AUDIT_FILL_FIELDNAMES = [
     "position_status",
 ]
 
+AUDIT_EXCLUDED_FILL_SOURCES = {
+    "position_recovery",
+    "sell_reconciliation",
+}
+
 
 def _to_float(value: int | float | str | None) -> float:
     try:
@@ -61,6 +66,10 @@ def _read_existing_rows(path: Path) -> list[dict[str, str]]:
         return []
     with path.open("r", newline="", encoding="utf-8-sig") as fp:
         return list(csv.DictReader(fp))
+
+
+def should_include_in_fill_audit(source: str) -> bool:
+    return str(source or "").strip() not in AUDIT_EXCLUDED_FILL_SOURCES
 
 
 def _append_audit_row(path: Path, row: dict[str, Any]) -> None:

@@ -170,3 +170,54 @@ def test_rebuild_session_fill_exports_keeps_other_sessions_in_trade_fill_audit(t
     assert "SELL-OLD" in audit_text
     assert "SELL-NEW" in audit_text
     recorder.conn.close()
+
+
+def test_trade_fill_audit_excludes_inferred_fill_sources(tmp_path):
+    recorder = Recorder(tmp_path / "bot.sqlite3")
+    recorder.save_fill(
+        Fill(
+            order_id="BUY-REAL",
+            ticker="005930",
+            quantity=1,
+            price=70000,
+            filled_at=datetime(2026, 6, 11, 9, 31, 0),
+        ),
+        side="BUY",
+        source="wait_buy_filled",
+    )
+    recorder.save_fill(
+        Fill(
+            order_id="BUY-INFERRED",
+            ticker="005930",
+            quantity=1,
+            price=70000,
+            filled_at=datetime(2026, 6, 11, 9, 31, 30),
+        ),
+        side="BUY",
+        source="position_recovery",
+    )
+    recorder.save_fill(
+        Fill(
+            order_id="SELL-INFERRED",
+            ticker="005930",
+            quantity=1,
+            price=69900,
+            filled_at=datetime(2026, 6, 11, 9, 32, 0),
+        ),
+        side="SELL",
+        source="sell_reconciliation",
+    )
+
+    audit_csv = tmp_path / "logs" / "trade_fills_audit.csv"
+    audit_text = audit_csv.read_text(encoding="utf-8-sig")
+    assert "BUY-REAL" in audit_text
+    assert "BUY-INFERRED" not in audit_text
+    assert "SELL-INFERRED" not in audit_text
+
+    recorder.rebuild_session_fill_exports("2026-06-11")
+
+    rebuilt_audit_text = audit_csv.read_text(encoding="utf-8-sig")
+    assert "BUY-REAL" in rebuilt_audit_text
+    assert "BUY-INFERRED" not in rebuilt_audit_text
+    assert "SELL-INFERRED" not in rebuilt_audit_text
+    recorder.conn.close()
