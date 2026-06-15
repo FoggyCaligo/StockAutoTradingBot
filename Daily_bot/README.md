@@ -58,16 +58,17 @@ trend_filter:
   enabled: false
 
 strategy:
-  top_ratio: 0.30
+  top_ratio: 0.20
   min_expected_return_percent: 0.30
-  max_spread_percent: 0.5
-  max_prev_day_change_percent: 0.0
+  max_spread_percent: 0.7
+  spread_expected_return_multiplier: 1.5
+  max_prev_day_change_percent: 7.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
 risk:
   max_position_count: 0
-  min_slot_count: 5
+  min_slot_count: 3
   slot_budget_unit_krw: 5000000
   max_slot_count: 10
   max_budget_per_cycle_krw: 0
@@ -84,16 +85,18 @@ risk:
   거래대금 기준도 현재는 완화된 상태다.
 - `trend_filter.enabled: false`
   추세 필터는 현재 비활성화 상태다.
-- `top_ratio: 0.30`
-  스캔 결과 상위 30%만 다음 필터로 넘긴다.
+- `top_ratio: 0.20`
+  스캔 결과 상위 20%만 다음 필터로 넘긴다.
 - `min_expected_return_percent: 0.30`
   기대수익률 0.3% 미만 후보는 제외한다.
-- `max_spread_percent: 0.5`
-  스프레드가 너무 넓은 후보를 줄인다.
-- `max_prev_day_change_percent: 0.0`
-  현재는 사실상 전영업일 급등 필터를 사용하지 않는 해석으로 운용한다.
-- `min_slot_count: 5`
-  자본이 작아도 기본 슬롯 수는 5개다.
+- `max_spread_percent: 0.7`
+  스프레드 상한은 넓혔지만, 그 대신 동적 기대수익률 필터를 함께 쓴다.
+- `spread_expected_return_multiplier: 1.5`
+  실제 기대수익률 하한은 `max(0.3, spread_percent * 1.5)`로 계산한다.
+- `max_prev_day_change_percent: 7.0`
+  전영업일 급등 종목은 다시 제한하고 있다.
+- `min_slot_count: 3`
+  현재 최소 슬롯 수는 3개다.
 - `max_slot_count: 10`
   슬롯 수는 최대 10개까지만 늘어난다.
 - `stop_loss_percent: 3.0`
@@ -194,6 +197,7 @@ risk:
 최근 관찰:
 
 - 최신 리플레이 엔진 기준에서는 `stop_buy_time`을 `11:30`, `13:00`보다 `14:00`까지 열어두는 쪽이 더 좋은 결과를 보였다.
+- `max_spread_percent`를 단순히 조이기보다, `spread_expected_return_multiplier`를 같이 두고 스프레드가 큰 종목일수록 더 높은 기대수익률을 요구하는 쪽이 최근 리플레이에서 더 안정적이었다.
 
 이 값은 어디까지나 최근 기록 구간 기준 실험 결과이지, 미래 수익을 보장하는 값은 아니다.
 
@@ -232,12 +236,3 @@ python .\Daily_bot\main.py --dry-run
 ```bash
 .\.venv\Scripts\python.exe -m pytest Daily_bot\tests
 ```
-
-
-
-현재 코드는 대략 이렇게 돈다.
-
-09:30부터 14:00까지 신규매수하고, 15:00에 강제청산한다.
-후보군은 KOSPI200 기반으로 매일 갱신하고, 시총 2500억 이상, 거래대금 30억 이상만 남긴다. 추세 필터는 꺼져 있다.
-그다음 호가 20단계를 보고 예상가를 계산하고, 기대수익률 기준 상위 30%만 본 뒤, 기대수익률 0.3% 이상·스프레드 0.5% 이하인 후보를 통과시킨다.
-실제 주문은 현재가/호가 기반으로 산정된 후보를 대상으로, 슬롯 예산 안에서 살 수 있는 종목만 골라 들어간다.

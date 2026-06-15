@@ -70,6 +70,7 @@ Daily_bot/
 8. 매수 후 즉시 매도 주문을 연결한다.
 
 따라서 전략 튜닝은 `selected`보다 `unselected` 리플레이 결과를 우선해서 보는 편이 현재 구조와 더 잘 맞는다.
+현재는 스프레드 상한만 단순 적용하지 않고, `spread_expected_return_multiplier`를 통해 스프레드가 큰 종목일수록 더 높은 기대수익률을 요구한다.
 
 ## 6. 현재 기준 설정값
 
@@ -79,11 +80,12 @@ Daily_bot/
 - `universe.min_market_cap_krw = 250000000000`
 - `universe.min_trading_value_krw = 3000000000`
 - `trend_filter.enabled = false`
-- `strategy.top_ratio = 0.3`
+- `strategy.top_ratio = 0.2`
 - `strategy.min_expected_return_percent = 0.3`
-- `strategy.max_spread_percent = 0.5`
-- `strategy.max_prev_day_change_percent = 0.0`
-- `risk.min_slot_count = 5`
+- `strategy.max_spread_percent = 0.7`
+- `strategy.spread_expected_return_multiplier = 1.5`
+- `strategy.max_prev_day_change_percent = 7.0`
+- `risk.min_slot_count = 3`
 - `risk.max_slot_count = 10`
 - `risk.slot_budget_unit_krw = 5000000`
 - `risk.max_budget_per_stock_krw = 5000000`
