@@ -28,7 +28,7 @@ def _get_order_id_from_object(order: object) -> str:
 
 
 def _get_ticker(order: dict) -> str:
-    return str(order.get("ticker") or order.get("stk_cd") or order.get("pdno") or "").strip()
+    return str(order.get("ticker") or order.get("stk_cd") or order.get("pdno") or "").strip().upper().removeprefix("A")
 
 
 def _get_remaining_quantity(order: dict) -> int:

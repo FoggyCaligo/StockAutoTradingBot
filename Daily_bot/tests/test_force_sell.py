@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from Daily_bot.models import Fill
-from Daily_bot.risk.force_sell import force_sell
+from Daily_bot.risk.force_sell import _get_ticker, force_sell
 
 
 @dataclass
@@ -26,7 +26,7 @@ class _RecorderStub:
 class _ClientStub:
     def __init__(self):
         self._open_orders = [
-            {"ord_no": "1234567", "stk_cd": "005930", "oso_qty": "3"},
+            {"ord_no": "1234567", "stk_cd": "A005930", "oso_qty": "3"},
             {"order_id": "MOCK-SELL-1", "ticker": "000660", "ord_qty": 2},
         ]
         self._positions = [_Position("005930", 3), _Position("000660", 1)]
@@ -88,3 +88,7 @@ def test_force_sell_passes_ticker_and_quantity_to_cancel_order():
         assert source == "force_sell"
         assert fill.order_id.startswith("OID-M-")
         assert fill.price > 0
+
+
+def test_force_sell_get_ticker_normalizes_a_prefixed_codes():
+    assert _get_ticker({"stk_cd": "A005930"}) == "005930"
