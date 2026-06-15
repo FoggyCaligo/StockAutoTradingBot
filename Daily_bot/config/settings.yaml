@@ -82,7 +82,7 @@ accounting:
 # 내일 돌렸을 때는 이 순서로 보면 돼.
 
 # 매수가 너무 안 나온다
-# → max_orderbook_ask_depth_ratio: 0.20이 너무 낮거나, spread_expected_return_multiplier: 1.2도 아직 빡셀 수 있음.
+# → max_orderbook_ask_depth_ratio: 호가잔량 비율이 너무 낮거나, spread_expected_return_multiplier: 1.2도 아직 빡셀 수 있음.
 # 후보는 많은데 실제 target이 적다
 # → 호가잔량 필터에서 많이 탈락하는 것일 가능성이 큼.
 # 진입 후 바로 손절된다
