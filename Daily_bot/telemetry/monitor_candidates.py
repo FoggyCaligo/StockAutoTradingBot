@@ -84,6 +84,7 @@ def scan_filtered_candidates(
         cfg["strategy"]["sell_tick_offset"],
         cfg["strategy"].get("max_spread_percent", 0.7),
         cfg["strategy"].get("max_prev_day_change_percent", 15.0),
+        cfg["strategy"].get("spread_expected_return_multiplier", 0.0),
     )
     return {ticker_key(candidate.ticker): candidate for candidate in filtered}
 

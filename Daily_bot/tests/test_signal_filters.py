@@ -1,7 +1,7 @@
 import pandas as pd
 
 from Daily_bot.models import Candidate
-from Daily_bot.strategy.signal import final_filter
+from Daily_bot.strategy.signal import final_filter, min_expected_return_with_spread
 from Daily_bot.strategy.universe import _trend_ok_from_series
 
 
@@ -75,3 +75,39 @@ def test_final_filter_excludes_candidates_that_rose_fifteen_percent_or_more_prev
     )
 
     assert [candidate.ticker for candidate in result] == ["005930"]
+
+
+def test_min_expected_return_with_spread_raises_threshold_for_wider_spread():
+    assert min_expected_return_with_spread(0.3, 0.5, 1.2) == 0.6
+    assert min_expected_return_with_spread(0.3, 0.2, 1.2) == 0.3
+
+
+def test_final_filter_requires_higher_expected_return_when_spread_is_wider():
+    candidates = [
+        Candidate(
+            ticker="AAA",
+            price=10_000,
+            expect_price=10_100,
+            expect_revenue_percent=0.55,
+            spread_percent=0.5,
+            trend_ok=True,
+        ),
+        Candidate(
+            ticker="BBB",
+            price=10_000,
+            expect_price=10_110,
+            expect_revenue_percent=0.65,
+            spread_percent=0.5,
+            trend_ok=True,
+        ),
+    ]
+
+    result = final_filter(
+        candidates,
+        min_expected_return_percent=0.3,
+        sell_tick_offset=1,
+        max_spread_percent=0.7,
+        spread_expected_return_multiplier=1.2,
+    )
+
+    assert [candidate.ticker for candidate in result] == ["BBB"]

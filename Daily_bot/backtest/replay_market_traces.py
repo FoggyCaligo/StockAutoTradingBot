@@ -12,6 +12,7 @@ from statistics import mean
 from Daily_bot.models import Candidate
 from Daily_bot.risk.guards import calc_order_quantity
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
+from Daily_bot.strategy.signal import min_expected_return_with_spread
 from Daily_bot.utils import get_tick_size, round_to_tick
 
 
@@ -368,6 +369,7 @@ def _pick_candidates_for_timestamp(
     min_expected_return_percent: float,
     max_spread_percent: float,
     top_ratio: float,
+    spread_expected_return_multiplier: float,
     active_tickers: set[str],
     allowed_tickers: set[str] | None,
 ) -> list[TraceRow]:
@@ -381,9 +383,14 @@ def _pick_candidates_for_timestamp(
             continue
         if row.current_price <= 0:
             continue
-        if row.expect_revenue_percent < min_expected_return_percent:
-            continue
         if max_spread_percent > 0 and row.spread_percent > max_spread_percent:
+            continue
+        required_expected_return = min_expected_return_with_spread(
+            min_expected_return_percent=min_expected_return_percent,
+            spread_percent=row.spread_percent,
+            spread_expected_return_multiplier=spread_expected_return_multiplier,
+        )
+        if row.expect_revenue_percent < required_expected_return:
             continue
         existing = latest_by_ticker.get(row.ticker)
         if existing is None or row.expect_revenue_percent > existing.expect_revenue_percent:
@@ -406,6 +413,7 @@ def pick_entries(
     min_expected_return_percent: float,
     max_spread_percent: float,
     top_n_per_day: int,
+    spread_expected_return_multiplier: float = 0.0,
     selected_signals: list[SelectedSignal] | None = None,
 ) -> dict[str, list[TraceRow]]:
     if selected_signals:
@@ -425,9 +433,14 @@ def pick_entries(
         first = trace_rows[0]
         if first.current_price <= 0:
             continue
-        if first.expect_revenue_percent < min_expected_return_percent:
-            continue
         if max_spread_percent > 0 and first.spread_percent > max_spread_percent:
+            continue
+        required_expected_return = min_expected_return_with_spread(
+            min_expected_return_percent=min_expected_return_percent,
+            spread_percent=first.spread_percent,
+            spread_expected_return_multiplier=spread_expected_return_multiplier,
+        )
+        if first.expect_revenue_percent < required_expected_return:
             continue
         first_rows.append(first)
 
@@ -502,6 +515,7 @@ def run_backtest(
     start_buy_time: str = "09:30",
     stop_buy_time: str = "13:00",
     force_sell_time: str = "15:00",
+    spread_expected_return_multiplier: float = 0.0,
 ) -> list[BacktestTrade]:
     traces = load_traces(db_path)
     selected_signals = load_selected_signals(db_path) if use_selected_signals else []
@@ -621,6 +635,7 @@ def run_backtest(
                 min_expected_return_percent=min_expected_return_percent,
                 max_spread_percent=max_spread_percent,
                 top_ratio=top_ratio,
+                spread_expected_return_multiplier=spread_expected_return_multiplier,
                 active_tickers=set(open_positions) | exited_tickers_at_time,
                 allowed_tickers=allowed_tickers,
             )
@@ -746,6 +761,7 @@ def parse_args():
     parser.add_argument("--start-buy-time", default="09:30")
     parser.add_argument("--stop-buy-time", default="13:00")
     parser.add_argument("--force-sell-time", default="15:00")
+    parser.add_argument("--spread-expected-return-multiplier", type=float, default=0.0)
     parser.add_argument("--starting-capital-krw", type=int, default=1_000_000)
     parser.add_argument("--min-slot-count", type=int, default=1)
     parser.add_argument("--max-slot-count", type=int, default=0)
@@ -781,6 +797,7 @@ if __name__ == "__main__":
         start_buy_time=args.start_buy_time,
         stop_buy_time=args.stop_buy_time,
         force_sell_time=args.force_sell_time,
+        spread_expected_return_multiplier=args.spread_expected_return_multiplier,
     )
     write_csv(Path(args.out), result)
     print_summary(result)
