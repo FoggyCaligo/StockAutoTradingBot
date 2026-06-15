@@ -51,6 +51,8 @@ def test_recorder_persists_scan_cycle_at_for_scan_outputs(tmp_path):
         expect_price=70_300,
         expect_revenue_percent=0.3,
         spread_percent=0.1,
+        market_cap=420_000_000_000,
+        trading_value=8_500_000_000,
     )
     snapshot = HogaSnapshot(
         ticker="005930",
@@ -81,7 +83,7 @@ def test_recorder_persists_scan_cycle_at_for_scan_outputs(tmp_path):
         ("005930",),
     ).fetchone()
     trace_row = recorder.conn.execute(
-        "SELECT scan_cycle_at, kospi_change_percent FROM market_traces WHERE ticker = ? ORDER BY id DESC LIMIT 1",
+        "SELECT scan_cycle_at, kospi_change_percent, market_cap, trading_value FROM market_traces WHERE ticker = ? ORDER BY id DESC LIMIT 1",
         ("005930",),
     ).fetchone()
 
@@ -89,11 +91,15 @@ def test_recorder_persists_scan_cycle_at_for_scan_outputs(tmp_path):
     assert signal_row["scan_cycle_at"] == scan_cycle_at.isoformat()
     assert trace_row["scan_cycle_at"] == scan_cycle_at.isoformat()
     assert trace_row["kospi_change_percent"] == kospi_change_percent
+    assert trace_row["market_cap"] == 420_000_000_000
+    assert trace_row["trading_value"] == 8_500_000_000
 
     market_trace_csv = tmp_path / "logs" / f"market_traces_{datetime.now().strftime('%Y%m%d')}.csv"
     market_trace_csv_text = market_trace_csv.read_text(encoding="utf-8-sig")
     assert "scan_cycle_at" in market_trace_csv_text
     assert "kospi_change_percent" in market_trace_csv_text
+    assert "market_cap" in market_trace_csv_text
+    assert "trading_value" in market_trace_csv_text
     recorder.conn.close()
 
 

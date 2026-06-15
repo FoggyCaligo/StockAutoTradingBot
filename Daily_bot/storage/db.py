@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS market_traces (
     expect_price INTEGER,
     expect_revenue_percent REAL,
     spread_percent REAL,
+    market_cap INTEGER,
+    trading_value INTEGER,
     kospi_change_percent REAL,
     raw_json TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -117,6 +119,8 @@ TABLE_EXTRA_COLUMNS = {
     },
     "market_traces": {
         "scan_cycle_at": "TEXT",
+        "market_cap": "INTEGER",
+        "trading_value": "INTEGER",
         "kospi_change_percent": "REAL",
     },
 }
@@ -358,6 +362,8 @@ class Recorder:
             "expect_price": candidate.expect_price,
             "expect_revenue_percent": candidate.expect_revenue_percent,
             "spread_percent": candidate.spread_percent,
+            "market_cap": candidate.market_cap,
+            "trading_value": candidate.trading_value,
             "kospi_change_percent": kospi_change_percent,
             "raw_json": raw_json,
         }
@@ -365,8 +371,8 @@ class Recorder:
             """
             INSERT INTO market_traces
             (session_date, phase, ticker, scan_cycle_at, selected, reason, price, current_price, best_bid, best_ask,
-             expect_price, expect_revenue_percent, spread_percent, kospi_change_percent, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             expect_price, expect_revenue_percent, spread_percent, market_cap, trading_value, kospi_change_percent, raw_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row["session_date"],
@@ -382,6 +388,8 @@ class Recorder:
                 row["expect_price"],
                 row["expect_revenue_percent"],
                 row["spread_percent"],
+                row["market_cap"],
+                row["trading_value"],
                 row["kospi_change_percent"],
                 row["raw_json"],
             ),
@@ -403,6 +411,8 @@ class Recorder:
                 "expect_price",
                 "expect_revenue_percent",
                 "spread_percent",
+                "market_cap",
+                "trading_value",
                 "kospi_change_percent",
                 "raw_json",
             ],

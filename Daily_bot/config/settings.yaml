@@ -11,18 +11,18 @@ universe:
   csv_path: "data/kospi200.csv"
   cache_path: "data/kospi200_latest.csv"
   refresh_daily: true
-  min_market_cap_krw: 300000000000
-  min_trading_value_krw: 5000000000
+  min_market_cap_krw: 250000000000
+  min_trading_value_krw: 3000000000
 
 trend_filter:
-  enabled: true
+  enabled: false
 
 strategy:
   top_ratio: 0.3
   max_buy_count: 0
   min_expected_return_percent: 0.3
-  max_spread_percent: 0.7
-  max_prev_day_change_percent: 100.0
+  max_spread_percent: 0.5
+  max_prev_day_change_percent: 0.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
@@ -32,7 +32,7 @@ risk:
   min_slot_count: 5
   # Used as the target slot unit when deriving how many slots the account can support.
   slot_budget_unit_krw: 5000000
-  # Cap the session slot plan at 10 names. Above that capital band, keep 10 slots and stop capping each slot at 5M KRW.
+  # Cap the session slot plan at 7 names. Above that capital band, keep 7 slots and stop capping each slot at 5M KRW.
   max_slot_count: 10
   # Ratio-based sizing is kept as a fallback when slot_budget_unit_krw is 0.
   target_budget_ratio_per_stock: 0.50
