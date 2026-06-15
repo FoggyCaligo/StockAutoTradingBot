@@ -3,6 +3,10 @@ from __future__ import annotations
 import sqlite3
 from collections import defaultdict, deque
 from dataclasses import dataclass
+import json
+
+from Daily_bot.models import Fill
+from Daily_bot.storage.audit_csv import extract_fill_costs
 
 
 @dataclass
@@ -27,6 +31,19 @@ class PerformanceSummary:
     open_buy_count: int
     open_buy_cost_krw: int
     trades: list[RealizedTrade]
+
+
+@dataclass
+class DailyRevenueSummary:
+    session_date: str
+    starting_capital_krw: int
+    total_profit_krw: int
+    total_fee_krw: int
+    total_tax_krw: int
+    total_buy_amount_krw: int
+    total_sell_amount_krw: int
+    total_return_percent: float
+    traded_tickers: list[str]
 
 
 def load_realized_trades(db_path: str, session_date: str | None = None) -> list[RealizedTrade]:
@@ -172,4 +189,78 @@ def summarize_realized_performance(db_path: str, session_date: str | None = None
         open_buy_count=open_buy_count,
         open_buy_cost_krw=open_buy_cost_krw,
         trades=trades,
+    )
+
+
+def summarize_daily_revenue(
+    db_path: str,
+    session_date: str,
+    starting_capital_krw: int,
+) -> DailyRevenueSummary:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        """
+        SELECT ticker, side, quantity, price, filled_at, raw_json
+        FROM fills
+        WHERE substr(filled_at, 1, 10) = ?
+        ORDER BY filled_at ASC, id ASC
+        """,
+        (session_date,),
+    ).fetchall()
+    conn.close()
+
+    total_buy_amount = 0
+    total_sell_amount = 0
+    total_fee = 0.0
+    total_tax = 0.0
+    traded_tickers: list[str] = []
+    seen_tickers: set[str] = set()
+
+    for row in rows:
+        ticker = str(row["ticker"] or "").strip()
+        side = str(row["side"] or "").upper()
+        quantity = int(row["quantity"] or 0)
+        price = int(row["price"] or 0)
+        amount = quantity * price
+        raw_json = str(row["raw_json"] or "")
+        try:
+            raw = json.loads(raw_json) if raw_json else None
+        except json.JSONDecodeError:
+            raw = {"raw_json": raw_json}
+        fill = Fill(
+            order_id="",
+            ticker=ticker,
+            quantity=quantity,
+            price=price,
+            raw=raw,
+        )
+        fee, tax = extract_fill_costs(fill, side)
+        if fee is not None:
+            total_fee += fee
+        if tax is not None:
+            total_tax += tax
+
+        if side == "BUY":
+            total_buy_amount += amount
+        elif side == "SELL":
+            total_sell_amount += amount
+
+        if ticker and ticker not in seen_tickers:
+            seen_tickers.add(ticker)
+            traded_tickers.append(ticker)
+
+    total_profit = int(round(total_sell_amount - total_buy_amount - total_fee - total_tax))
+    total_return_percent = (total_profit / starting_capital_krw * 100) if starting_capital_krw > 0 else 0.0
+
+    return DailyRevenueSummary(
+        session_date=session_date,
+        starting_capital_krw=int(starting_capital_krw),
+        total_profit_krw=total_profit,
+        total_fee_krw=int(round(total_fee)),
+        total_tax_krw=int(round(total_tax)),
+        total_buy_amount_krw=total_buy_amount,
+        total_sell_amount_krw=total_sell_amount,
+        total_return_percent=total_return_percent,
+        traded_tickers=traded_tickers,
     )

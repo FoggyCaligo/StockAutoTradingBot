@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from Daily_bot.models import Candidate, Fill, HogaSnapshot, OrderResult
+from Daily_bot.reporting.performance import summarize_daily_revenue
 from Daily_bot.storage.audit_csv import append_fill_audit_csv, rewrite_fill_audit_csv, should_include_in_fill_audit
 
 
@@ -120,12 +121,25 @@ TABLE_EXTRA_COLUMNS = {
     },
 }
 
+DAILY_REV_FIELDNAMES = [
+    "session_date",
+    "starting_capital_krw",
+    "total_profit_krw",
+    "total_fee_krw",
+    "total_tax_krw",
+    "total_buy_amount_krw",
+    "total_sell_amount_krw",
+    "total_return_percent",
+    "traded_tickers",
+]
+
 
 class Recorder:
     def __init__(self, path: str | Path = "bot.sqlite3", log_dir: str | Path | None = None):
         self.path = Path(path)
         self.log_dir = Path(log_dir) if log_dir is not None else self.path.parent / "logs"
         self.audit_fill_csv_path = self.log_dir / "trade_fills_audit.csv"
+        self.daily_revenue_csv_path = self.log_dir / "daily_rev.csv"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         if log_dir is None:
             self._migrate_legacy_logs()
@@ -229,6 +243,30 @@ class Recorder:
             writer.writeheader()
             for row in rows:
                 writer.writerow({field: row.get(field, "") for field in fieldnames})
+
+    def _upsert_csv_row(self, path: Path, fieldnames: list[str], key_field: str, row: dict[str, Any]) -> None:
+        existing_rows: list[dict[str, Any]] = []
+        if path.exists() and path.stat().st_size > 0:
+            with path.open("r", newline="", encoding="utf-8-sig") as fp:
+                existing_rows = list(csv.DictReader(fp))
+
+        key_value = str(row.get(key_field, ""))
+        updated = False
+        for existing_row in existing_rows:
+            if str(existing_row.get(key_field, "")) == key_value:
+                for field in fieldnames:
+                    existing_row[field] = row.get(field, "")
+                updated = True
+                break
+        if not updated:
+            existing_rows.append({field: row.get(field, "") for field in fieldnames})
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", newline="", encoding="utf-8-sig") as fp:
+            writer = csv.DictWriter(fp, fieldnames=fieldnames)
+            writer.writeheader()
+            for existing_row in existing_rows:
+                writer.writerow({field: existing_row.get(field, "") for field in fieldnames})
 
     def _latest_account_trace(self) -> dict[str, Any] | None:
         row = self.conn.execute(
@@ -746,3 +784,18 @@ class Recorder:
         self.conn.execute(f"DELETE FROM fills WHERE id IN ({placeholders})", stale_ids)
         self.conn.commit()
         return len(stale_ids)
+
+    def write_daily_revenue_summary(self, session_date: str, starting_capital_krw: int) -> None:
+        summary = summarize_daily_revenue(str(self.path), session_date, starting_capital_krw)
+        row = {
+            "session_date": summary.session_date,
+            "starting_capital_krw": summary.starting_capital_krw,
+            "total_profit_krw": summary.total_profit_krw,
+            "total_fee_krw": summary.total_fee_krw,
+            "total_tax_krw": summary.total_tax_krw,
+            "total_buy_amount_krw": summary.total_buy_amount_krw,
+            "total_sell_amount_krw": summary.total_sell_amount_krw,
+            "total_return_percent": f"{summary.total_return_percent:.4f}",
+            "traded_tickers": ",".join(summary.traded_tickers),
+        }
+        self._upsert_csv_row(self.daily_revenue_csv_path, DAILY_REV_FIELDNAMES, "session_date", row)

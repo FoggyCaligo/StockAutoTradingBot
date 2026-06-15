@@ -112,7 +112,7 @@ def _snapshot_value(account_snapshot: dict[str, Any] | None, key: str) -> Any:
     return "" if value is None else value
 
 
-def _extract_actual_costs(fill: Fill, side_upper: str) -> tuple[float | None, float | None]:
+def extract_fill_costs(fill: Fill, side_upper: str) -> tuple[float | None, float | None]:
     raw = fill.raw if isinstance(fill.raw, dict) else {}
     rows = []
     if isinstance(raw.get("rows"), list):
@@ -169,7 +169,7 @@ def append_fill_audit_csv(
     quantity = int(fill.quantity or 0)
     price = int(fill.price or 0)
     amount = quantity * price
-    actual_fee, actual_tax = _extract_actual_costs(fill, side_upper)
+    actual_fee, actual_tax = extract_fill_costs(fill, side_upper)
     estimated_fee = round(actual_fee, 4) if actual_fee is not None else round(amount * fee_rate, 4)
     estimated_tax = round(actual_tax, 4) if actual_tax is not None else (round(amount * sell_tax_rate, 4) if side_upper == "SELL" else 0.0)
     estimated_total_cost = estimated_fee + estimated_tax

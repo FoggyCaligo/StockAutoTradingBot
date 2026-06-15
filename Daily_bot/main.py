@@ -841,6 +841,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     state = BotState.NO_POSITION
     force_sell_done = False
     eod_reconciliation_done = False
+    daily_revenue_written = False
     warmed_session = False
     watchlist: dict[str, Candidate] = {}
     session_started_at = datetime.now()
@@ -860,6 +861,8 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         if force_sell_done and not eod_reconciliation_done and is_after_now(cfg["market"].get("reconcile_time", "15:15")):
             try:
                 summary = reconcile_broker_fills(client, recorder)
+                recorder.write_daily_revenue_summary(datetime.now().strftime("%Y-%m-%d"), initial_account_value)
+                daily_revenue_written = True
                 eod_reconciliation_done = True
                 print(
                     "End-of-day reconciliation completed: "
@@ -882,6 +885,9 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
         if force_sell_done:
             if is_after_now(cfg["market"].get("end_time", "15:20")):
+                if not daily_revenue_written:
+                    recorder.write_daily_revenue_summary(datetime.now().strftime("%Y-%m-%d"), initial_account_value)
+                    daily_revenue_written = True
                 break
             time.sleep(5)
             continue

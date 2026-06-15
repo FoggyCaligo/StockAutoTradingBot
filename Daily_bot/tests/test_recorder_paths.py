@@ -221,3 +221,41 @@ def test_trade_fill_audit_excludes_inferred_fill_sources(tmp_path):
     assert "BUY-INFERRED" not in rebuilt_audit_text
     assert "SELL-INFERRED" not in rebuilt_audit_text
     recorder.conn.close()
+
+
+def test_write_daily_revenue_summary_upserts_single_session_row(tmp_path):
+    recorder = Recorder(tmp_path / "bot.sqlite3")
+    recorder.save_fill(
+        Fill(
+            order_id="BUY-1",
+            ticker="005930",
+            quantity=2,
+            price=10_000,
+            filled_at=datetime(2026, 6, 11, 9, 31, 0),
+            raw={"rows": [{"tdy_trde_cmsn": "10", "tdy_trde_tax": "0"}]},
+        ),
+        side="BUY",
+        source="poll",
+    )
+    recorder.save_fill(
+        Fill(
+            order_id="SELL-1",
+            ticker="005930",
+            quantity=2,
+            price=10_100,
+            filled_at=datetime(2026, 6, 11, 9, 32, 0),
+            raw={"rows": [{"tdy_trde_cmsn": "11", "tdy_trde_tax": "36"}]},
+        ),
+        side="SELL",
+        source="poll",
+    )
+
+    recorder.write_daily_revenue_summary("2026-06-11", starting_capital_krw=1_000_000)
+    recorder.write_daily_revenue_summary("2026-06-11", starting_capital_krw=1_000_000)
+
+    daily_rev_csv = tmp_path / "logs" / "daily_rev.csv"
+    daily_rev_text = daily_rev_csv.read_text(encoding="utf-8-sig")
+    assert daily_rev_text.count("2026-06-11") == 1
+    assert "005930" in daily_rev_text
+    assert "0.0143" in daily_rev_text
+    recorder.conn.close()
