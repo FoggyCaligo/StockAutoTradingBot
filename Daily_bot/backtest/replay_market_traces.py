@@ -566,7 +566,15 @@ def run_backtest(
             if not _is_within_buy_window(created_at):
                 continue
 
-            effective_position_limit = min(top_n_per_day, session_plan.position_limit) if top_n_per_day > 0 else session_plan.position_limit
+            # Match the live bot's behavior by default: candidate ranking is trimmed by
+            # top_ratio, while the actual buy count is bounded by session position limits,
+            # empty slots, and cash. top_n_per_day remains as an optional extra cap only
+            # when explicitly provided.
+            effective_position_limit = (
+                min(top_n_per_day, session_plan.position_limit)
+                if top_n_per_day > 0
+                else session_plan.position_limit
+            )
             available_slots = max(0, effective_position_limit - len(open_positions))
             if available_slots <= 0:
                 continue
@@ -697,7 +705,7 @@ def parse_args():
     parser.add_argument("--db", default="bot.sqlite3")
     parser.add_argument("--min-expected-return", type=float, default=0.25)
     parser.add_argument("--max-spread", type=float, default=0.7)
-    parser.add_argument("--top-n", type=int, default=3)
+    parser.add_argument("--top-n", type=int, default=0)
     parser.add_argument("--top-ratio", type=float, default=1.0)
     parser.add_argument("--take-profit", type=float, default=0.25)
     parser.add_argument("--stop-loss", type=float, default=6.0)
