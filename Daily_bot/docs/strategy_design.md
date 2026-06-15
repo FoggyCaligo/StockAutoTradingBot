@@ -104,7 +104,8 @@ required_expected_return = max(0.3, spread_percent * 1.2)
 중요:
 
 - 이 필터는 현재 코드에는 반영되어 있다.
-- 하지만 과거 `market_traces`에는 top-5 매도잔량 금액이 저장되지 않았기 때문에, 옛 구간 백테스트에서는 완전 재현이 어렵다.
+- 새로 쌓이는 `market_traces`에는 `ask_depth_5_amount_krw`를 함께 저장해 이 필터를 리플레이에서도 재현할 수 있다.
+- 다만 과거 `market_traces`에는 top-5 매도잔량 금액이 비어 있는 시점이 남아 있으므로, 옛 구간 백테스트는 여전히 완전 재현이 아니라 coverage를 함께 보고 해석해야 한다.
 
 ## 8. 손절과 청산
 

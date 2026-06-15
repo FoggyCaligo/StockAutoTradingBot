@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS market_traces (
     expect_price INTEGER,
     expect_revenue_percent REAL,
     spread_percent REAL,
+    ask_depth_5_amount_krw INTEGER,
     market_cap INTEGER,
     trading_value INTEGER,
     kospi_change_percent REAL,
@@ -119,6 +120,7 @@ TABLE_EXTRA_COLUMNS = {
     },
     "market_traces": {
         "scan_cycle_at": "TEXT",
+        "ask_depth_5_amount_krw": "INTEGER",
         "market_cap": "INTEGER",
         "trading_value": "INTEGER",
         "kospi_change_percent": "REAL",
@@ -134,6 +136,7 @@ DAILY_REV_FIELDNAMES = [
     "total_buy_amount_krw",
     "total_sell_amount_krw",
     "total_return_percent",
+    "total_return_percent_on_starting_capital",
     "traded_tickers",
 ]
 
@@ -362,6 +365,7 @@ class Recorder:
             "expect_price": candidate.expect_price,
             "expect_revenue_percent": candidate.expect_revenue_percent,
             "spread_percent": candidate.spread_percent,
+            "ask_depth_5_amount_krw": candidate.ask_depth_5_amount_krw,
             "market_cap": candidate.market_cap,
             "trading_value": candidate.trading_value,
             "kospi_change_percent": kospi_change_percent,
@@ -371,8 +375,9 @@ class Recorder:
             """
             INSERT INTO market_traces
             (session_date, phase, ticker, scan_cycle_at, selected, reason, price, current_price, best_bid, best_ask,
-             expect_price, expect_revenue_percent, spread_percent, market_cap, trading_value, kospi_change_percent, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             expect_price, expect_revenue_percent, spread_percent, ask_depth_5_amount_krw,
+             market_cap, trading_value, kospi_change_percent, raw_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row["session_date"],
@@ -388,6 +393,7 @@ class Recorder:
                 row["expect_price"],
                 row["expect_revenue_percent"],
                 row["spread_percent"],
+                row["ask_depth_5_amount_krw"],
                 row["market_cap"],
                 row["trading_value"],
                 row["kospi_change_percent"],
@@ -411,6 +417,7 @@ class Recorder:
                 "expect_price",
                 "expect_revenue_percent",
                 "spread_percent",
+                "ask_depth_5_amount_krw",
                 "market_cap",
                 "trading_value",
                 "kospi_change_percent",
@@ -806,6 +813,7 @@ class Recorder:
             "total_buy_amount_krw": summary.total_buy_amount_krw,
             "total_sell_amount_krw": summary.total_sell_amount_krw,
             "total_return_percent": f"{summary.total_return_percent:.4f}",
+            "total_return_percent_on_starting_capital": f"{summary.total_return_percent_on_starting_capital:.4f}",
             "traded_tickers": ",".join(summary.traded_tickers),
         }
         self._upsert_csv_row(self.daily_revenue_csv_path, DAILY_REV_FIELDNAMES, "session_date", row)

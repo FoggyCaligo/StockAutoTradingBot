@@ -139,6 +139,7 @@ def test_summarize_daily_revenue_includes_costs_and_tickers(tmp_path):
     assert summary.total_sell_amount_krw == 20_200
     assert summary.total_fee_krw == 33
     assert summary.total_tax_krw == 36
-    assert summary.total_profit_krw == -19_869
-    assert summary.total_return_percent == -1.9869
+    assert summary.total_profit_krw == 131
+    assert summary.total_return_percent == 0.3275
+    assert summary.total_return_percent_on_starting_capital == 0.0131
     assert summary.traded_tickers == ["005930", "000660"]

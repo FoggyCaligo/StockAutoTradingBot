@@ -7,6 +7,7 @@ import json
 
 from Daily_bot.models import Fill
 from Daily_bot.storage.audit_csv import extract_fill_costs
+from Daily_bot.storage.audit_csv import should_include_in_fill_audit
 
 
 @dataclass
@@ -43,6 +44,7 @@ class DailyRevenueSummary:
     total_buy_amount_krw: int
     total_sell_amount_krw: int
     total_return_percent: float
+    total_return_percent_on_starting_capital: float
     traded_tickers: list[str]
 
 
@@ -54,7 +56,7 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
     if session_date:
         rows = cur.execute(
             """
-            select ticker, side, quantity, price, filled_at, created_at
+            select ticker, side, quantity, price, filled_at, created_at, source
             from fills
             where date(created_at,'localtime') = ?
             order by created_at, id
@@ -64,7 +66,7 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
     else:
         rows = cur.execute(
             """
-            select ticker, side, quantity, price, filled_at, created_at
+            select ticker, side, quantity, price, filled_at, created_at, source
             from fills
             order by created_at, id
             """
@@ -78,6 +80,9 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
     for row in rows:
         side = str(row["side"] or "").upper()
         ticker = str(row["ticker"] or "")
+        source = str(row["source"] or "")
+        if not should_include_in_fill_audit(source):
+            continue
         quantity = int(row["quantity"] or 0)
         price = int(row["price"] or 0)
         filled_at = str(row["filled_at"] or row["created_at"] or "")
@@ -131,7 +136,7 @@ def summarize_realized_performance(db_path: str, session_date: str | None = None
     if session_date:
         rows = cur.execute(
             """
-            select ticker, side, quantity, price
+            select ticker, side, quantity, price, source
             from fills
             where date(created_at,'localtime') = ?
             order by created_at, id
@@ -141,7 +146,7 @@ def summarize_realized_performance(db_path: str, session_date: str | None = None
     else:
         rows = cur.execute(
             """
-            select ticker, side, quantity, price
+            select ticker, side, quantity, price, source
             from fills
             order by created_at, id
             """
@@ -152,6 +157,9 @@ def summarize_realized_performance(db_path: str, session_date: str | None = None
     for row in rows:
         ticker = str(row["ticker"] or "")
         side = str(row["side"] or "").upper()
+        source = str(row["source"] or "")
+        if not should_include_in_fill_audit(source):
+            continue
         quantity = int(row["quantity"] or 0)
         price = int(row["price"] or 0)
         if side == "BUY":
@@ -197,11 +205,12 @@ def summarize_daily_revenue(
     session_date: str,
     starting_capital_krw: int,
 ) -> DailyRevenueSummary:
+    realized_summary = summarize_realized_performance(db_path, session_date=session_date)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
         """
-        SELECT ticker, side, quantity, price, filled_at, raw_json
+        SELECT ticker, side, quantity, price, filled_at, raw_json, source
         FROM fills
         WHERE substr(filled_at, 1, 10) = ?
         ORDER BY filled_at ASC, id ASC
@@ -220,6 +229,9 @@ def summarize_daily_revenue(
     for row in rows:
         ticker = str(row["ticker"] or "").strip()
         side = str(row["side"] or "").upper()
+        source = str(row["source"] or "")
+        if not should_include_in_fill_audit(source):
+            continue
         quantity = int(row["quantity"] or 0)
         price = int(row["price"] or 0)
         amount = quantity * price
@@ -250,8 +262,11 @@ def summarize_daily_revenue(
             seen_tickers.add(ticker)
             traded_tickers.append(ticker)
 
-    total_profit = int(round(total_sell_amount - total_buy_amount - total_fee - total_tax))
-    total_return_percent = (total_profit / starting_capital_krw * 100) if starting_capital_krw > 0 else 0.0
+    total_profit = int(round(realized_summary.gross_pnl_krw - total_fee - total_tax))
+    total_return_percent = (total_profit / total_buy_amount * 100) if total_buy_amount > 0 else 0.0
+    total_return_percent_on_starting_capital = (
+        total_profit / starting_capital_krw * 100 if starting_capital_krw > 0 else 0.0
+    )
 
     return DailyRevenueSummary(
         session_date=session_date,
@@ -262,5 +277,6 @@ def summarize_daily_revenue(
         total_buy_amount_krw=total_buy_amount,
         total_sell_amount_krw=total_sell_amount,
         total_return_percent=total_return_percent,
+        total_return_percent_on_starting_capital=total_return_percent_on_starting_capital,
         traded_tickers=traded_tickers,
     )

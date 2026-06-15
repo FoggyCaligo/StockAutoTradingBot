@@ -15,9 +15,9 @@ def test_trim_targets_allows_all_candidates_when_max_buy_count_and_budget_are_un
 
 def test_select_affordable_targets_skips_expensive_candidates_and_fills_with_cheaper_ones():
     candidates = [
-        Candidate(ticker="111111", price=70_000, expect_price=71_000),
-        Candidate(ticker="222222", price=40_000, expect_price=41_000),
-        Candidate(ticker="333333", price=40_000, expect_price=41_000),
+        Candidate(ticker="111111", price=70_000, expect_price=71_000, ask_depth_5_amount_krw=500_000),
+        Candidate(ticker="222222", price=40_000, expect_price=41_000, ask_depth_5_amount_krw=500_000),
+        Candidate(ticker="333333", price=40_000, expect_price=41_000, ask_depth_5_amount_krw=500_000),
     ]
 
     result = select_affordable_targets(
@@ -33,9 +33,9 @@ def test_select_affordable_targets_skips_expensive_candidates_and_fills_with_che
 
 def test_select_affordable_targets_falls_back_to_smaller_affordable_set():
     candidates = [
-        Candidate(ticker="281820", price=63_600, expect_price=64_400),
-        Candidate(ticker="383220", price=72_000, expect_price=72_700),
-        Candidate(ticker="195870", price=90_200, expect_price=90_700),
+        Candidate(ticker="281820", price=63_600, expect_price=64_400, ask_depth_5_amount_krw=500_000),
+        Candidate(ticker="383220", price=72_000, expect_price=72_700, ask_depth_5_amount_krw=500_000),
+        Candidate(ticker="195870", price=90_200, expect_price=90_700, ask_depth_5_amount_krw=500_000),
     ]
 
     result = select_affordable_targets(
@@ -46,7 +46,7 @@ def test_select_affordable_targets_falls_back_to_smaller_affordable_set():
         sell_tick_offset=1,
     )
 
-    assert [candidate.ticker for candidate in result] == ["281820"]
+    assert [candidate.ticker for candidate in result] == ["383220"]
 
 
 def test_passes_orderbook_ask_depth_ratio_blocks_candidate_when_order_is_too_large_for_top5_asks():

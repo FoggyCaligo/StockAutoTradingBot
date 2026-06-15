@@ -10,7 +10,7 @@ from pathlib import Path
 from statistics import mean
 
 from Daily_bot.models import Candidate
-from Daily_bot.risk.guards import calc_order_quantity
+from Daily_bot.risk.guards import calc_order_quantity, passes_orderbook_ask_depth_ratio
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import min_expected_return_with_spread
 from Daily_bot.utils import get_tick_size, round_to_tick
@@ -28,6 +28,7 @@ class TraceRow:
     expect_price: int
     expect_revenue_percent: float
     spread_percent: float
+    ask_depth_5_amount_krw: int
 
 
 @dataclass
@@ -74,6 +75,15 @@ class BacktestSummary:
 
 
 @dataclass
+class BacktestCoverage:
+    eligible_candidates: int
+    candidates_with_ask_depth: int
+    candidates_missing_ask_depth: int
+    blocked_by_ask_depth_ratio: int
+    skipped_due_to_missing_ask_depth: int
+
+
+@dataclass
 class SessionCapitalPlan:
     session_capital_basis: int
     slot_count: int
@@ -113,8 +123,12 @@ def _normalize_created_at(session_date: str, created_at: str) -> str:
 def load_traces(db_path: Path) -> list[TraceRow]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(market_traces)").fetchall()
+    }
+    ask_depth_select = "ask_depth_5_amount_krw" if "ask_depth_5_amount_krw" in columns else "0 AS ask_depth_5_amount_krw"
     rows = conn.execute(
-        """
+        f"""
         SELECT
             session_date,
             ticker,
@@ -125,7 +139,8 @@ def load_traces(db_path: Path) -> list[TraceRow]:
             current_price,
             expect_price,
             expect_revenue_percent,
-            spread_percent
+            spread_percent,
+            {ask_depth_select}
         FROM market_traces
         ORDER BY session_date, created_at, ticker
         """
@@ -146,6 +161,7 @@ def load_traces(db_path: Path) -> list[TraceRow]:
                 expect_price=_to_int(row["expect_price"]),
                 expect_revenue_percent=_to_float(row["expect_revenue_percent"]),
                 spread_percent=_to_float(row["spread_percent"]),
+                ask_depth_5_amount_krw=_to_int(row["ask_depth_5_amount_krw"]),
             )
         )
     return traces
@@ -408,6 +424,62 @@ def _pick_candidates_for_timestamp(
     return candidates
 
 
+def summarize_ask_depth_coverage(
+    trades: list[BacktestTrade],
+    traces: list[TraceRow],
+    max_orderbook_ask_depth_ratio: float = 0.0,
+    missing_ask_depth_policy: str = "ignore",
+) -> BacktestCoverage:
+    if not traces:
+        return BacktestCoverage(0, 0, 0, 0, 0)
+    if max_orderbook_ask_depth_ratio <= 0:
+        return BacktestCoverage(0, 0, 0, 0, 0)
+
+    traded_keys = {(trade.session_date, trade.ticker, trade.entry_time) for trade in trades}
+    eligible_candidates = 0
+    with_ask_depth = 0
+    missing_ask_depth = 0
+    blocked_by_ratio = 0
+    skipped_missing = 0
+
+    for row in traces:
+        if row.phase not in {"scan_candidate", "watchlist"}:
+            continue
+        if (row.session_date, row.ticker, row.created_at) not in traded_keys:
+            continue
+        eligible_candidates += 1
+        if row.ask_depth_5_amount_krw > 0:
+            with_ask_depth += 1
+            candidate = Candidate(
+                ticker=row.ticker,
+                price=row.current_price or row.price,
+                expect_price=row.expect_price,
+                expect_revenue_percent=row.expect_revenue_percent,
+                spread_percent=row.spread_percent,
+                ask_depth_5_amount_krw=row.ask_depth_5_amount_krw,
+            )
+            quantity = 1
+            estimated_cost = candidate.price * quantity
+            if candidate.price > 0 and not passes_orderbook_ask_depth_ratio(
+                candidate,
+                estimated_cost_krw=estimated_cost,
+                max_orderbook_ask_depth_ratio=max_orderbook_ask_depth_ratio,
+            ):
+                blocked_by_ratio += 1
+        else:
+            missing_ask_depth += 1
+            if missing_ask_depth_policy == "skip":
+                skipped_missing += 1
+
+    return BacktestCoverage(
+        eligible_candidates=eligible_candidates,
+        candidates_with_ask_depth=with_ask_depth,
+        candidates_missing_ask_depth=missing_ask_depth,
+        blocked_by_ask_depth_ratio=blocked_by_ratio,
+        skipped_due_to_missing_ask_depth=skipped_missing,
+    )
+
+
 def pick_entries(
     grouped: dict[tuple[str, str], list[TraceRow]],
     min_expected_return_percent: float,
@@ -516,6 +588,8 @@ def run_backtest(
     stop_buy_time: str = "13:00",
     force_sell_time: str = "15:00",
     spread_expected_return_multiplier: float = 0.0,
+    max_orderbook_ask_depth_ratio: float = 0.0,
+    missing_ask_depth_policy: str = "ignore",
 ) -> list[BacktestTrade]:
     traces = load_traces(db_path)
     selected_signals = load_selected_signals(db_path) if use_selected_signals else []
@@ -650,11 +724,22 @@ def run_backtest(
                     expect_price=candidate.expect_price,
                     expect_revenue_percent=candidate.expect_revenue_percent,
                     spread_percent=candidate.spread_percent,
+                    ask_depth_5_amount_krw=candidate.ask_depth_5_amount_krw,
                 )
                 quantity = calc_order_quantity(candidate_model, session_plan.slot_budget_per_stock)
                 estimated_cost = quantity * entry_price
                 if quantity <= 0 or estimated_cost <= 0 or estimated_cost > available_cash:
                     continue
+                if max_orderbook_ask_depth_ratio > 0:
+                    if candidate.ask_depth_5_amount_krw <= 0:
+                        if missing_ask_depth_policy == "skip":
+                            continue
+                    elif not passes_orderbook_ask_depth_ratio(
+                        candidate_model,
+                        estimated_cost_krw=estimated_cost,
+                        max_orderbook_ask_depth_ratio=max_orderbook_ask_depth_ratio,
+                    ):
+                        continue
                 target_price = _resolve_target_price(candidate.expect_price, sell_tick_offset, entry_price)
                 if target_price <= 0:
                     target_price = int(entry_price * (1 + take_profit_percent / 100))
@@ -723,6 +808,21 @@ def print_summary(trades: list[BacktestTrade]) -> None:
         print(f"  {reason}: {count}")
 
 
+def print_ask_depth_coverage(coverage: BacktestCoverage, missing_ask_depth_policy: str) -> None:
+    if coverage.eligible_candidates <= 0:
+        return
+    covered_ratio = coverage.candidates_with_ask_depth / coverage.eligible_candidates * 100
+    print("ask_depth_coverage:")
+    print(
+        f"  entries={coverage.eligible_candidates} with_depth={coverage.candidates_with_ask_depth} "
+        f"missing_depth={coverage.candidates_missing_ask_depth} coverage={covered_ratio:.2f}%"
+    )
+    print(
+        f"  blocked_by_depth_ratio={coverage.blocked_by_ask_depth_ratio} "
+        f"missing_policy={missing_ask_depth_policy} skipped_missing={coverage.skipped_due_to_missing_ask_depth}"
+    )
+
+
 def summarize_trades(trades: list[BacktestTrade]) -> BacktestSummary:
     if not trades:
         return BacktestSummary(
@@ -762,6 +862,8 @@ def parse_args():
     parser.add_argument("--stop-buy-time", default="13:00")
     parser.add_argument("--force-sell-time", default="15:00")
     parser.add_argument("--spread-expected-return-multiplier", type=float, default=0.0)
+    parser.add_argument("--max-orderbook-ask-depth-ratio", type=float, default=0.0)
+    parser.add_argument("--missing-ask-depth-policy", choices=["ignore", "skip"], default="ignore")
     parser.add_argument("--starting-capital-krw", type=int, default=1_000_000)
     parser.add_argument("--min-slot-count", type=int, default=1)
     parser.add_argument("--max-slot-count", type=int, default=0)
@@ -798,7 +900,16 @@ if __name__ == "__main__":
         stop_buy_time=args.stop_buy_time,
         force_sell_time=args.force_sell_time,
         spread_expected_return_multiplier=args.spread_expected_return_multiplier,
+        max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
+        missing_ask_depth_policy=args.missing_ask_depth_policy,
     )
     write_csv(Path(args.out), result)
     print_summary(result)
+    coverage = summarize_ask_depth_coverage(
+        result,
+        load_traces(Path(args.db)),
+        max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
+        missing_ask_depth_policy=args.missing_ask_depth_policy,
+    )
+    print_ask_depth_coverage(coverage, args.missing_ask_depth_policy)
     print(f"wrote {args.out}")
