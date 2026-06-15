@@ -22,7 +22,7 @@
 15:20          종료
 ```
 
-관련 설정은 [settings.yaml](/abs/path/c:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/config/settings.yaml)에 있다.
+관련 설정은 [settings.yaml](/c:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/config/settings.yaml)에 있다.
 
 예전 문서에는 `13:00` 기준이 남아 있었지만, 현재 기준은 `14:00`이다.
 
@@ -69,6 +69,8 @@ Daily_bot/
 7. 슬롯 수와 가용현금 기준으로 매수 대상을 고른다.
 8. 매수 후 즉시 매도 주문을 연결한다.
 
+여기서 7번은 단순 정렬 순서가 아니라, 실제 빈 슬롯 수, 거래가능현금, 슬롯 균등예산, 종목당 최대 예산, `top-5 ask depth` 비율까지 한꺼번에 맞는 조합을 고르는 단계다.
+
 따라서 전략 튜닝은 `selected`보다 `unselected` 리플레이 결과를 우선해서 보는 편이 현재 구조와 더 잘 맞는다.
 현재는 스프레드 상한만 단순 적용하지 않고, `spread_expected_return_multiplier`를 통해 스프레드가 큰 종목일수록 더 높은 기대수익률을 요구한다.
 
@@ -89,9 +91,13 @@ Daily_bot/
 - `risk.max_slot_count = 10`
 - `risk.slot_budget_unit_krw = 5000000`
 - `risk.max_budget_per_stock_krw = 5000000`
+- `risk.max_orderbook_ask_depth_ratio = 0.30`
 - `risk.stop_loss_percent = 1.0`
+- `risk.daily_loss_limit_percent = 10.0`
 
 코드와 문서가 어긋나면 설정 파일을 우선으로 보고 문서를 갱신하는 편이 안전하다.
+
+추가로 `daily_loss_limit_percent`는 즉시 강제청산 스위치가 아니라 신규 매수 차단 가드다.
 
 ## 7. 체결기록 구조
 
@@ -110,6 +116,7 @@ Daily_bot/
 2. 주문번호/매수-매도 기준으로 `fills` 원장 정정
 3. `fills_YYYYMMDD.csv` 재생성
 4. `trade_fills_audit.csv` 재생성
+5. `daily_rev.csv` 갱신
 
 최종 숫자는 장중 콘솔 로그보다 브로커 대조 후 DB 상태를 더 신뢰하는 편이 맞다.
 

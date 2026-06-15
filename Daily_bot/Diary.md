@@ -1,3 +1,5 @@
+이 파일은 변경 이력과 실험 메모를 남기는 용도다. 현재 전략의 최신 기준값은 `config/settings.yaml`, `README.md`, `docs/strategy_design.md`를 우선한다.
+
 2026-06-15 18:05:00 +09:00
 - `top-5 ask depth` 기준 주문금액 비율 필터를 실거래 로직에 반영했다. 현재 기준은 `max_orderbook_ask_depth_ratio = 0.30`이며, 주문 예정 금액이 상위 5호가 매도잔량 금액의 30%를 넘으면 진입하지 않는다.
 - `직전 스캔 대비 +1.0% 이상 상승` 종목 제외 필터를 추가했다. 기본값은 켜진 상태이며, 뒤늦은 당일 급등 추격을 줄이기 위한 안전장치다.
@@ -27,6 +29,6 @@
 - `market_traces`에 `market_cap`, `trading_value`를 함께 기록하도록 저장 구조와 테스트를 수정했다.
 - 백테스트 CSV와 실거래 로그가 섞이지 않도록 `Daily_bot/backtest/results` 폴더를 만들고, 기존 백테스트 결과물도 모두 그쪽으로 이동했다.
 - `Daily_bot` 문서들을 현재 설정과 운영 기준에 맞게 전면 정리했다.
-- 설정을 다시 조정해 현재 기준은 `top_ratio=0.2`, `max_spread_percent=0.7`, `spread_expected_return_multiplier=1.5`, `max_prev_day_change_percent=7.0`, `min_slot_count=3`으로 맞췄다.
+- 당시 실험 메모에는 `spread_expected_return_multiplier=1.5`가 적혀 있으나, 최신 실제 설정값은 `config/settings.yaml` 기준 `1.2`다.
 - 동적 기대수익률 필터를 실거래와 리플레이에 함께 반영한 뒤, 현재 설정 재실행 기준 `unselected` 백테스트 결과는 총합 `-2.3006%`였다.
 - 위 변경사항에 맞춰 README, 전략 문서, 인수인계 문서의 설정값과 설명을 다시 동기화했다.
