@@ -70,6 +70,11 @@ def get_stop_loss_reference_price(snapshot: HogaSnapshot) -> int:
     return int(snapshot.current_price or 0)
 
 
+def get_stop_loss_limit_price(snapshot: HogaSnapshot) -> int:
+    """Place stop-loss exits as executable sell limits near the top bid."""
+    return get_stop_loss_reference_price(snapshot)
+
+
 def wait_until_no_open_orders_for_ticker(
     client,
     ticker: str,
@@ -128,14 +133,15 @@ def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], ope
         return False
 
     for position in positions:
+        snapshot = client.get_20hoga(position.ticker)
+        limit_price = get_stop_loss_limit_price(snapshot)
         loss_percent = get_position_loss_percent(position)
         if loss_percent is not None and loss_percent <= -stop_loss_percent:
             print(
                 "Stop-loss triggered from account snapshot: "
-                f"{position.ticker} avg={position.avg_price} loss_percent={loss_percent:.2f}"
+                f"{position.ticker} avg={position.avg_price} loss_percent={loss_percent:.2f} limit_price={limit_price}"
             )
         else:
-            snapshot = client.get_20hoga(position.ticker)
             reference_price = get_stop_loss_reference_price(snapshot)
             if not is_stop_loss_triggered(position, reference_price, stop_loss_percent):
                 continue
@@ -144,7 +150,7 @@ def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], ope
             print(
                 "Stop-loss triggered from hoga snapshot: "
                 f"{position.ticker} avg={position.avg_price} "
-                f"ref_price={reference_price} threshold={int(threshold_price)}"
+                f"ref_price={reference_price} threshold={int(threshold_price)} limit_price={limit_price}"
             )
 
         for order in open_orders:
@@ -161,7 +167,10 @@ def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], ope
                 f"Stop-loss triggered for {position.ticker}, but existing orders could not be cancelled safely."
             )
 
-        sell_order = client.sell_market(position.ticker, position.quantity)
+        if limit_price <= 0:
+            raise RuntimeError(f"Stop-loss triggered for {position.ticker}, but no valid executable limit price was available.")
+
+        sell_order = client.sell_limit(position.ticker, position.quantity, limit_price)
         recorder.save_order(sell_order)
         sell_order_id = _get_order_id_from_object(sell_order)
         if not _record_fill_safely(client, recorder, sell_order_id, "SELL", "stop_loss"):

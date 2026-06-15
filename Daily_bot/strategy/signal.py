@@ -28,10 +28,13 @@ def final_filter(
     min_expected_return_percent: float,
     sell_tick_offset: int,
     max_spread_percent: float = 0.5,
+    max_prev_day_change_percent: float = 0.0,
 ) -> list[Candidate]:
     result: list[Candidate] = []
     for c in candidates:
         if not c.trend_ok:
+            continue
+        if max_prev_day_change_percent > 0 and c.prev_day_change_percent >= max_prev_day_change_percent:
             continue
         if c.expect_revenue_percent < min_expected_return_percent:
             continue

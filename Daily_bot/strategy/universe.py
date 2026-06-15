@@ -55,6 +55,17 @@ def _safe_str(value: Any) -> str | None:
     return str(value).strip()
 
 
+def _safe_float(value: Any) -> float:
+    if value is None:
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(str(value).replace(",", "").strip())
+    except ValueError:
+        return 0.0
+
+
 def _normalize_code(value: Any) -> str:
     code = str(value or "").strip()
     if code.endswith(".KS") or code.endswith(".KQ"):
@@ -263,12 +274,21 @@ def get_candidates(cfg: UniverseConfig, trend_enabled: bool = True) -> dict[str,
         price = _safe_int(row.get("Close") or row.get("Open") or row.get("price") or row.get("Price"))
         market_cap = _safe_int(row.get("Marcap") or row.get("MarketCap") or row.get("market_cap"))
         trading_value = _safe_int(row.get("Amount") or row.get("TradingValue") or row.get("trading_value"))
+        prev_day_change_percent = _safe_float(
+            row.get("ChagesRatio")
+            or row.get("ChangesRatio")
+            or row.get("ChangeRatio")
+            or row.get("change_ratio")
+            or row.get("prev_day_change_percent")
+            or 0.0
+        )
         trend_ok = bool(row.get("trend_ok", True))
 
         candidates[ticker] = Candidate(
             ticker=ticker,
             name=_safe_str(row.get("Name") or row.get("name") or row.get("회사명")),
             price=price,
+            prev_day_change_percent=prev_day_change_percent,
             market_cap=market_cap,
             trading_value=trading_value,
             trend_ok=trend_ok,

@@ -23,6 +23,7 @@ class Candidate:
     expect_price: int = 0
     expect_revenue_percent: float = 0.0
     spread_percent: float = 0.0
+    prev_day_change_percent: float = 0.0
     market_cap: int | None = None
     trading_value: int | None = None
     trend_ok: bool = False

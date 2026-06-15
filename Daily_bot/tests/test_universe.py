@@ -59,3 +59,32 @@ def test_get_kospi200_list_prefers_daily_cache_when_refresh_enabled(tmp_path):
 
     assert df.iloc[0]["Name"] == "Cached Samsung"
     assert int(df.iloc[0]["Close"]) == 307000
+
+
+def test_get_candidates_reads_previous_day_change_percent_from_cache_columns(tmp_path):
+    cache_csv = tmp_path / "cache.csv"
+    cache_df = pd.DataFrame(
+        [
+            {
+                "Code": "005930",
+                "Name": "Cached Samsung",
+                "Close": 307000,
+                "Marcap": 1794807532656000,
+                "Amount": 10730431777324,
+                "ChagesRatio": 10.25,
+                "trend_ok": True,
+            }
+        ]
+    )
+    cache_df.to_csv(cache_csv, index=False)
+
+    cfg = UniverseConfig(
+        min_market_cap_krw=100000000000,
+        min_trading_value_krw=10000000000,
+        csv_path="Daily_bot/data/kospi200.csv",
+        cache_path=str(cache_csv),
+        refresh_daily=True,
+    )
+    candidates = get_candidates(cfg, trend_enabled=False)
+
+    assert candidates["005930"].prev_day_change_percent == 10.25

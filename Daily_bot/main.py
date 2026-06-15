@@ -978,6 +978,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             cfg["strategy"]["min_expected_return_percent"],
             cfg["strategy"]["sell_tick_offset"],
             cfg["strategy"].get("max_spread_percent", 0.7),
+            cfg["strategy"].get("max_prev_day_change_percent", 15.0),
         )
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
         for candidate in filtered:
