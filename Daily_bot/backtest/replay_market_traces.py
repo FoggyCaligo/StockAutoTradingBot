@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import sqlite3
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import mean
+
+from Daily_bot.models import Candidate
+from Daily_bot.risk.guards import calc_order_quantity
+from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
+from Daily_bot.utils import get_tick_size, round_to_tick
 
 
 @dataclass
@@ -46,6 +53,16 @@ class BacktestTrade:
 
 
 @dataclass
+class ReplayPosition:
+    entry: TraceRow
+    quantity: int
+    invested_amount: int
+    entry_price: int
+    target_price: int
+    stop_loss_price: float
+
+
+@dataclass
 class BacktestSummary:
     trades: int
     wins: int
@@ -53,6 +70,14 @@ class BacktestSummary:
     win_rate_percent: float
     avg_pnl_percent: float
     total_pnl_percent: float
+
+
+@dataclass
+class SessionCapitalPlan:
+    session_capital_basis: int
+    slot_count: int
+    slot_budget_per_stock: int
+    position_limit: int
 
 
 def _to_int(value) -> int:
@@ -67,6 +92,21 @@ def _to_float(value) -> float:
         return float(value or 0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _normalize_created_at(session_date: str, created_at: str) -> str:
+    if not created_at:
+        return created_at
+    try:
+        dt = datetime.fromisoformat(created_at)
+    except ValueError:
+        return created_at
+    if dt.hour < 6:
+        dt += timedelta(hours=9)
+    normalized = dt.strftime("%Y-%m-%d %H:%M:%S")
+    if session_date and normalized[:10] != session_date:
+        return created_at
+    return normalized
 
 
 def load_traces(db_path: Path) -> list[TraceRow]:
@@ -90,21 +130,24 @@ def load_traces(db_path: Path) -> list[TraceRow]:
         """
     ).fetchall()
     conn.close()
-    return [
-        TraceRow(
-            session_date=row["session_date"],
-            ticker=row["ticker"],
-            created_at=row["created_at"],
-            phase=row["phase"],
-            selected=_to_int(row["selected"]),
-            price=_to_int(row["price"]),
-            current_price=_to_int(row["current_price"]),
-            expect_price=_to_int(row["expect_price"]),
-            expect_revenue_percent=_to_float(row["expect_revenue_percent"]),
-            spread_percent=_to_float(row["spread_percent"]),
+    traces: list[TraceRow] = []
+    for row in rows:
+        session_date = row["session_date"]
+        traces.append(
+            TraceRow(
+                session_date=session_date,
+                ticker=row["ticker"],
+                created_at=_normalize_created_at(session_date, row["created_at"]),
+                phase=row["phase"],
+                selected=_to_int(row["selected"]),
+                price=_to_int(row["price"]),
+                current_price=_to_int(row["current_price"]),
+                expect_price=_to_int(row["expect_price"]),
+                expect_revenue_percent=_to_float(row["expect_revenue_percent"]),
+                spread_percent=_to_float(row["spread_percent"]),
+            )
         )
-        for row in rows
-    ]
+    return traces
 
 
 def load_selected_signals(db_path: Path) -> list[SelectedSignal]:
@@ -113,7 +156,6 @@ def load_selected_signals(db_path: Path) -> list[SelectedSignal]:
     rows = conn.execute(
         """
         SELECT
-            substr(created_at, 1, 10) AS session_date,
             ticker,
             created_at,
             price,
@@ -126,18 +168,48 @@ def load_selected_signals(db_path: Path) -> list[SelectedSignal]:
         """
     ).fetchall()
     conn.close()
-    return [
-        SelectedSignal(
-            session_date=row["session_date"],
-            ticker=row["ticker"],
-            created_at=row["created_at"],
-            price=_to_int(row["price"]),
-            expect_price=_to_int(row["expect_price"]),
-            expect_revenue_percent=_to_float(row["expect_revenue_percent"]),
-            spread_percent=_to_float(row["spread_percent"]),
+    signals: list[SelectedSignal] = []
+    for row in rows:
+        normalized_created_at = _normalize_created_at("", row["created_at"])
+        session_date = normalized_created_at[:10] if normalized_created_at else str(row["created_at"] or "")[:10]
+        signals.append(
+            SelectedSignal(
+                session_date=session_date,
+                ticker=row["ticker"],
+                created_at=normalized_created_at,
+                price=_to_int(row["price"]),
+                expect_price=_to_int(row["expect_price"]),
+                expect_revenue_percent=_to_float(row["expect_revenue_percent"]),
+                spread_percent=_to_float(row["spread_percent"]),
+            )
         )
-        for row in rows
-    ]
+    return signals
+
+
+def load_session_capital_bases(db_path: Path) -> dict[str, int]:
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            """
+            SELECT session_date, cash, created_at
+            FROM account_traces
+            ORDER BY session_date, created_at
+            """
+        ).fetchall()
+    except sqlite3.OperationalError:
+        conn.close()
+        return {}
+    conn.close()
+    bases: dict[str, int] = {}
+    for row in rows:
+        session_date = str(row["session_date"] or "")
+        if session_date in bases:
+            continue
+        cash = _to_int(row["cash"])
+        if cash > 0:
+            bases[session_date] = cash
+    return bases
 
 
 def group_by_session_and_ticker(rows: list[TraceRow]) -> dict[tuple[str, str], list[TraceRow]]:
@@ -145,6 +217,175 @@ def group_by_session_and_ticker(rows: list[TraceRow]) -> dict[tuple[str, str], l
     for row in rows:
         grouped.setdefault((row.session_date, row.ticker), []).append(row)
     return grouped
+
+
+def group_by_session(rows: list[TraceRow]) -> dict[str, list[TraceRow]]:
+    grouped: dict[str, list[TraceRow]] = {}
+    for row in rows:
+        grouped.setdefault(row.session_date, []).append(row)
+    return grouped
+
+
+def resolve_total_slot_count(
+    total_capital: int,
+    min_slot_count: int,
+    max_slot_count: int,
+    slot_budget_unit_krw: int,
+    max_budget_per_stock_krw: int,
+    target_budget_ratio_per_stock: float = 0.0,
+) -> int:
+    if total_capital <= 0:
+        return 0
+    min_slots = max(1, int(min_slot_count or 1))
+    if slot_budget_unit_krw > 0:
+        slot_count = max(min_slots, total_capital // slot_budget_unit_krw)
+        return min(slot_count, max_slot_count) if max_slot_count > 0 else slot_count
+    if max_budget_per_stock_krw > 0:
+        affordable = max(1, total_capital // max_budget_per_stock_krw)
+    elif target_budget_ratio_per_stock > 0:
+        budget = int(total_capital * target_budget_ratio_per_stock)
+        affordable = max(1, total_capital // budget) if budget > 0 else min_slots
+    else:
+        affordable = min_slots
+    slot_count = max(min_slots, affordable)
+    return min(slot_count, max_slot_count) if max_slot_count > 0 else slot_count
+
+
+def resolve_target_budget_per_stock(
+    planning_cash: int,
+    slot_count: int,
+    max_budget_per_stock_krw: int,
+    slot_budget_unit_krw: int,
+    max_slot_count: int,
+    target_budget_ratio_per_stock: float = 0.0,
+) -> int:
+    if planning_cash <= 0 or slot_count <= 0:
+        return 0
+    if slot_budget_unit_krw > 0:
+        raw_slot_count = max(1, planning_cash // slot_budget_unit_krw)
+        budget_from_slots = planning_cash // slot_count
+        if max_slot_count > 0 and raw_slot_count > max_slot_count:
+            return budget_from_slots
+        if max_budget_per_stock_krw > 0:
+            return min(budget_from_slots, max_budget_per_stock_krw)
+        return budget_from_slots
+    if target_budget_ratio_per_stock > 0:
+        budget_from_ratio = int(planning_cash * target_budget_ratio_per_stock)
+        if max_budget_per_stock_krw > 0 and budget_from_ratio > 0:
+            return min(budget_from_ratio, max_budget_per_stock_krw)
+        if budget_from_ratio > 0:
+            return budget_from_ratio
+    return max_budget_per_stock_krw
+
+
+def resolve_position_limit(slot_count: int, max_position_count: int) -> int:
+    hard_limit = int(max_position_count or 0)
+    if hard_limit > 0 and slot_count > 0:
+        return min(hard_limit, slot_count)
+    if hard_limit > 0:
+        return hard_limit
+    return slot_count
+
+
+def resolve_session_capital_plan(
+    session_date: str,
+    session_capital_by_day: dict[str, int] | None,
+    default_starting_capital_krw: int,
+    min_slot_count: int,
+    max_slot_count: int,
+    slot_budget_unit_krw: int,
+    max_budget_per_stock_krw: int,
+    max_position_count: int,
+    target_budget_ratio_per_stock: float = 0.0,
+) -> SessionCapitalPlan:
+    session_capital_basis = max(0, int((session_capital_by_day or {}).get(session_date, default_starting_capital_krw) or 0))
+    slot_count = resolve_total_slot_count(
+        total_capital=session_capital_basis,
+        min_slot_count=min_slot_count,
+        max_slot_count=max_slot_count,
+        slot_budget_unit_krw=slot_budget_unit_krw,
+        max_budget_per_stock_krw=max_budget_per_stock_krw,
+        target_budget_ratio_per_stock=target_budget_ratio_per_stock,
+    )
+    slot_budget_per_stock = resolve_target_budget_per_stock(
+        planning_cash=session_capital_basis,
+        slot_count=slot_count,
+        max_budget_per_stock_krw=max_budget_per_stock_krw,
+        slot_budget_unit_krw=slot_budget_unit_krw,
+        max_slot_count=max_slot_count,
+        target_budget_ratio_per_stock=target_budget_ratio_per_stock,
+    )
+    position_limit = resolve_position_limit(slot_count=slot_count, max_position_count=max_position_count)
+    return SessionCapitalPlan(
+        session_capital_basis=session_capital_basis,
+        slot_count=slot_count,
+        slot_budget_per_stock=slot_budget_per_stock,
+        position_limit=position_limit,
+    )
+
+
+def _min_sell_price_above_buy(buy_price: int) -> int:
+    if buy_price <= 0:
+        return 0
+    return round_to_tick(buy_price + get_tick_size(buy_price))
+
+
+def _resolve_target_price(expect_price: int, sell_tick_offset: int, entry_price: int) -> int:
+    target_price = calc_target_sell_price(expect_price, sell_tick_offset) if expect_price > 0 else 0
+    min_sell_price = _min_sell_price_above_buy(entry_price)
+    if min_sell_price > 0 and target_price < min_sell_price:
+        return min_sell_price
+    return target_price if target_price > 0 else min_sell_price
+
+
+def _is_within_buy_window(created_at: str) -> bool:
+    time_text = created_at[11:16] if len(created_at) >= 16 else ""
+    return "09:30" <= time_text <= "13:00"
+
+
+def _selected_tickers_by_day(selected_signals: list[SelectedSignal]) -> dict[str, set[str]]:
+    by_day: dict[str, set[str]] = {}
+    for signal in selected_signals:
+        by_day.setdefault(signal.session_date, set()).add(signal.ticker)
+    return by_day
+
+
+def _pick_candidates_for_timestamp(
+    rows: list[TraceRow],
+    min_expected_return_percent: float,
+    max_spread_percent: float,
+    top_ratio: float,
+    active_tickers: set[str],
+    allowed_tickers: set[str] | None,
+) -> list[TraceRow]:
+    latest_by_ticker: dict[str, TraceRow] = {}
+    for row in rows:
+        if row.phase not in {"scan_candidate", "watchlist"}:
+            continue
+        if row.ticker in active_tickers:
+            continue
+        if allowed_tickers is not None and row.ticker not in allowed_tickers:
+            continue
+        if row.current_price <= 0:
+            continue
+        if row.expect_revenue_percent < min_expected_return_percent:
+            continue
+        if max_spread_percent > 0 and row.spread_percent > max_spread_percent:
+            continue
+        existing = latest_by_ticker.get(row.ticker)
+        if existing is None or row.expect_revenue_percent > existing.expect_revenue_percent:
+            latest_by_ticker[row.ticker] = row
+
+    candidates = sorted(
+        latest_by_ticker.values(),
+        key=lambda item: (-item.expect_revenue_percent, item.ticker),
+    )
+    if not candidates:
+        return []
+    if 0 < top_ratio < 1:
+        keep_count = max(1, math.ceil(len(candidates) * top_ratio))
+        return candidates[:keep_count]
+    return candidates
 
 
 def pick_entries(
@@ -190,7 +431,7 @@ def replay_trade(
     trace_rows: list[TraceRow],
     take_profit_percent: float,
     stop_loss_percent: float,
-) -> BacktestTrade:
+    ) -> BacktestTrade:
     entry_price = entry.current_price or entry.price
     if entry_price <= 0:
         raise ValueError(f"Invalid entry price for {entry.session_date} {entry.ticker}")
@@ -232,25 +473,160 @@ def run_backtest(
     min_expected_return_percent: float,
     max_spread_percent: float,
     top_n_per_day: int,
-    take_profit_percent: float,
     stop_loss_percent: float,
     use_selected_signals: bool = True,
+    take_profit_percent: float = 0.25,
+    top_ratio: float = 1.0,
+    sell_tick_offset: int = 1,
+    session_capital_by_day: dict[str, int] | None = None,
+    default_starting_capital_krw: int = 0,
+    min_slot_count: int = 1,
+    max_slot_count: int = 0,
+    slot_budget_unit_krw: int = 0,
+    max_budget_per_stock_krw: int = 0,
+    max_position_count: int = 0,
+    target_budget_ratio_per_stock: float = 0.0,
 ) -> list[BacktestTrade]:
     traces = load_traces(db_path)
-    grouped = group_by_session_and_ticker(traces)
     selected_signals = load_selected_signals(db_path) if use_selected_signals else []
-    entries_by_day = pick_entries(
-        grouped,
-        min_expected_return_percent,
-        max_spread_percent,
-        top_n_per_day,
-        selected_signals=selected_signals,
-    )
+    selected_tickers = _selected_tickers_by_day(selected_signals)
+    grouped_by_session = group_by_session(traces)
     trades: list[BacktestTrade] = []
-    for entries in entries_by_day.values():
-        for entry in entries:
-            trace_rows = grouped[(entry.session_date, entry.ticker)]
-            trades.append(replay_trade(entry, trace_rows, take_profit_percent, stop_loss_percent))
+
+    for session_date, day_rows in grouped_by_session.items():
+        session_plan = resolve_session_capital_plan(
+            session_date=session_date,
+            session_capital_by_day=session_capital_by_day,
+            default_starting_capital_krw=default_starting_capital_krw,
+            min_slot_count=min_slot_count,
+            max_slot_count=max_slot_count,
+            slot_budget_unit_krw=slot_budget_unit_krw,
+            max_budget_per_stock_krw=max_budget_per_stock_krw,
+            max_position_count=max_position_count,
+            target_budget_ratio_per_stock=target_budget_ratio_per_stock,
+        )
+        if session_plan.position_limit <= 0 or session_plan.slot_budget_per_stock <= 0 or session_plan.session_capital_basis <= 0:
+            continue
+        rows_by_time: dict[str, list[TraceRow]] = {}
+        last_row_by_ticker: dict[str, TraceRow] = {}
+        for row in day_rows:
+            rows_by_time.setdefault(row.created_at, []).append(row)
+            last_row_by_ticker[row.ticker] = row
+
+        open_positions: dict[str, ReplayPosition] = {}
+        allowed_tickers = selected_tickers.get(session_date) if use_selected_signals and session_date in selected_tickers else None
+        available_cash = session_plan.session_capital_basis
+
+        for created_at in sorted(rows_by_time):
+            rows_at_time = rows_by_time[created_at]
+            rows_by_ticker = {row.ticker: row for row in rows_at_time}
+            exited_tickers_at_time: set[str] = set()
+
+            for ticker, position in list(open_positions.items()):
+                current_row = rows_by_ticker.get(ticker)
+                if current_row is None:
+                    continue
+                current_price = current_row.current_price or current_row.price
+                if current_price <= 0:
+                    continue
+                if current_price <= position.stop_loss_price:
+                    trades.append(
+                        BacktestTrade(
+                            session_date=session_date,
+                            ticker=ticker,
+                            entry_time=position.entry.created_at,
+                            exit_time=current_row.created_at,
+                            entry_price=position.entry_price,
+                            exit_price=current_price,
+                            exit_reason="stop_loss",
+                            pnl_percent=(current_price - position.entry_price) / position.entry_price * 100,
+                        )
+                    )
+                    available_cash += position.quantity * current_price
+                    del open_positions[ticker]
+                    exited_tickers_at_time.add(ticker)
+                    continue
+                if current_price >= position.target_price:
+                    trades.append(
+                        BacktestTrade(
+                            session_date=session_date,
+                            ticker=ticker,
+                            entry_time=position.entry.created_at,
+                            exit_time=current_row.created_at,
+                            entry_price=position.entry_price,
+                            exit_price=current_price,
+                            exit_reason="take_profit",
+                            pnl_percent=(current_price - position.entry_price) / position.entry_price * 100,
+                        )
+                    )
+                    available_cash += position.quantity * current_price
+                    del open_positions[ticker]
+                    exited_tickers_at_time.add(ticker)
+
+            if not _is_within_buy_window(created_at):
+                continue
+
+            effective_position_limit = min(top_n_per_day, session_plan.position_limit) if top_n_per_day > 0 else session_plan.position_limit
+            available_slots = max(0, effective_position_limit - len(open_positions))
+            if available_slots <= 0:
+                continue
+            affordable_slots = available_cash // session_plan.slot_budget_per_stock if session_plan.slot_budget_per_stock > 0 else 0
+            planned_buy_count = min(available_slots, affordable_slots)
+            if planned_buy_count <= 0:
+                continue
+
+            candidates = _pick_candidates_for_timestamp(
+                rows_at_time,
+                min_expected_return_percent=min_expected_return_percent,
+                max_spread_percent=max_spread_percent,
+                top_ratio=top_ratio,
+                active_tickers=set(open_positions) | exited_tickers_at_time,
+                allowed_tickers=allowed_tickers,
+            )
+
+            for candidate in candidates[:planned_buy_count]:
+                entry_price = candidate.current_price or candidate.price
+                if entry_price <= 0:
+                    continue
+                candidate_model = Candidate(
+                    ticker=candidate.ticker,
+                    price=entry_price,
+                    expect_price=candidate.expect_price,
+                    expect_revenue_percent=candidate.expect_revenue_percent,
+                    spread_percent=candidate.spread_percent,
+                )
+                quantity = calc_order_quantity(candidate_model, session_plan.slot_budget_per_stock)
+                estimated_cost = quantity * entry_price
+                if quantity <= 0 or estimated_cost <= 0 or estimated_cost > available_cash:
+                    continue
+                target_price = _resolve_target_price(candidate.expect_price, sell_tick_offset, entry_price)
+                if target_price <= 0:
+                    target_price = int(entry_price * (1 + take_profit_percent / 100))
+                open_positions[candidate.ticker] = ReplayPosition(
+                    entry=candidate,
+                    quantity=quantity,
+                    invested_amount=estimated_cost,
+                    entry_price=entry_price,
+                    target_price=target_price,
+                    stop_loss_price=entry_price * (1 - stop_loss_percent / 100),
+                )
+                available_cash -= estimated_cost
+
+        for ticker, position in open_positions.items():
+            exit_row = last_row_by_ticker.get(ticker, position.entry)
+            exit_price = exit_row.current_price or exit_row.price or position.entry_price
+            trades.append(
+                BacktestTrade(
+                    session_date=session_date,
+                    ticker=ticker,
+                    entry_time=position.entry.created_at,
+                    exit_time=exit_row.created_at,
+                    entry_price=position.entry_price,
+                    exit_price=exit_price,
+                    exit_reason="force_exit_last_trace",
+                    pnl_percent=(exit_price - position.entry_price) / position.entry_price * 100,
+                )
+            )
     return trades
 
 
@@ -322,8 +698,17 @@ def parse_args():
     parser.add_argument("--min-expected-return", type=float, default=0.25)
     parser.add_argument("--max-spread", type=float, default=0.7)
     parser.add_argument("--top-n", type=int, default=3)
+    parser.add_argument("--top-ratio", type=float, default=1.0)
     parser.add_argument("--take-profit", type=float, default=0.25)
     parser.add_argument("--stop-loss", type=float, default=6.0)
+    parser.add_argument("--sell-tick-offset", type=int, default=1)
+    parser.add_argument("--starting-capital-krw", type=int, default=1_000_000)
+    parser.add_argument("--min-slot-count", type=int, default=1)
+    parser.add_argument("--max-slot-count", type=int, default=0)
+    parser.add_argument("--slot-budget-unit-krw", type=int, default=0)
+    parser.add_argument("--max-budget-per-stock-krw", type=int, default=0)
+    parser.add_argument("--max-position-count", type=int, default=0)
+    parser.add_argument("--target-budget-ratio-per-stock", type=float, default=0.0)
     parser.add_argument("--out", default="Daily_bot/logs/backtest_replay.csv")
     parser.add_argument("--ignore-selected-signals", action="store_true")
     return parser.parse_args()
@@ -336,9 +721,19 @@ if __name__ == "__main__":
         min_expected_return_percent=args.min_expected_return,
         max_spread_percent=args.max_spread,
         top_n_per_day=args.top_n,
-        take_profit_percent=args.take_profit,
         stop_loss_percent=args.stop_loss,
         use_selected_signals=not args.ignore_selected_signals,
+        take_profit_percent=args.take_profit,
+        top_ratio=args.top_ratio,
+        sell_tick_offset=args.sell_tick_offset,
+        session_capital_by_day=load_session_capital_bases(Path(args.db)),
+        default_starting_capital_krw=args.starting_capital_krw,
+        min_slot_count=args.min_slot_count,
+        max_slot_count=args.max_slot_count,
+        slot_budget_unit_krw=args.slot_budget_unit_krw,
+        max_budget_per_stock_krw=args.max_budget_per_stock_krw,
+        max_position_count=args.max_position_count,
+        target_budget_ratio_per_stock=args.target_budget_ratio_per_stock,
     )
     write_csv(Path(args.out), result)
     print_summary(result)

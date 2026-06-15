@@ -29,6 +29,8 @@ def run_sweep(
     take_profit_percent: float,
     stop_loss_percents: list[float],
     use_selected_signals: bool,
+    top_ratio: float = 1.0,
+    sell_tick_offset: int = 1,
 ) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for min_expected_return, max_spread, top_n, stop_loss_percent in product(
@@ -42,9 +44,11 @@ def run_sweep(
             min_expected_return_percent=min_expected_return,
             max_spread_percent=max_spread,
             top_n_per_day=top_n,
-            take_profit_percent=take_profit_percent,
             stop_loss_percent=stop_loss_percent,
             use_selected_signals=use_selected_signals,
+            take_profit_percent=take_profit_percent,
+            top_ratio=top_ratio,
+            sell_tick_offset=sell_tick_offset,
         )
         summary = summarize_trades(trades)
         row = {
@@ -53,6 +57,8 @@ def run_sweep(
             "top_n_per_day": top_n,
             "take_profit_percent": take_profit_percent,
             "stop_loss_percent": stop_loss_percent,
+            "top_ratio": top_ratio,
+            "sell_tick_offset": sell_tick_offset,
             "use_selected_signals": int(use_selected_signals),
             **asdict(summary),
         }
@@ -83,8 +89,10 @@ def parse_args():
     parser.add_argument("--min-expected-returns", default="0.2,0.25,0.3")
     parser.add_argument("--max-spreads", default="0.5,0.7")
     parser.add_argument("--top-ns", default="1,2,3")
+    parser.add_argument("--top-ratio", type=float, default=1.0)
     parser.add_argument("--take-profit", type=float, default=0.25)
     parser.add_argument("--stop-losses", default="5.0,6.0,7.0")
+    parser.add_argument("--sell-tick-offset", type=int, default=1)
     parser.add_argument("--out", default="Daily_bot/logs/backtest_replay_sweep.csv")
     parser.add_argument("--ignore-selected-signals", action="store_true")
     return parser.parse_args()
@@ -100,6 +108,8 @@ if __name__ == "__main__":
         take_profit_percent=args.take_profit,
         stop_loss_percents=_parse_number_list(args.stop_losses, float),
         use_selected_signals=not args.ignore_selected_signals,
+        top_ratio=args.top_ratio,
+        sell_tick_offset=args.sell_tick_offset,
     )
     write_csv(Path(args.out), rows)
     print(f"rows={len(rows)} wrote={args.out}")

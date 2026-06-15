@@ -1,0 +1,4 @@
+﻿min_expected_return_percent,max_spread_percent,top_n_per_day,take_profit_percent,stop_loss_percent,top_ratio,sell_tick_offset,use_selected_signals,trades,wins,losses,win_rate_percent,avg_pnl_percent,total_pnl_percent
+0.3,0.7,5,0.3,1.0,0.3,1,0,0,0,0,0.0,0.0,0.0
+0.3,0.7,5,0.3,1.5,0.3,1,0,0,0,0,0.0,0.0,0.0
+0.3,0.7,5,0.3,2.0,0.3,1,0,0,0,0,0.0,0.0,0.0

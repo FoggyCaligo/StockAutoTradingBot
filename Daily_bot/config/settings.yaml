@@ -18,7 +18,7 @@ trend_filter:
   enabled: true
 
 strategy:
-  top_ratio: 0.30
+  top_ratio: 0.3
   max_buy_count: 0
   min_expected_return_percent: 0.3
   max_spread_percent: 0.7
@@ -40,7 +40,7 @@ risk:
   # Hard cap per stock. Actual buy budget is derived from tradeable cash / slots, then capped by this value.
   max_budget_per_stock_krw: 5000000
   # Current baseline stop-loss: -4% from entry, based on the best balance seen in experiments so far.
-  stop_loss_percent: 1.0
+  stop_loss_percent: 3.0
   daily_loss_limit_percent: 10.0
 
 api:
