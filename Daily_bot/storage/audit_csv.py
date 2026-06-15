@@ -149,6 +149,25 @@ def extract_fill_costs(fill: Fill, side_upper: str) -> tuple[float | None, float
     return total_fee, total_tax
 
 
+def estimate_fill_costs(
+    fill: Fill,
+    side_upper: str,
+    fee_rate: float = DEFAULT_FEE_RATE,
+    sell_tax_rate: float = DEFAULT_SELL_TAX_RATE,
+) -> tuple[float, float]:
+    quantity = int(fill.quantity or 0)
+    price = int(fill.price or 0)
+    amount = quantity * price
+    actual_fee, actual_tax = extract_fill_costs(fill, side_upper)
+    estimated_fee = round(actual_fee, 4) if actual_fee is not None else round(amount * fee_rate, 4)
+    estimated_tax = (
+        round(actual_tax, 4)
+        if actual_tax is not None
+        else (round(amount * sell_tax_rate, 4) if side_upper == "SELL" else 0.0)
+    )
+    return estimated_fee, estimated_tax
+
+
 def append_fill_audit_csv(
     path: Path,
     fill: Fill,
@@ -169,9 +188,12 @@ def append_fill_audit_csv(
     quantity = int(fill.quantity or 0)
     price = int(fill.price or 0)
     amount = quantity * price
-    actual_fee, actual_tax = extract_fill_costs(fill, side_upper)
-    estimated_fee = round(actual_fee, 4) if actual_fee is not None else round(amount * fee_rate, 4)
-    estimated_tax = round(actual_tax, 4) if actual_tax is not None else (round(amount * sell_tax_rate, 4) if side_upper == "SELL" else 0.0)
+    estimated_fee, estimated_tax = estimate_fill_costs(
+        fill,
+        side_upper,
+        fee_rate=fee_rate,
+        sell_tax_rate=sell_tax_rate,
+    )
     estimated_total_cost = estimated_fee + estimated_tax
     filled_at = fill.filled_at if fill.filled_at is not None else datetime.now()
 

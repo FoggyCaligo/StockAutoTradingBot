@@ -143,3 +143,48 @@ def test_summarize_daily_revenue_includes_costs_and_tickers(tmp_path):
     assert summary.total_return_percent == 0.3275
     assert summary.total_return_percent_on_starting_capital == 0.0131
     assert summary.traded_tickers == ["005930", "000660"]
+
+
+def test_summarize_daily_revenue_falls_back_to_estimated_costs_when_raw_costs_are_missing(tmp_path):
+    db_path = tmp_path / "daily_rev_estimated.sqlite3"
+    _init_db(db_path)
+
+    conn = sqlite3.connect(db_path)
+    conn.executemany(
+        """
+        INSERT INTO fills (broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                "B1",
+                "005930",
+                "BUY",
+                2,
+                10000,
+                "2026-06-05T09:31:00+09:00",
+                "poll",
+                "{}",
+                "2026-06-05 00:31:00",
+            ),
+            (
+                "S1",
+                "005930",
+                "SELL",
+                2,
+                10100,
+                "2026-06-05T09:32:00+09:00",
+                "poll",
+                "{}",
+                "2026-06-05 00:32:00",
+            ),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    summary = summarize_daily_revenue(str(db_path), "2026-06-05", starting_capital_krw=1_000_000)
+
+    assert summary.total_fee_krw == 6
+    assert summary.total_tax_krw == 36
+    assert summary.total_profit_krw == 158

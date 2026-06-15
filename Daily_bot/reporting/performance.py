@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import json
 
 from Daily_bot.models import Fill
-from Daily_bot.storage.audit_csv import extract_fill_costs
+from Daily_bot.storage.audit_csv import estimate_fill_costs
 from Daily_bot.storage.audit_csv import should_include_in_fill_audit
 
 
@@ -247,11 +247,9 @@ def summarize_daily_revenue(
             price=price,
             raw=raw,
         )
-        fee, tax = extract_fill_costs(fill, side)
-        if fee is not None:
-            total_fee += fee
-        if tax is not None:
-            total_tax += tax
+        fee, tax = estimate_fill_costs(fill, side)
+        total_fee += fee
+        total_tax += tax
 
         if side == "BUY":
             total_buy_amount += amount
