@@ -93,7 +93,7 @@ def parse_args():
     parser.add_argument("--take-profit", type=float, default=0.25)
     parser.add_argument("--stop-losses", default="5.0,6.0,7.0")
     parser.add_argument("--sell-tick-offset", type=int, default=1)
-    parser.add_argument("--out", default="Daily_bot/logs/backtest_replay_sweep.csv")
+    parser.add_argument("--out", default="Daily_bot/backtest/results/backtest_replay_sweep.csv")
     parser.add_argument("--ignore-selected-signals", action="store_true")
     return parser.parse_args()
 

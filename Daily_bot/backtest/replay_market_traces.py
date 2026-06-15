@@ -753,7 +753,7 @@ def parse_args():
     parser.add_argument("--max-budget-per-stock-krw", type=int, default=0)
     parser.add_argument("--max-position-count", type=int, default=0)
     parser.add_argument("--target-budget-ratio-per-stock", type=float, default=0.0)
-    parser.add_argument("--out", default="Daily_bot/logs/backtest_replay.csv")
+    parser.add_argument("--out", default="Daily_bot/backtest/results/backtest_replay.csv")
     parser.add_argument("--ignore-selected-signals", action="store_true")
     return parser.parse_args()
 
