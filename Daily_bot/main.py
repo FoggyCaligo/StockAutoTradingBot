@@ -51,10 +51,14 @@ def resolve_target_budget_per_stock(cfg: dict, planning_cash: int) -> int:
     slot_budget_unit = int(cfg["risk"].get("slot_budget_unit_krw", 0) or 0)
     max_budget_per_stock = int(cfg["risk"].get("max_budget_per_stock_krw", 0) or 0)
     if slot_budget_unit > 0:
+        max_slot_count = int(cfg["risk"].get("max_slot_count", 0) or 0)
+        raw_slot_count = max(1, planning_cash // slot_budget_unit)
         slot_count = resolve_total_slot_count(cfg, planning_cash)
         if slot_count <= 0:
             return 0
         budget_from_slots = planning_cash // slot_count
+        if max_slot_count > 0 and raw_slot_count > max_slot_count:
+            return budget_from_slots
         if max_budget_per_stock > 0:
             return min(budget_from_slots, max_budget_per_stock)
         return budget_from_slots
@@ -76,16 +80,23 @@ def resolve_total_slot_count(cfg: dict, total_capital: int) -> int:
         return 0
 
     min_slot_count = max(1, int(cfg["risk"].get("min_slot_count", 1) or 1))
+    max_slot_count = int(cfg["risk"].get("max_slot_count", 0) or 0)
     slot_budget_unit = int(cfg["risk"].get("slot_budget_unit_krw", 0) or 0)
     if slot_budget_unit > 0:
-        return max(min_slot_count, total_capital // slot_budget_unit)
+        slot_count = max(min_slot_count, total_capital // slot_budget_unit)
+        if max_slot_count > 0:
+            return min(slot_count, max_slot_count)
+        return slot_count
 
     target_budget_per_stock = resolve_target_budget_per_stock(cfg, total_capital)
     if target_budget_per_stock <= 0:
         return min_slot_count
 
     affordable_count = max(1, total_capital // target_budget_per_stock)
-    return max(min_slot_count, affordable_count)
+    slot_count = max(min_slot_count, affordable_count)
+    if max_slot_count > 0:
+        return min(slot_count, max_slot_count)
+    return slot_count
 
 
 def resolve_position_limit(cfg: dict, slot_count: int) -> int:

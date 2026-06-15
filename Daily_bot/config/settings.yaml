@@ -31,11 +31,14 @@ risk:
   min_slot_count: 3
   # Used as the target slot unit when deriving how many slots the account can support.
   slot_budget_unit_krw: 5000000
+  # Cap the session slot plan at 10 names. Above that capital band, keep 10 slots and stop capping each slot at 5M KRW.
+  max_slot_count: 10
   # Ratio-based sizing is kept as a fallback when slot_budget_unit_krw is 0.
   target_budget_ratio_per_stock: 0.50
   max_budget_per_cycle_krw: 0
   # Hard cap per stock. Actual buy budget is derived from tradeable cash / slots, then capped by this value.
   max_budget_per_stock_krw: 5000000
+  # Current baseline stop-loss: -4% from entry, based on the best balance seen in experiments so far.
   stop_loss_percent: 4.0
   daily_loss_limit_percent: 10.0
 

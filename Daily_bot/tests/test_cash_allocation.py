@@ -552,6 +552,7 @@ def test_resolve_target_budget_per_stock_prefers_slot_unit_when_configured():
         "risk": {
             "min_slot_count": 3,
             "slot_budget_unit_krw": 5_000_000,
+            "max_slot_count": 10,
             "target_budget_ratio_per_stock": 0.33,
             "max_budget_per_stock_krw": 7_000_000,
         },
@@ -559,6 +560,7 @@ def test_resolve_target_budget_per_stock_prefers_slot_unit_when_configured():
 
     assert resolve_target_budget_per_stock(cfg, planning_cash=12_000_000) == 4_000_000
     assert resolve_target_budget_per_stock(cfg, planning_cash=20_000_000) == 5_000_000
+    assert resolve_target_budget_per_stock(cfg, planning_cash=60_000_000) == 6_000_000
 
 
 def test_resolve_buy_count_scales_with_cash_using_slot_unit_and_min_slots():
@@ -567,6 +569,7 @@ def test_resolve_buy_count_scales_with_cash_using_slot_unit_and_min_slots():
         "risk": {
             "min_slot_count": 3,
             "slot_budget_unit_krw": 5_000_000,
+            "max_slot_count": 10,
             "max_budget_per_stock_krw": 5_000_000,
         },
     }
@@ -576,7 +579,7 @@ def test_resolve_buy_count_scales_with_cash_using_slot_unit_and_min_slots():
     assert resolve_buy_count(cfg, empty_slots=40, planning_cash=20_000_000) == 4
     assert resolve_buy_count(cfg, empty_slots=40, planning_cash=25_000_000) == 5
     assert resolve_buy_count(cfg, empty_slots=40, planning_cash=50_000_000) == 10
-    assert resolve_buy_count(cfg, empty_slots=40, planning_cash=100_000_000) == 20
+    assert resolve_buy_count(cfg, empty_slots=40, planning_cash=100_000_000) == 10
 
 
 def test_resolve_total_slot_count_respects_slot_unit_and_min_slots():
@@ -584,6 +587,7 @@ def test_resolve_total_slot_count_respects_slot_unit_and_min_slots():
         "risk": {
             "min_slot_count": 3,
             "slot_budget_unit_krw": 5_000_000,
+            "max_slot_count": 10,
         },
     }
 
@@ -591,6 +595,7 @@ def test_resolve_total_slot_count_respects_slot_unit_and_min_slots():
     assert resolve_total_slot_count(cfg, total_capital=15_000_000) == 3
     assert resolve_total_slot_count(cfg, total_capital=20_000_000) == 4
     assert resolve_total_slot_count(cfg, total_capital=25_000_000) == 5
+    assert resolve_total_slot_count(cfg, total_capital=100_000_000) == 10
 
 
 def test_resolve_buy_count_respects_empty_slots_and_explicit_max_buy_count():
