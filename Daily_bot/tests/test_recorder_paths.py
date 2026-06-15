@@ -232,6 +232,51 @@ def test_trade_fill_audit_excludes_inferred_fill_sources(tmp_path):
     recorder.conn.close()
 
 
+def test_daily_trade_fill_audit_resets_running_state_per_trade_date(tmp_path):
+    recorder = Recorder(tmp_path / "bot.sqlite3")
+    recorder.save_fill(
+        Fill(
+            order_id="BUY-D1",
+            ticker="005930",
+            quantity=1,
+            price=10_000,
+            filled_at=datetime(2026, 6, 10, 9, 31, 0),
+        ),
+        side="BUY",
+        source="poll",
+    )
+    recorder.save_fill(
+        Fill(
+            order_id="SELL-D1",
+            ticker="005930",
+            quantity=1,
+            price=10_100,
+            filled_at=datetime(2026, 6, 10, 9, 32, 0),
+        ),
+        side="SELL",
+        source="poll",
+    )
+    recorder.save_fill(
+        Fill(
+            order_id="BUY-D2",
+            ticker="005930",
+            quantity=2,
+            price=20_000,
+            filled_at=datetime(2026, 6, 11, 9, 31, 0),
+        ),
+        side="BUY",
+        source="poll",
+    )
+
+    daily_audit_csv = tmp_path / "logs" / "trade_fills_audit_daily.csv"
+    daily_audit_text = daily_audit_csv.read_text(encoding="utf-8-sig")
+
+    assert "BUY-D1" in daily_audit_text
+    assert "BUY-D2" in daily_audit_text
+    assert "2026-06-11,2026-06-11T09:31:00,BUY-D2,005930,BUY,2,20000,40000,6.0,0.0,6.0,poll,,,,,,,2,40000,20000.0,0,0" in daily_audit_text
+    recorder.conn.close()
+
+
 def test_write_daily_revenue_summary_upserts_single_session_row(tmp_path):
     recorder = Recorder(tmp_path / "bot.sqlite3")
     recorder.save_fill(
@@ -266,6 +311,6 @@ def test_write_daily_revenue_summary_upserts_single_session_row(tmp_path):
     daily_rev_text = daily_rev_csv.read_text(encoding="utf-8-sig")
     assert daily_rev_text.count("2026-06-11") == 1
     assert "005930" in daily_rev_text
-    assert "-0.2850" in daily_rev_text
-    assert "-0.0057" in daily_rev_text
+    assert "0.7150" in daily_rev_text
+    assert "0.0143" in daily_rev_text
     recorder.conn.close()

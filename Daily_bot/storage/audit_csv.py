@@ -42,6 +42,8 @@ AUDIT_FILL_FIELDNAMES = [
     "position_status",
 ]
 
+DAILY_AUDIT_FILENAME = "trade_fills_audit_daily.csv"
+
 AUDIT_EXCLUDED_FILL_SOURCES = {
     "position_recovery",
     "sell_reconciliation",
@@ -82,7 +84,12 @@ def _append_audit_row(path: Path, row: dict[str, Any]) -> None:
         writer.writerow({field: row.get(field, "") for field in AUDIT_FILL_FIELDNAMES})
 
 
-def _build_running_state(rows: list[dict[str, str]], ticker: str) -> dict[str, float]:
+def _build_running_state(
+    rows: list[dict[str, str]],
+    ticker: str,
+    trade_date: str | None = None,
+    reset_by_trade_date: bool = False,
+) -> dict[str, float]:
     state = {
         "buy_qty": 0.0,
         "buy_amount": 0.0,
@@ -94,6 +101,8 @@ def _build_running_state(rows: list[dict[str, str]], ticker: str) -> dict[str, f
     }
     for row in rows:
         if str(row.get("ticker", "")).strip() != ticker:
+            continue
+        if reset_by_trade_date and str(row.get("trade_date", "")).strip() != str(trade_date or "").strip():
             continue
         state["buy_qty"] = _to_float(row.get("cum_buy_quantity"))
         state["buy_amount"] = _to_float(row.get("cum_buy_amount"))
@@ -176,6 +185,7 @@ def append_fill_audit_csv(
     account_snapshot: dict[str, Any] | None = None,
     fee_rate: float = DEFAULT_FEE_RATE,
     sell_tax_rate: float = DEFAULT_SELL_TAX_RATE,
+    reset_by_trade_date: bool = False,
 ) -> None:
     """Append one fill to a single Excel-friendly audit CSV.
 
@@ -196,9 +206,10 @@ def append_fill_audit_csv(
     )
     estimated_total_cost = estimated_fee + estimated_tax
     filled_at = fill.filled_at if fill.filled_at is not None else datetime.now()
+    trade_date = filled_at.strftime("%Y-%m-%d")
 
     rows = _read_existing_rows(path)
-    state = _build_running_state(rows, ticker)
+    state = _build_running_state(rows, ticker, trade_date=trade_date, reset_by_trade_date=reset_by_trade_date)
 
     if side_upper == "BUY":
         state["buy_qty"] += quantity
@@ -230,7 +241,7 @@ def append_fill_audit_csv(
     _append_audit_row(
         path,
         {
-            "trade_date": filled_at.strftime("%Y-%m-%d"),
+            "trade_date": trade_date,
             "filled_at": filled_at.isoformat(),
             "broker_order_id": fill.order_id,
             "ticker": ticker,
@@ -268,6 +279,7 @@ def rewrite_fill_audit_csv(
     account_snapshots_by_order_id: dict[str, dict[str, Any] | None] | None = None,
     fee_rate: float = DEFAULT_FEE_RATE,
     sell_tax_rate: float = DEFAULT_SELL_TAX_RATE,
+    reset_by_trade_date: bool = False,
 ) -> None:
     if path.exists():
         path.unlink()
@@ -286,4 +298,5 @@ def rewrite_fill_audit_csv(
             account_snapshot=snapshot_map.get(fill.order_id),
             fee_rate=fee_rate,
             sell_tax_rate=sell_tax_rate,
+            reset_by_trade_date=reset_by_trade_date,
         )

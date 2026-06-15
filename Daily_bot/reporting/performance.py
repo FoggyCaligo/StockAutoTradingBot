@@ -58,8 +58,8 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
             """
             select ticker, side, quantity, price, filled_at, created_at, source
             from fills
-            where date(created_at,'localtime') = ?
-            order by created_at, id
+            where substr(filled_at, 1, 10) = ?
+            order by filled_at, id
             """,
             (session_date,),
         ).fetchall()
@@ -68,7 +68,7 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
             """
             select ticker, side, quantity, price, filled_at, created_at, source
             from fills
-            order by created_at, id
+            order by filled_at, id
             """
         ).fetchall()
 
@@ -138,8 +138,8 @@ def summarize_realized_performance(db_path: str, session_date: str | None = None
             """
             select ticker, side, quantity, price, source
             from fills
-            where date(created_at,'localtime') = ?
-            order by created_at, id
+            where substr(filled_at, 1, 10) = ?
+            order by filled_at, id
             """,
             (session_date,),
         ).fetchall()
@@ -148,7 +148,7 @@ def summarize_realized_performance(db_path: str, session_date: str | None = None
             """
             select ticker, side, quantity, price, source
             from fills
-            order by created_at, id
+            order by filled_at, id
             """
         ).fetchall()
     conn.close()

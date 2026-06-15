@@ -188,3 +188,32 @@ def test_summarize_daily_revenue_falls_back_to_estimated_costs_when_raw_costs_ar
     assert summary.total_fee_krw == 6
     assert summary.total_tax_krw == 36
     assert summary.total_profit_krw == 158
+
+
+def test_summarize_daily_revenue_uses_filled_at_date_not_created_at_date(tmp_path):
+    db_path = tmp_path / "daily_rev_filled_at.sqlite3"
+    _init_db(db_path)
+
+    conn = sqlite3.connect(db_path)
+    conn.executemany(
+        """
+        INSERT INTO fills (broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("B1", "005930", "BUY", 1, 10000, "2026-06-05T23:59:59+09:00", "poll", "{}", "2026-06-06 00:00:10"),
+            ("S1", "005930", "SELL", 1, 10100, "2026-06-05T23:59:59+09:00", "poll", "{}", "2026-06-06 00:00:20"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    summary = summarize_daily_revenue(str(db_path), "2026-06-05", starting_capital_krw=1_000_000)
+    next_day_summary = summarize_daily_revenue(str(db_path), "2026-06-06", starting_capital_krw=1_000_000)
+
+    assert summary.total_buy_amount_krw == 10_000
+    assert summary.total_sell_amount_krw == 10_100
+    assert summary.total_profit_krw != 0
+    assert next_day_summary.total_buy_amount_krw == 0
+    assert next_day_summary.total_sell_amount_krw == 0
+    assert next_day_summary.total_profit_krw == 0

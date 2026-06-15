@@ -9,7 +9,7 @@ from typing import Any
 
 from Daily_bot.models import Candidate, Fill, HogaSnapshot, OrderResult
 from Daily_bot.reporting.performance import summarize_daily_revenue
-from Daily_bot.storage.audit_csv import append_fill_audit_csv, rewrite_fill_audit_csv, should_include_in_fill_audit
+from Daily_bot.storage.audit_csv import DAILY_AUDIT_FILENAME, append_fill_audit_csv, rewrite_fill_audit_csv, should_include_in_fill_audit
 
 
 SCHEMA = """
@@ -146,6 +146,7 @@ class Recorder:
         self.path = Path(path)
         self.log_dir = Path(log_dir) if log_dir is not None else self.path.parent / "logs"
         self.audit_fill_csv_path = self.log_dir / "trade_fills_audit.csv"
+        self.daily_audit_fill_csv_path = self.log_dir / DAILY_AUDIT_FILENAME
         self.daily_revenue_csv_path = self.log_dir / "daily_rev.csv"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         if log_dir is None:
@@ -596,6 +597,14 @@ class Recorder:
                     source=source,
                     account_snapshot=self._latest_account_trace(),
                 )
+                append_fill_audit_csv(
+                    self.daily_audit_fill_csv_path,
+                    fill,
+                    side=side_upper,
+                    source=source,
+                    account_snapshot=self._latest_account_trace(),
+                    reset_by_trade_date=True,
+                )
             except Exception as exc:
                 print(f"Failed to append fill audit CSV for {fill.ticker}: {exc}")
         print(
@@ -711,6 +720,12 @@ class Recorder:
             self.audit_fill_csv_path,
             audit_entries,
             account_snapshots_by_order_id=existing_snapshot_map,
+        )
+        rewrite_fill_audit_csv(
+            self.daily_audit_fill_csv_path,
+            audit_entries,
+            account_snapshots_by_order_id=existing_snapshot_map,
+            reset_by_trade_date=True,
         )
 
     def _read_audit_snapshot_map(self) -> dict[str, dict[str, Any]]:
