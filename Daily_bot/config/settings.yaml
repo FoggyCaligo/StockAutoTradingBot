@@ -26,6 +26,8 @@ strategy:
   spread_expected_return_multiplier: 1.2
   # Exclude names that rose too much on the previous day.
   max_prev_day_change_percent: 7.0
+  # Exclude names that already jumped too much versus the previous scan.
+  max_intraday_jump_from_prev_scan_percent: 1.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
@@ -43,7 +45,9 @@ risk:
   max_budget_per_cycle_krw: 0
   # Hard cap per stock. Actual buy budget is derived from tradeable cash / slots, then capped by this value.
   max_budget_per_stock_krw: 5000000
-  # Current baseline stop-loss: -3% from entry.
+  # Only allow planned order size up to this share of the top-5 ask depth amount.
+  max_orderbook_ask_depth_ratio: 0.20
+  # Current active stop-loss percent from entry. This value is being tested aggressively.
   stop_loss_percent: 1.0
   daily_loss_limit_percent: 10.0
 

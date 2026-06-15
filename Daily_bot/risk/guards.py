@@ -41,6 +41,21 @@ def can_buy_candidate(candidate: Candidate, budget_per_stock_krw: int, sell_tick
     return target_sell_price > candidate.price
 
 
+def passes_orderbook_ask_depth_ratio(
+    candidate: Candidate,
+    estimated_cost_krw: int,
+    max_orderbook_ask_depth_ratio: float = 0.20,
+) -> bool:
+    if max_orderbook_ask_depth_ratio <= 0:
+        return True
+    if estimated_cost_krw <= 0:
+        return False
+    ask_depth_amount = int(getattr(candidate, "ask_depth_5_amount_krw", 0) or 0)
+    if ask_depth_amount <= 0:
+        return False
+    return estimated_cost_krw <= ask_depth_amount * max_orderbook_ask_depth_ratio
+
+
 def trim_targets(
     candidates: list[Candidate],
     max_buy_count: int,
@@ -94,6 +109,7 @@ def select_affordable_targets(
     available_cash_krw: int,
     budget_per_stock_krw: int,
     sell_tick_offset: int,
+    max_orderbook_ask_depth_ratio: float = 0.20,
 ) -> list[Candidate]:
     if available_cash_krw <= 0:
         return []
@@ -114,6 +130,9 @@ def select_affordable_targets(
             qty = calc_order_quantity(candidate, per_stock_budget)
             estimated_cost = qty * candidate.price
             if qty <= 0 or estimated_cost <= 0 or estimated_cost > remaining_cash:
+                setattr(candidate, PLANNED_BUDGET_ATTR, 0)
+                continue
+            if not passes_orderbook_ask_depth_ratio(candidate, estimated_cost, max_orderbook_ask_depth_ratio):
                 setattr(candidate, PLANNED_BUDGET_ATTR, 0)
                 continue
 

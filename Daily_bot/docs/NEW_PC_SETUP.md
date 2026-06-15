@@ -73,10 +73,10 @@ KIWOOM_BASE_URL=https://api.kiwoom.com
 - `strategy.min_expected_return_percent: 0.3`
 - `strategy.top_ratio: 0.2`
 - `strategy.max_spread_percent: 0.7`
-- `strategy.spread_expected_return_multiplier: 1.5`
+- `strategy.spread_expected_return_multiplier: 1.2`
 - `strategy.max_prev_day_change_percent: 7.0`
 - `risk.min_slot_count: 3`
-- `risk.stop_loss_percent: 3.0`
+- `risk.stop_loss_percent: 1.0`
 
 주의:
 

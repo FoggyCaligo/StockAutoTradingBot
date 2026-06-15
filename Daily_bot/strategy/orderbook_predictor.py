@@ -51,6 +51,12 @@ def calc_spread_percent(snapshot: HogaSnapshot) -> float:
     return (best_ask - best_bid) / snapshot.current_price * 100
 
 
+def calc_ask_depth_amount(snapshot: HogaSnapshot, levels: int = 5) -> int:
+    if levels <= 0 or not snapshot.asks:
+        return 0
+    return sum(max(0, level.price) * max(0, level.volume) for level in snapshot.asks[:levels])
+
+
 def calc_target_sell_price(expect_price: int, tick_offset: int = 1) -> int:
     tick = get_tick_size(expect_price)
     return round_to_tick(expect_price - tick * tick_offset)

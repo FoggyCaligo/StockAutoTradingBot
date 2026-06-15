@@ -61,7 +61,7 @@ strategy:
   top_ratio: 0.20
   min_expected_return_percent: 0.30
   max_spread_percent: 0.7
-  spread_expected_return_multiplier: 1.5
+  spread_expected_return_multiplier: 1.2
   max_prev_day_change_percent: 7.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
@@ -91,16 +91,16 @@ risk:
   기대수익률 0.3% 미만 후보는 제외한다.
 - `max_spread_percent: 0.7`
   스프레드 상한은 넓혔지만, 그 대신 동적 기대수익률 필터를 함께 쓴다.
-- `spread_expected_return_multiplier: 1.5`
-  실제 기대수익률 하한은 `max(0.3, spread_percent * 1.5)`로 계산한다.
+- `spread_expected_return_multiplier: 1.2`
+  실제 기대수익률 하한은 `max(0.3, spread_percent * 1.2)`로 계산한다.
 - `max_prev_day_change_percent: 7.0`
   전영업일 급등 종목은 다시 제한하고 있다.
 - `min_slot_count: 3`
   현재 최소 슬롯 수는 3개다.
 - `max_slot_count: 10`
   슬롯 수는 최대 10개까지만 늘어난다.
-- `stop_loss_percent: 3.0`
-  현재 운영 및 백테스트 기준 손절선은 `-3.0%`다.
+- `stop_loss_percent: 1.0`
+  현재 활성 손절선은 `-1.0%`다. 문서상 기본 복기 기준은 `-3.0%`를 참고하되, 실운용 값은 설정 파일을 우선한다.
 
 ## 슬롯/자본 배분 방식
 
@@ -126,8 +126,8 @@ risk:
 
 현재 기준:
 
-- 기본 손절선은 `매수가 대비 -3.0%`
-- 이 값은 완전 확정된 영구 최적값이라기보다, 최근 복기와 리플레이에서 가장 균형이 좋았던 운영 기준선이다.
+- 현재 활성 손절선은 `매수가 대비 -1.0%`
+- `-3.0%`는 비교용 기준선으로 자주 참고하지만, 실운용 값은 실험 결과에 따라 더 타이트하게 쓰고 있다.
 
 ## 기록 체계
 

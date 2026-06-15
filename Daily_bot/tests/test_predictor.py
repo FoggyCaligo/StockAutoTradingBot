@@ -1,5 +1,5 @@
 from Daily_bot.models import Candidate, HogaLevel, HogaSnapshot
-from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price, predict_price_from_hoga
+from Daily_bot.strategy.orderbook_predictor import calc_ask_depth_amount, calc_target_sell_price, predict_price_from_hoga
 from Daily_bot.strategy.signal import calc_expected_return
 
 
@@ -27,3 +27,21 @@ def test_expected_return_uses_target_sell_price_not_raw_expect_price():
     assert result.expect_price == 10000
     assert calc_target_sell_price(result.expect_price, 1) == 9950
     assert result.expect_revenue_percent == -0.5
+    assert result.ask_depth_5_amount_krw == 10050 * 100 + 10100 * 100
+
+
+def test_calc_ask_depth_amount_sums_top_five_ask_levels():
+    snapshot = HogaSnapshot(
+        ticker="000000",
+        current_price=10000,
+        asks=[
+            HogaLevel(10010, 1),
+            HogaLevel(10020, 2),
+            HogaLevel(10030, 3),
+            HogaLevel(10040, 4),
+            HogaLevel(10050, 5),
+            HogaLevel(10060, 100),
+        ],
+    )
+
+    assert calc_ask_depth_amount(snapshot, levels=5) == (10010 * 1 + 10020 * 2 + 10030 * 3 + 10040 * 4 + 10050 * 5)

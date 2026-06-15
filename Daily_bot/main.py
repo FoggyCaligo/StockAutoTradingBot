@@ -390,6 +390,31 @@ def _ticker_key(ticker: str) -> str:
     return str(ticker or "").strip().upper().removeprefix("A")
 
 
+def filter_candidates_by_prev_scan_jump(
+    candidates: list[Candidate],
+    previous_scan_prices: dict[str, int],
+    max_intraday_jump_from_prev_scan_percent: float = 1.0,
+) -> list[Candidate]:
+    threshold_percent = float(max_intraday_jump_from_prev_scan_percent or 0.0)
+    if threshold_percent <= 0:
+        return candidates
+
+    filtered: list[Candidate] = []
+    for candidate in candidates:
+        previous_price = int(previous_scan_prices.get(_ticker_key(candidate.ticker), 0) or 0)
+        if previous_price > 0:
+            jump_percent = ((candidate.price - previous_price) / previous_price) * 100
+            if jump_percent >= threshold_percent:
+                print(
+                    f"Skipping {candidate.ticker} due to previous-scan jump: "
+                    f"prev_price={previous_price} current_price={candidate.price} "
+                    f"jump_percent={jump_percent:.2f} threshold_percent={threshold_percent:.2f}"
+                )
+                continue
+        filtered.append(candidate)
+    return filtered
+
+
 def _get_open_order_ticker(order: dict) -> str:
     return _ticker_key(order.get("ticker") or order.get("stk_cd") or order.get("pdno") or "")
 
@@ -963,6 +988,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     daily_revenue_written = False
     warmed_session = False
     watchlist: dict[str, Candidate] = {}
+    previous_scan_prices: dict[str, int] = {}
     session_started_at = datetime.now()
     initial_account_value = estimate_account_value(client)
     session_capital_basis = 0
@@ -1114,6 +1140,16 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             cfg["strategy"].get("max_prev_day_change_percent", 15.0),
             cfg["strategy"].get("spread_expected_return_multiplier", 0.0),
         )
+        filtered = filter_candidates_by_prev_scan_jump(
+            filtered,
+            previous_scan_prices,
+            cfg["strategy"].get("max_intraday_jump_from_prev_scan_percent", 1.0),
+        )
+        previous_scan_prices = {
+            _ticker_key(candidate.ticker): int(candidate.price)
+            for candidate in calculated
+            if int(candidate.price or 0) > 0
+        }
         filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
         for candidate in filtered:
             watchlist[_ticker_key(candidate.ticker)] = candidate
@@ -1143,6 +1179,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             planning_cash,
             session_slot_budget_per_stock,
             cfg["strategy"]["sell_tick_offset"],
+            cfg["risk"].get("max_orderbook_ask_depth_ratio", 0.20),
         )
         if targets and len(targets) < buy_count:
             print(f"Planned {len(targets)} affordable targets out of desired {buy_count} due to cash constraints.")

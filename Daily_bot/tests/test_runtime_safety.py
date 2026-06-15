@@ -85,3 +85,31 @@ def test_trace_active_positions_records_remaining_positions_when_one_hoga_fetch_
     )
 
     assert recorder.traces == [("005930", "active_position", "held_position_monitor qty=3")]
+
+
+def test_filter_candidates_by_prev_scan_jump_excludes_candidates_at_or_above_threshold():
+    candidates = [
+        Candidate(ticker="A005930", price=10_100),
+        Candidate(ticker="A000660", price=10_090),
+        Candidate(ticker="A035420", price=10_000),
+    ]
+
+    result = main.filter_candidates_by_prev_scan_jump(
+        candidates,
+        previous_scan_prices={"005930": 10_000, "000660": 10_000},
+        max_intraday_jump_from_prev_scan_percent=1.0,
+    )
+
+    assert [candidate.ticker for candidate in result] == ["A000660", "A035420"]
+
+
+def test_filter_candidates_by_prev_scan_jump_can_be_disabled():
+    candidates = [Candidate(ticker="A005930", price=10_500)]
+
+    result = main.filter_candidates_by_prev_scan_jump(
+        candidates,
+        previous_scan_prices={"005930": 10_000},
+        max_intraday_jump_from_prev_scan_percent=0.0,
+    )
+
+    assert [candidate.ticker for candidate in result] == ["A005930"]

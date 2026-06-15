@@ -83,13 +83,13 @@ Daily_bot/
 - `strategy.top_ratio = 0.2`
 - `strategy.min_expected_return_percent = 0.3`
 - `strategy.max_spread_percent = 0.7`
-- `strategy.spread_expected_return_multiplier = 1.5`
+- `strategy.spread_expected_return_multiplier = 1.2`
 - `strategy.max_prev_day_change_percent = 7.0`
 - `risk.min_slot_count = 3`
 - `risk.max_slot_count = 10`
 - `risk.slot_budget_unit_krw = 5000000`
 - `risk.max_budget_per_stock_krw = 5000000`
-- `risk.stop_loss_percent = 3.0`
+- `risk.stop_loss_percent = 1.0`
 
 코드와 문서가 어긋나면 설정 파일을 우선으로 보고 문서를 갱신하는 편이 안전하다.
 
