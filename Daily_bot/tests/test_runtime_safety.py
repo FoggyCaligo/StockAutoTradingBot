@@ -118,3 +118,42 @@ def test_filter_candidates_by_prev_scan_jump_can_be_disabled():
 
 def test_stop_loss_get_ticker_normalizes_a_prefixed_codes():
     assert _get_ticker({"stk_cd": "A005930"}) == "005930"
+
+
+def test_attempt_force_sell_safely_recovers_instead_of_raising(monkeypatch):
+    recorder = _RecorderStub(snapshots=[], signals=[], traces=[])
+
+    class _RiskClient:
+        def get_positions(self):
+            return [type("Position", (), {"ticker": "005930", "quantity": 1, "avg_price": 10_000})()]
+
+        def get_open_orders(self):
+            return [{"order_id": "SELL-1", "ticker": "005930", "side": "SELL", "ord_qty": "1"}]
+
+    monkeypatch.setattr(main, "force_sell", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("cancel timeout")))
+    monkeypatch.setattr(main, "poll_and_record_new_fills", lambda *_args, **_kwargs: None)
+
+    assert main._attempt_force_sell_safely(_RiskClient(), recorder) is False
+
+
+def test_attempt_stop_loss_safely_recovers_instead_of_raising(monkeypatch):
+    recorder = _RecorderStub(snapshots=[], signals=[], traces=[])
+
+    class _RiskClient:
+        def get_positions(self):
+            return [type("Position", (), {"ticker": "005930", "quantity": 1, "avg_price": 10_000})()]
+
+        def get_open_orders(self):
+            return [{"order_id": "SELL-1", "ticker": "005930", "side": "SELL", "ord_qty": "1"}]
+
+    monkeypatch.setattr(
+        main,
+        "monitor_stop_loss",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("stop-loss cancel timeout")),
+    )
+    monkeypatch.setattr(main, "poll_and_record_new_fills", lambda *_args, **_kwargs: None)
+
+    triggered, errored = main._attempt_stop_loss_safely(_RiskClient(), recorder, positions=[], open_orders=[], cfg={})
+
+    assert triggered is False
+    assert errored is True

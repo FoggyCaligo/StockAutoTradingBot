@@ -398,6 +398,55 @@ def _recheck_account_state(client) -> tuple[list, list[dict]] | tuple[None, None
         return None, None
 
 
+def _report_risk_recovery_state(client, label: str) -> tuple[list, list[dict]] | tuple[None, None]:
+    positions, open_orders = _recheck_account_state(client)
+    if positions is None or open_orders is None:
+        print(f"{label}: account state could not be confirmed.")
+        return None, None
+    print(
+        f"{label}: pausing new buys and retrying next loop. "
+        f"positions={len(positions)} open_orders={len(open_orders)}"
+    )
+    if has_position(positions):
+        print(f"{label}: positions still remain after recovery attempt.")
+    if has_open_orders(open_orders):
+        print(f"{label}: open orders still remain after recovery attempt.")
+    return positions, open_orders
+
+
+def _attempt_force_sell_safely(client, recorder: Recorder) -> bool:
+    try:
+        force_sell(client, recorder=recorder)
+        return True
+    except Exception as exc:
+        print(f"Force-sell handling error: {exc}")
+        _report_risk_recovery_state(client, "Force-sell recovery")
+        try:
+            poll_and_record_new_fills(client, recorder)
+        except Exception as poll_exc:
+            print(f"Force-sell recovery fill poll failed: {poll_exc}")
+        return False
+
+
+def _attempt_stop_loss_safely(
+    client,
+    recorder: Recorder,
+    positions: list,
+    open_orders: list[dict],
+    cfg: dict,
+) -> tuple[bool, bool]:
+    try:
+        return monitor_stop_loss(client, recorder, positions, open_orders, cfg), False
+    except Exception as exc:
+        print(f"Stop-loss handling error: {exc}")
+        _report_risk_recovery_state(client, "Stop-loss recovery")
+        try:
+            poll_and_record_new_fills(client, recorder, cfg)
+        except Exception as poll_exc:
+            print(f"Stop-loss recovery fill poll failed: {poll_exc}")
+        return False, True
+
+
 def _ticker_key(ticker: str) -> str:
     return str(ticker or "").strip().upper().removeprefix("A")
 
@@ -1032,12 +1081,15 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
         if is_after_now(cfg["market"]["force_sell_time"]) and not force_sell_done:
             state = BotState.FORCE_SELLING
-            force_sell(client, recorder=recorder)
-            poll_and_record_new_fills(client, recorder, cfg)
-            force_sell_done = True
-            state = BotState.STOPPED
-            print("Force sell completed. Waiting for end-of-day reconciliation.")
-            time.sleep(5)
+            if _attempt_force_sell_safely(client, recorder):
+                poll_and_record_new_fills(client, recorder, cfg)
+                force_sell_done = True
+                state = BotState.STOPPED
+                print("Force sell completed. Waiting for end-of-day reconciliation.")
+                time.sleep(5)
+            else:
+                print("Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.")
+                time.sleep(5)
             continue
 
         if force_sell_done:
@@ -1108,10 +1160,19 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 kospi_change_percent=kospi_change_percent,
             )
         if has_position(positions):
-            stop_loss_executed = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+            stop_loss_executed, stop_loss_error = _attempt_stop_loss_safely(
+                client,
+                recorder,
+                positions,
+                open_orders,
+                cfg,
+            )
             poll_and_record_new_fills(client, recorder, cfg)
             if stop_loss_executed:
                 time.sleep(1)
+                continue
+            if stop_loss_error:
+                time.sleep(5)
                 continue
 
         if is_daily_loss_limit_reached(
