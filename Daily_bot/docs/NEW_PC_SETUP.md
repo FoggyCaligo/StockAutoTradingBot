@@ -1,4 +1,4 @@
-# Daily Bot - New PC Setup Guide
+# Daily Bot - 새 PC 세팅 가이드
 
 이 문서는 다른 Windows PC에서 `Daily_bot` 실거래 환경을 다시 세팅할 때 필요한 절차를 정리한 문서입니다.
 
@@ -13,8 +13,8 @@
 
 중요:
 
-- 시스템 시간대는 `Asia/Seoul`로 맞춰두는 것이 안전합니다.
-- 이 봇은 로컬 시간 기준으로 장중/마감 로직을 판단합니다.
+- 시스템 시간대는 `Asia/Seoul`로 맞춰두는 것이 안전하다.
+- 이 봇은 로컬 시간 기준으로 장중/마감 로직을 판단한다.
 
 ## 2. 설치
 
@@ -54,29 +54,30 @@ KIWOOM_BASE_URL=https://api.kiwoom.com
 
 주의:
 
-- 실거래는 `https://api.kiwoom.com`
-- `.env`는 git에 커밋하지 않습니다.
+- 실거래 URL은 `https://api.kiwoom.com`
+- `.env`는 git에 커밋하지 않는다.
 
 ## 4. 설정 파일 확인
 
 설정 파일:
 
-- [settings.yaml](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/config/settings.yaml:1)
+- [settings.yaml](/abs/path/c:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/config/settings.yaml)
 
 현재 중요한 운영 설정:
 
 - `start_buy_time: 09:30`
-- `stop_buy_time: 13:00`
+- `stop_buy_time: 14:00`
 - `force_sell_time: 15:00`
 - `reconcile_time: 15:15`
 - `end_time: 15:20`
-- `strategy.min_expected_return_percent: 0.25`
-- `risk.dry_run: false`
+- `strategy.min_expected_return_percent: 0.3`
+- `strategy.max_spread_percent: 0.5`
+- `risk.stop_loss_percent: 3.0`
 
 주의:
 
-- `--real`로 실행하면 실거래 클라이언트를 사용합니다.
-- `--dry-run`으로 실행하면 설정값과 무관하게 모의 흐름으로 강제됩니다.
+- `--real`로 실행하면 실거래 클라이언트를 사용한다.
+- `--dry-run`으로 실행하면 설정값과 무관하게 모의 흐름으로 강제된다.
 
 ## 5. 수동 실행 점검
 
@@ -102,7 +103,7 @@ python .\Daily_bot\main.py --real
 
 ## 6. 현재 런타임 동작
 
-실거래 실행 시 봇은 보통 아래 순서로 움직입니다.
+실거래 실행 시 봇은 보통 아래 순서로 움직인다.
 
 1. 인증
 2. 계좌 상태 조회
@@ -112,7 +113,7 @@ python .\Daily_bot\main.py --real
 6. `15:15` 브로커 체결 대조
 7. `15:20` 종료
 
-즉, `15:00`에 바로 끝나지 않고 `15:15` 대조까지 기다립니다.
+즉, `15:00`에 바로 끝나지 않고 `15:15` 대조까지 기다린다.
 
 ## 7. 작업 스케줄러 등록
 
@@ -169,6 +170,10 @@ schtasks /Query /TN "StockAutoTradingBot-Real" /V /FO LIST
 - `Daily_bot\logs\fills_YYYYMMDD.csv`
 - `Daily_bot\logs\trade_fills_audit.csv`
 
+### 백테스트 결과 위치
+
+- `Daily_bot\backtest\results`
+
 ### 신뢰 기준
 
 - 장중 손익 확인: `MTS 우선`
@@ -199,6 +204,6 @@ schtasks /Query /TN "StockAutoTradingBot-Real" /V /FO LIST
 
 ### `trade_fills_audit.csv` 총손익이 MTS와 다르게 보임
 
-- 이 파일은 종목별 누적 감사용 원장입니다.
-- `SELL` 행 전체를 단순 합산하면 안 됩니다.
-- 총손익은 브로커 API 또는 별도 요약 로직으로 봐야 합니다.
+- 이 파일은 종목별 누적 감사용 원장이다.
+- `SELL` 행 전체를 단순 합산하면 안 된다.
+- 총손익은 브로커 API 또는 별도 요약 로직으로 봐야 한다.
