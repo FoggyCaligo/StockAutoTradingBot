@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from Daily_bot.models import Fill, HogaSnapshot
+from Daily_bot.models import Fill
 from Daily_bot.risk.force_sell import force_sell
 
 
@@ -45,9 +45,6 @@ class _ClientStub:
     def get_positions(self):
         return self._positions
 
-    def get_20hoga(self, ticker: str):
-        return HogaSnapshot(ticker=ticker, current_price=self.current_prices[ticker])
-
     def sell_limit(self, ticker: str, quantity: int, price: int):
         self.sell_limit_calls.append((ticker, quantity, price))
         return type(
@@ -81,13 +78,13 @@ def test_force_sell_passes_ticker_and_quantity_to_cancel_order():
         ("1234567", "005930", 3),
         ("MOCK-SELL-1", "000660", 2),
     ]
-    assert client.sell_limit_calls == [("005930", 3, 71000), ("000660", 1, 189000)]
-    assert client.sell_market_calls == []
-    
+    assert client.sell_limit_calls == []
+    assert client.sell_market_calls == [("005930", 3), ("000660", 1)]
+
     # Verify fills were recorded
     assert len(recorder.fills) == 2
     for fill, side, source in recorder.fills:
         assert side == "SELL"
         assert source == "force_sell"
-        assert fill.order_id.startswith("OID-")
+        assert fill.order_id.startswith("OID-M-")
         assert fill.price > 0

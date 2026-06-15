@@ -59,15 +59,6 @@ def wait_until_all_orders_cancelled(client, timeout_seconds: int = 60, poll_seco
     return not client.get_open_orders()
 
 
-def _get_current_price(client, ticker: str) -> int:
-    try:
-        snapshot = client.get_20hoga(ticker)
-    except Exception as exc:
-        print(f"Failed to fetch current price for force sell {ticker}: {exc}")
-        return 0
-    return _to_int(getattr(snapshot, "current_price", 0), default=0)
-
-
 def _record_fill_safely(client, recorder: Recorder, order_id: str, side: str, source: str) -> bool:
     if not order_id or not hasattr(client, "get_order_fill"):
         return False
@@ -110,19 +101,11 @@ def sell_all_positions_at_current_price(client, recorder: Recorder | None = None
         if position.quantity <= 0:
             continue
 
-        current_price = _get_current_price(client, position.ticker)
-        if current_price > 0:
-            print(
-                f"Submitting force sell at current price for {position.ticker}: "
-                f"quantity={position.quantity} current_price={current_price}"
-            )
-            sell_order = client.sell_limit(position.ticker, position.quantity, current_price)
-        else:
-            print(
-                f"Falling back to market force sell for {position.ticker}: "
-                f"quantity={position.quantity}"
-            )
-            sell_order = client.sell_market(position.ticker, position.quantity)
+        print(
+            f"Submitting market force sell for {position.ticker}: "
+            f"quantity={position.quantity}"
+        )
+        sell_order = client.sell_market(position.ticker, position.quantity)
 
         if recorder is not None:
             recorder.save_order(sell_order)
@@ -132,7 +115,7 @@ def sell_all_positions_at_current_price(client, recorder: Recorder | None = None
 
 
 def force_sell(client, recorder: Recorder | None = None) -> None:
-    """Cancel all open orders, confirm cancellation, then force-sell positions at current price."""
+    """Cancel all open orders, confirm cancellation, then force-sell positions at market."""
     cancel_all_open_orders(client)
     cancelled = wait_until_all_orders_cancelled(client)
     if not cancelled:
