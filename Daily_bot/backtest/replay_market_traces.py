@@ -338,9 +338,22 @@ def _resolve_target_price(expect_price: int, sell_tick_offset: int, entry_price:
     return target_price if target_price > 0 else min_sell_price
 
 
-def _is_within_buy_window(created_at: str) -> bool:
-    time_text = created_at[11:16] if len(created_at) >= 16 else ""
-    return "09:30" <= time_text <= "13:00"
+def _is_within_buy_window(created_at: str, start_buy_time: str, stop_buy_time: str) -> bool:
+    return _is_within_time_window(created_at, start_buy_time, stop_buy_time)
+
+
+def _extract_time_text(created_at: str) -> str:
+    return created_at[11:16] if len(created_at) >= 16 else ""
+
+
+def _is_within_time_window(created_at: str, start_time: str, end_time: str) -> bool:
+    time_text = _extract_time_text(created_at)
+    return bool(time_text) and start_time <= time_text <= end_time
+
+
+def _is_after_time(created_at: str, target_time: str) -> bool:
+    time_text = _extract_time_text(created_at)
+    return bool(time_text) and time_text >= target_time
 
 
 def _selected_tickers_by_day(selected_signals: list[SelectedSignal]) -> dict[str, set[str]]:
@@ -486,6 +499,9 @@ def run_backtest(
     max_budget_per_stock_krw: int = 0,
     max_position_count: int = 0,
     target_budget_ratio_per_stock: float = 0.0,
+    start_buy_time: str = "09:30",
+    stop_buy_time: str = "13:00",
+    force_sell_time: str = "15:00",
 ) -> list[BacktestTrade]:
     traces = load_traces(db_path)
     selected_signals = load_selected_signals(db_path) if use_selected_signals else []
@@ -529,6 +545,23 @@ def run_backtest(
                 current_price = current_row.current_price or current_row.price
                 if current_price <= 0:
                     continue
+                if _is_after_time(current_row.created_at, force_sell_time):
+                    trades.append(
+                        BacktestTrade(
+                            session_date=session_date,
+                            ticker=ticker,
+                            entry_time=position.entry.created_at,
+                            exit_time=current_row.created_at,
+                            entry_price=position.entry_price,
+                            exit_price=current_price,
+                            exit_reason="force_exit_time",
+                            pnl_percent=(current_price - position.entry_price) / position.entry_price * 100,
+                        )
+                    )
+                    available_cash += position.quantity * current_price
+                    del open_positions[ticker]
+                    exited_tickers_at_time.add(ticker)
+                    continue
                 if current_price <= position.stop_loss_price:
                     trades.append(
                         BacktestTrade(
@@ -563,7 +596,7 @@ def run_backtest(
                     del open_positions[ticker]
                     exited_tickers_at_time.add(ticker)
 
-            if not _is_within_buy_window(created_at):
+            if not _is_within_buy_window(created_at, start_buy_time, stop_buy_time):
                 continue
 
             # Match the live bot's behavior by default: candidate ranking is trimmed by
@@ -710,6 +743,9 @@ def parse_args():
     parser.add_argument("--take-profit", type=float, default=0.25)
     parser.add_argument("--stop-loss", type=float, default=6.0)
     parser.add_argument("--sell-tick-offset", type=int, default=1)
+    parser.add_argument("--start-buy-time", default="09:30")
+    parser.add_argument("--stop-buy-time", default="13:00")
+    parser.add_argument("--force-sell-time", default="15:00")
     parser.add_argument("--starting-capital-krw", type=int, default=1_000_000)
     parser.add_argument("--min-slot-count", type=int, default=1)
     parser.add_argument("--max-slot-count", type=int, default=0)
@@ -742,6 +778,9 @@ if __name__ == "__main__":
         max_budget_per_stock_krw=args.max_budget_per_stock_krw,
         max_position_count=args.max_position_count,
         target_budget_ratio_per_stock=args.target_budget_ratio_per_stock,
+        start_buy_time=args.start_buy_time,
+        stop_buy_time=args.stop_buy_time,
+        force_sell_time=args.force_sell_time,
     )
     write_csv(Path(args.out), result)
     print_summary(result)
