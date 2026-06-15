@@ -282,7 +282,7 @@ def resolve_target_budget_per_stock(
         raw_slot_count = max(1, planning_cash // slot_budget_unit_krw)
         budget_from_slots = planning_cash // slot_count
         if max_slot_count > 0 and raw_slot_count > max_slot_count:
-            return budget_from_slots
+            return min(budget_from_slots, max_budget_per_stock_krw) if max_budget_per_stock_krw > 0 else budget_from_slots
         if max_budget_per_stock_krw > 0:
             return min(budget_from_slots, max_budget_per_stock_krw)
         return budget_from_slots

@@ -3,6 +3,7 @@ from datetime import datetime
 from dataclasses import dataclass
 
 from Daily_bot.main import (
+    _find_existing_open_sell_price,
     activate_buy,
     estimate_account_value,
     get_external_cash_flow_since,
@@ -613,6 +614,33 @@ def test_resolve_target_budget_per_stock_prefers_slot_unit_when_configured():
     assert resolve_target_budget_per_stock(cfg, planning_cash=12_000_000) == 4_000_000
     assert resolve_target_budget_per_stock(cfg, planning_cash=20_000_000) == 5_000_000
     assert resolve_target_budget_per_stock(cfg, planning_cash=60_000_000) == 6_000_000
+
+
+def test_resolve_target_budget_per_stock_keeps_max_budget_cap_when_slot_count_hits_max():
+    cfg = {
+        "risk": {
+            "min_slot_count": 3,
+            "slot_budget_unit_krw": 5_000_000,
+            "max_slot_count": 10,
+            "max_budget_per_stock_krw": 5_000_000,
+        },
+    }
+
+    assert resolve_target_budget_per_stock(cfg, planning_cash=100_000_000) == 5_000_000
+
+
+def test_find_existing_open_sell_price_recognizes_korean_sell_side_text():
+    open_orders = [
+        {
+            "stk_cd": "A005930",
+            "io_tp_nm": "-매도",
+            "ord_qty": "3",
+            "oso_qty": "3",
+            "ord_pric": "71500",
+        }
+    ]
+
+    assert _find_existing_open_sell_price(open_orders, "005930") == 71_500
 
 
 def test_resolve_buy_count_scales_with_cash_using_slot_unit_and_min_slots():

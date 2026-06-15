@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 import Daily_bot.main as main
 from Daily_bot.models import Candidate, HogaLevel, HogaSnapshot
+from Daily_bot.risk.stop_loss import _get_ticker
 from Daily_bot.telemetry.trace_helpers import trace_active_positions
 
 
@@ -113,3 +114,7 @@ def test_filter_candidates_by_prev_scan_jump_can_be_disabled():
     )
 
     assert [candidate.ticker for candidate in result] == ["A005930"]
+
+
+def test_stop_loss_get_ticker_normalizes_a_prefixed_codes():
+    assert _get_ticker({"stk_cd": "A005930"}) == "005930"

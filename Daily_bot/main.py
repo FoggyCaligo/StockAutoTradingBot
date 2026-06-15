@@ -60,7 +60,7 @@ def resolve_target_budget_per_stock(cfg: dict, planning_cash: int) -> int:
             return 0
         budget_from_slots = planning_cash // slot_count
         if max_slot_count > 0 and raw_slot_count > max_slot_count:
-            return budget_from_slots
+            return min(budget_from_slots, max_budget_per_stock) if max_budget_per_stock > 0 else budget_from_slots
         if max_budget_per_stock > 0:
             return min(budget_from_slots, max_budget_per_stock)
         return budget_from_slots
@@ -158,6 +158,15 @@ def resolve_buy_count(
     slot_limited_count = empty_slots if configured_buy_count <= 0 else min(configured_buy_count, empty_slots)
     if slot_limited_count <= 0:
         return 0
+    risk_cfg = cfg.get("risk", {}) if isinstance(cfg, dict) else {}
+    slot_budget_unit = int(risk_cfg.get("slot_budget_unit_krw", 0) or 0)
+    max_slot_count = int(risk_cfg.get("max_slot_count", 0) or 0)
+    if slot_budget_unit > 0 or max_slot_count > 0:
+        session_slot_limit = resolve_total_slot_count(cfg, planning_cash)
+        if session_slot_limit > 0:
+            slot_limited_count = min(slot_limited_count, session_slot_limit)
+        if slot_limited_count <= 0:
+            return 0
 
     per_stock_budget = (
         int(target_budget_per_stock)
@@ -318,8 +327,9 @@ def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, ti
 def _find_existing_open_sell_price(open_orders: list[dict], ticker: str) -> int:
     ticker_key = _ticker_key(ticker)
     for order in open_orders:
-        side = str(order.get("io_tp_nm") or order.get("side") or "").strip().upper()
-        if "SELL" not in side and "留ㅻ룄" not in side:
+        side_text = str(order.get("io_tp_nm") or order.get("side") or "").strip()
+        side_upper = side_text.upper()
+        if "SELL" not in side_upper and "매도" not in side_text and "-매도" not in side_text:
             continue
         if _get_open_order_ticker(order) != ticker_key:
             continue
