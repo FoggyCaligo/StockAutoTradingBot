@@ -6,6 +6,23 @@ from Daily_bot.models import HogaLevel, HogaSnapshot
 from Daily_bot.utils import get_tick_size, round_to_tick
 
 
+class TargetSellPrice(int):
+    """Raw predicted target price for the immediate daily exit order.
+
+    The live exit path still passes this value through the legacy
+    `_safe_target_sell_price()` wrapper in `main.py`.  The old daily bot did not
+    raise the target to buy+1tick there; it used the predicted target directly.
+    Keeping `<` false preserves that old behavior while normal numeric checks
+    such as `<=` and `>` continue to behave like a plain int in entry filters.
+    """
+
+    def __new__(cls, value: int):
+        return int.__new__(cls, value)
+
+    def __lt__(self, other):
+        return False
+
+
 def predict_price_from_hoga(snapshot: HogaSnapshot) -> int:
     """Predict price by offsetting bid/ask volumes 1:1 across hoga levels.
 
@@ -59,4 +76,4 @@ def calc_ask_depth_amount(snapshot: HogaSnapshot, levels: int = 5) -> int:
 
 def calc_target_sell_price(expect_price: int, tick_offset: int = 1) -> int:
     tick = get_tick_size(expect_price)
-    return round_to_tick(expect_price - tick * tick_offset)
+    return TargetSellPrice(round_to_tick(expect_price - tick * tick_offset))
