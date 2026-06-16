@@ -24,6 +24,22 @@ def get_candidates_top(candidates: list[Candidate], ratio: float) -> list[Candid
     return ranked[:count]
 
 
+def min_expected_return_with_spread(
+    min_expected_return_percent: float,
+    spread_percent: float,
+    spread_expected_return_multiplier: float,
+) -> float:
+    """Backward-compatible helper for replay/backtest callers.
+
+    The live filter is currently simplified, but replay code still imports this
+    helper. Preserve the previous contract while matching the current behavior
+    when spread controls are disabled.
+    """
+    if spread_percent <= 0 or spread_expected_return_multiplier <= 0:
+        return min_expected_return_percent
+    return max(min_expected_return_percent, spread_percent * spread_expected_return_multiplier)
+
+
 def final_filter(
     candidates: list[Candidate],
     min_expected_return_percent: float,

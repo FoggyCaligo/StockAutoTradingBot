@@ -1,10 +1,10 @@
 market:
   prewarm_start_time: "08:55"
   start_buy_time: "09:10"
-  stop_buy_time: "11:45"
-  force_sell_time: "14:00"
-  reconcile_time: "14:15"
-  end_time: "14:20"
+  stop_buy_time: "13:30"
+  force_sell_time: "15:00"
+  reconcile_time: "15:15"
+  end_time: "15:20"
 
 universe:
   source: "KOSPI200"
@@ -48,7 +48,7 @@ risk:
   # Only allow planned order size up to this share of the top-5 ask depth amount.
   max_orderbook_ask_depth_ratio: 0.30
   # Current active stop-loss percent from entry. This value is being tested aggressively.
-  stop_loss_percent: 0.5 # 익절이 평균 0.6%에 대부분 1분 안에 체결된 것으로 보아, 굳이 길게 잡지 말고 손실날 종목은 빠르게 쳐내고 갈아타는 전략. (이게 안통한다면 2.5%로 수정하는 방향이 맞을 듯)
+  stop_loss_percent: 1.5 # 0.5% : 익절이 평균 0.6%에 대부분 1분 안에 체결된 것으로 보아, 굳이 길게 잡지 말고 손실날 종목은 빠르게 쳐내고 갈아타는 전략. (이게 안통한다면 2.5%로 수정하는 방향이 맞을 듯)
   daily_loss_limit_percent: 10.0
 
 api:
