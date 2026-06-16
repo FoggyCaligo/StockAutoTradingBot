@@ -1,0 +1,4 @@
+﻿stop_loss_percent,session_count,first_session_date,last_session_date,trades,wins,losses,win_rate_percent,avg_pnl_percent,total_pnl_percent,total_buy_amount_krw,total_sell_amount_krw,estimated_fee_krw,estimated_tax_krw,estimated_net_profit_krw,estimated_net_return_percent,ask_depth_entries,ask_depth_coverage_percent,blocked_by_ask_depth_ratio
+2.25,5,2026-06-10,2026-06-16,95,71,24,74.7368,-0.039,-3.7054,20022585,20010015,6005,36018,-54593,-0.2727,95,14.7368,0
+2.5,5,2026-06-10,2026-06-16,88,68,20,77.2727,0.0241,2.12,17971025,17971035,5391,32348,-37729,-0.2099,88,6.8182,0
+2.75,5,2026-06-10,2026-06-16,80,62,18,77.5,-0.0028,-0.2257,16493410,16488780,4947,29680,-39257,-0.238,80,7.5,0
