@@ -18,6 +18,21 @@ def test_get_orderable_cash_prefers_stock_buying_power(monkeypatch):
     assert result == 211315
 
 
+def test_get_orderable_cash_prefers_explicit_orderable_amount_over_deposit_like_value(monkeypatch):
+    client = KiwoomClient(base_url="https://example.com")
+    response = {
+        "elwdpst_evlta": "000000005000000",
+        "ord_psbl_amt": "000000001250000",
+        "ord_alow_amt": "000000000900000",
+        "return_code": 0,
+    }
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: response)
+
+    result = client.get_orderable_cash()
+
+    assert result == 1_250_000
+
+
 def test_get_orderable_cash_falls_back_to_generic_amount_when_stock_buying_power_missing(monkeypatch):
     client = KiwoomClient(base_url="https://example.com")
     response = {
@@ -30,6 +45,19 @@ def test_get_orderable_cash_falls_back_to_generic_amount_when_stock_buying_power
     result = client.get_orderable_cash()
 
     assert result == 24449
+
+
+def test_get_orderable_cash_uses_deposit_like_value_only_as_last_resort(monkeypatch):
+    client = KiwoomClient(base_url="https://example.com")
+    response = {
+        "elwdpst_evlta": "000000000211315",
+        "return_code": 0,
+    }
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: response)
+
+    result = client.get_orderable_cash()
+
+    assert result == 211315
 
 
 def test_wait_buy_filled_requires_full_quantity(monkeypatch):

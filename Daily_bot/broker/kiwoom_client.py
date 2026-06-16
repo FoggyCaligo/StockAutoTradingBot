@@ -532,25 +532,46 @@ class KiwoomClient:
                 return 0
 
     def _extract_orderable_cash(self, raw: Any) -> int:
-        # Kiwoom's generic ord_alow_amt can be much lower than stock-buying power.
-        # Prefer the conservative "100% margin stock orderable amount", then fall back.
+        # Prefer explicit stock-buying-power / orderable-cash fields first.
+        # Some responses also include deposit-like values (for example elwdpst_evlta),
+        # which can look larger than the actual buyable amount and should only be a
+        # last-resort fallback.
         preferred_keys = [
             "100stk_ord_alow_amt",
             "100_stk_ord_alow_amt",
             "stock_100_ord_alow_amt",
-            "elwdpst_evlta",
+            "ord_psbl_cash",
+            "ord_psbl_amt",
+            "buy_psbl_cash",
+            "buy_psbl_amt",
+            "mgn100_ord_psbl_amt",
+            "mgn_100_ord_psbl_amt",
+            "stock_ord_psbl_amt",
+            "cash_ord_psbl_amt",
         ]
         preferred_value = self._extract_number(raw, preferred_keys)
         if preferred_value > 0:
             return preferred_value
 
-        return self._extract_number(
+        generic_orderable = self._extract_number(
             raw,
             [
                 "ord_alow_amt",
                 "ord_alowa",
                 "wthd_alowa",
                 "pymn_alow_amt",
+            ],
+        )
+        if generic_orderable > 0:
+            return generic_orderable
+
+        return self._extract_number(
+            raw,
+            [
+                "elwdpst_evlta",
+                "dnca_tot_amt",
+                "deposit",
+                "cash",
             ],
         )
 

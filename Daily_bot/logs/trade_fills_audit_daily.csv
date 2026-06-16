@@ -1,0 +1,4 @@
+﻿trade_date,filled_at,broker_order_id,ticker,side,quantity,price,amount,estimated_fee,estimated_tax,estimated_total_cost,source,cash,account_value,adjusted_account_value,adjusted_pnl,loss_percent,kospi_change_percent,cum_buy_quantity,cum_buy_amount,avg_buy_price,cum_sell_quantity,cum_sell_amount,realized_pnl_before_costs,estimated_net_realized_pnl,realized_return_percent_before_costs,estimated_net_realized_return_percent,position_status
+2026-06-16,2026-06-16T09:32:02,0197938,020150,BUY,5,55800,279000,40.0,0.0,40.0,wait_buy_filled,879149,879149,879149,0,0.0,5.199159980402821,5,279000,55800.0,0,0,,,,,OPEN
+2026-06-16,2026-06-16T09:32:14,0198416,003720,BUY,34,8520,289680,40.0,0.0,40.0,wait_buy_filled,879149,879149,879149,0,0.0,5.199159980402821,34,289680,8520.0,0,0,,,,,OPEN
+2026-06-16,2026-06-16T09:32:26,0198904,081660,BUY,6,43200,259200,30.0,0.0,30.0,wait_buy_filled,879149,879149,879149,0,0.0,5.199159980402821,6,259200,43200.0,0,0,,,,,OPEN
