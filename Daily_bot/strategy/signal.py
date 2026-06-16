@@ -24,38 +24,26 @@ def get_candidates_top(candidates: list[Candidate], ratio: float) -> list[Candid
     return ranked[:count]
 
 
-def min_expected_return_with_spread(
-    min_expected_return_percent: float,
-    spread_percent: float,
-    spread_expected_return_multiplier: float = 0.0,
-) -> float:
-    if spread_expected_return_multiplier <= 0:
-        return min_expected_return_percent
-    return max(min_expected_return_percent, spread_percent * spread_expected_return_multiplier)
-
-
 def final_filter(
     candidates: list[Candidate],
     min_expected_return_percent: float,
     sell_tick_offset: int,
-    max_spread_percent: float = 0.5,
+    max_spread_percent: float = 0.0,
     max_prev_day_change_percent: float = 0.0,
     spread_expected_return_multiplier: float = 0.0,
 ) -> list[Candidate]:
+    """Keep the original simple daily entry filter.
+
+    Extra arguments are accepted for backward-compatible call sites, but this
+    filter intentionally only checks the original three entry conditions:
+    trend pass, minimum expected return, and target sell price above current
+    price.
+    """
     result: list[Candidate] = []
     for c in candidates:
         if not c.trend_ok:
             continue
-        if max_prev_day_change_percent > 0 and c.prev_day_change_percent >= max_prev_day_change_percent:
-            continue
-        if max_spread_percent > 0 and c.spread_percent > max_spread_percent:
-            continue
-        required_expected_return = min_expected_return_with_spread(
-            min_expected_return_percent=min_expected_return_percent,
-            spread_percent=c.spread_percent,
-            spread_expected_return_multiplier=spread_expected_return_multiplier,
-        )
-        if c.expect_revenue_percent < required_expected_return:
+        if c.expect_revenue_percent < min_expected_return_percent:
             continue
         target_sell_price = calc_target_sell_price(c.expect_price, sell_tick_offset)
         if target_sell_price <= c.price:
