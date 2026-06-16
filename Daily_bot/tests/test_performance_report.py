@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-from Daily_bot.reporting.performance import summarize_daily_revenue, summarize_realized_performance
+from Daily_bot.reporting.performance import summarize_daily_revenue, summarize_realized_performance, summarize_trade_edge
 
 
 def _init_db(path: Path) -> None:
@@ -217,3 +217,98 @@ def test_summarize_daily_revenue_uses_filled_at_date_not_created_at_date(tmp_pat
     assert next_day_summary.total_buy_amount_krw == 0
     assert next_day_summary.total_sell_amount_krw == 0
     assert next_day_summary.total_profit_krw == 0
+
+
+def test_summarize_trade_edge_reports_payoff_and_required_win_rate(tmp_path):
+    db_path = tmp_path / "trade_edge.sqlite3"
+    _init_db(db_path)
+
+    conn = sqlite3.connect(db_path)
+    conn.executemany(
+        """
+        INSERT INTO fills (broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("B1", "AAA", "BUY", 1, 10000, "2026-06-05T09:31:00+09:00", "poll", "{}", "2026-06-05 00:31:00"),
+            ("S1", "AAA", "SELL", 1, 10100, "2026-06-05T09:32:00+09:00", "poll", "{}", "2026-06-05 00:32:00"),
+            ("B2", "BBB", "BUY", 1, 10000, "2026-06-05T09:33:00+09:00", "poll", "{}", "2026-06-05 00:33:00"),
+            ("S2", "BBB", "SELL", 1, 9900, "2026-06-05T09:34:00+09:00", "poll", "{}", "2026-06-05 00:34:00"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    summary = summarize_trade_edge(str(db_path), session_date="2026-06-05")
+
+    assert summary.trade_count == 2
+    assert summary.wins == 1
+    assert summary.losses == 1
+    assert summary.actual_win_rate_percent == 50.0
+    assert summary.gross_pnl_krw == 0
+    assert summary.net_pnl_krw == -42
+    assert round(summary.avg_net_win_percent, 4) == 0.7881
+    assert round(summary.avg_net_loss_percent, 4) == -1.2081
+    assert round(summary.net_payoff_ratio or 0.0, 4) == 0.6523
+    assert round(summary.net_required_win_rate_percent or 0.0, 4) == 60.5205
+    assert round(summary.net_expectancy_krw, 4) == -21.0
+
+
+def test_summarize_trade_edge_allocates_costs_across_partial_sells(tmp_path):
+    db_path = tmp_path / "trade_edge_partial.sqlite3"
+    _init_db(db_path)
+
+    conn = sqlite3.connect(db_path)
+    conn.executemany(
+        """
+        INSERT INTO fills (broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                "B1",
+                "251270",
+                "BUY",
+                4,
+                10000,
+                "2026-06-05T09:31:00+09:00",
+                "poll",
+                '{"rows":[{"tdy_trde_cmsn":"8","tdy_trde_tax":"0"}]}',
+                "2026-06-05 00:31:00",
+            ),
+            (
+                "S1",
+                "251270",
+                "SELL",
+                2,
+                10100,
+                "2026-06-05T09:32:00+09:00",
+                "poll",
+                '{"rows":[{"tdy_trde_cmsn":"4","tdy_trde_tax":"36"}]}',
+                "2026-06-05 00:32:00",
+            ),
+            (
+                "S2",
+                "251270",
+                "SELL",
+                2,
+                10200,
+                "2026-06-05T09:33:00+09:00",
+                "poll",
+                '{"rows":[{"tdy_trde_cmsn":"4","tdy_trde_tax":"37"}]}',
+                "2026-06-05 00:33:00",
+            ),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    summary = summarize_trade_edge(str(db_path), session_date="2026-06-05")
+
+    assert summary.trade_count == 2
+    assert summary.net_pnl_krw == 511
+    assert round(summary.trades[0].buy_fee_krw, 4) == 4.0
+    assert round(summary.trades[0].sell_fee_krw, 4) == 4.0
+    assert round(summary.trades[0].sell_tax_krw, 4) == 36.0
+    assert round(summary.trades[0].net_pnl_krw, 4) == 156.0
+    assert round(summary.trades[1].net_pnl_krw, 4) == 355.0

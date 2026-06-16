@@ -20,6 +20,11 @@ class RealizedTrade:
     return_percent: float
     buy_filled_at: str
     sell_filled_at: str
+    buy_fee_krw: float = 0.0
+    sell_fee_krw: float = 0.0
+    sell_tax_krw: float = 0.0
+    net_pnl_krw: float = 0.0
+    net_return_percent: float = 0.0
 
 
 @dataclass
@@ -48,6 +53,32 @@ class DailyRevenueSummary:
     traded_tickers: list[str]
 
 
+@dataclass
+class TradeEdgeSummary:
+    trade_count: int
+    wins: int
+    losses: int
+    breakeven: int
+    actual_win_rate_percent: float
+    gross_pnl_krw: int
+    net_pnl_krw: int
+    avg_gross_win_percent: float
+    avg_gross_loss_percent: float
+    avg_net_win_percent: float
+    avg_net_loss_percent: float
+    avg_gross_win_krw: float
+    avg_gross_loss_krw: float
+    avg_net_win_krw: float
+    avg_net_loss_krw: float
+    gross_payoff_ratio: float | None
+    net_payoff_ratio: float | None
+    gross_required_win_rate_percent: float | None
+    net_required_win_rate_percent: float | None
+    net_expectancy_krw: float
+    net_expectancy_percent: float
+    trades: list[RealizedTrade]
+
+
 def load_realized_trades(db_path: str, session_date: str | None = None) -> list[RealizedTrade]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -56,7 +87,7 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
     if session_date:
         rows = cur.execute(
             """
-            select ticker, side, quantity, price, filled_at, created_at, source
+            select ticker, side, quantity, price, filled_at, created_at, source, raw_json
             from fills
             where substr(filled_at, 1, 10) = ?
             order by filled_at, id
@@ -66,7 +97,7 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
     else:
         rows = cur.execute(
             """
-            select ticker, side, quantity, price, filled_at, created_at, source
+            select ticker, side, quantity, price, filled_at, created_at, source, raw_json
             from fills
             order by filled_at, id
             """
@@ -93,13 +124,44 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
                     "quantity": quantity,
                     "price": price,
                     "filled_at": filled_at,
+                    "fee_per_share": 0.0,
                 }
             )
+            raw_json = str(row["raw_json"] or "")
+            try:
+                raw = json.loads(raw_json) if raw_json else None
+            except json.JSONDecodeError:
+                raw = {"raw_json": raw_json}
+            fill = Fill(
+                order_id="",
+                ticker=ticker,
+                quantity=quantity,
+                price=price,
+                raw=raw,
+            )
+            fee, _ = estimate_fill_costs(fill, side)
+            if quantity > 0:
+                open_buys[ticker][-1]["fee_per_share"] = fee / quantity
             continue
 
         if side != "SELL":
             continue
 
+        raw_json = str(row["raw_json"] or "")
+        try:
+            raw = json.loads(raw_json) if raw_json else None
+        except json.JSONDecodeError:
+            raw = {"raw_json": raw_json}
+        fill = Fill(
+            order_id="",
+            ticker=ticker,
+            quantity=quantity,
+            price=price,
+            raw=raw,
+        )
+        sell_fee_total, sell_tax_total = estimate_fill_costs(fill, side)
+        sell_fee_per_share = (sell_fee_total / quantity) if quantity > 0 else 0.0
+        sell_tax_per_share = (sell_tax_total / quantity) if quantity > 0 else 0.0
         remaining = quantity
         while remaining > 0 and open_buys[ticker]:
             buy_lot = open_buys[ticker][0]
@@ -107,6 +169,12 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
             buy_price = int(buy_lot["price"])
             pnl_krw = (price - buy_price) * matched
             return_percent = ((price - buy_price) / buy_price * 100) if buy_price > 0 else 0.0
+            buy_fee_krw = float(buy_lot.get("fee_per_share", 0.0)) * matched
+            sell_fee_krw = sell_fee_per_share * matched
+            sell_tax_krw = sell_tax_per_share * matched
+            net_pnl_krw = pnl_krw - buy_fee_krw - sell_fee_krw - sell_tax_krw
+            cost_basis = buy_price * matched
+            net_return_percent = (net_pnl_krw / cost_basis * 100) if cost_basis > 0 else 0.0
             trades.append(
                 RealizedTrade(
                     ticker=ticker,
@@ -117,6 +185,11 @@ def load_realized_trades(db_path: str, session_date: str | None = None) -> list[
                     return_percent=return_percent,
                     buy_filled_at=str(buy_lot["filled_at"]),
                     sell_filled_at=filled_at,
+                    buy_fee_krw=buy_fee_krw,
+                    sell_fee_krw=sell_fee_krw,
+                    sell_tax_krw=sell_tax_krw,
+                    net_pnl_krw=net_pnl_krw,
+                    net_return_percent=net_return_percent,
                 )
             )
             buy_lot["quantity"] = int(buy_lot["quantity"]) - matched
@@ -196,6 +269,74 @@ def summarize_realized_performance(db_path: str, session_date: str | None = None
         breakeven=breakeven,
         open_buy_count=open_buy_count,
         open_buy_cost_krw=open_buy_cost_krw,
+        trades=trades,
+    )
+
+
+def summarize_trade_edge(db_path: str, session_date: str | None = None) -> TradeEdgeSummary:
+    trades = load_realized_trades(db_path, session_date=session_date)
+    wins = [trade for trade in trades if trade.net_pnl_krw > 0]
+    losses = [trade for trade in trades if trade.net_pnl_krw < 0]
+    breakeven = [trade for trade in trades if trade.net_pnl_krw == 0]
+
+    trade_count = len(trades)
+    win_count = len(wins)
+    loss_count = len(losses)
+    breakeven_count = len(breakeven)
+    actual_win_rate_percent = (win_count / trade_count * 100) if trade_count > 0 else 0.0
+
+    def _avg(values: list[float]) -> float:
+        return (sum(values) / len(values)) if values else 0.0
+
+    avg_gross_win_percent = _avg([trade.return_percent for trade in wins])
+    avg_gross_loss_percent = _avg([trade.return_percent for trade in losses])
+    avg_net_win_percent = _avg([trade.net_return_percent for trade in wins])
+    avg_net_loss_percent = _avg([trade.net_return_percent for trade in losses])
+    avg_gross_win_krw = _avg([float(trade.pnl_krw) for trade in wins])
+    avg_gross_loss_krw = _avg([abs(float(trade.pnl_krw)) for trade in losses])
+    avg_net_win_krw = _avg([trade.net_pnl_krw for trade in wins])
+    avg_net_loss_krw = _avg([abs(trade.net_pnl_krw) for trade in losses])
+
+    gross_payoff_ratio = (avg_gross_win_krw / avg_gross_loss_krw) if avg_gross_loss_krw > 0 else None
+    net_payoff_ratio = (avg_net_win_krw / avg_net_loss_krw) if avg_net_loss_krw > 0 else None
+    gross_required_win_rate_percent = (
+        avg_gross_loss_krw / (avg_gross_win_krw + avg_gross_loss_krw) * 100
+        if avg_gross_win_krw > 0 and avg_gross_loss_krw > 0
+        else None
+    )
+    net_required_win_rate_percent = (
+        avg_net_loss_krw / (avg_net_win_krw + avg_net_loss_krw) * 100
+        if avg_net_win_krw > 0 and avg_net_loss_krw > 0
+        else None
+    )
+
+    gross_pnl_krw = sum(trade.pnl_krw for trade in trades)
+    net_pnl_krw = int(round(sum(trade.net_pnl_krw for trade in trades)))
+    net_expectancy_krw = _avg([trade.net_pnl_krw for trade in trades])
+    net_expectancy_percent = _avg([trade.net_return_percent for trade in trades])
+
+    return TradeEdgeSummary(
+        trade_count=trade_count,
+        wins=win_count,
+        losses=loss_count,
+        breakeven=breakeven_count,
+        actual_win_rate_percent=actual_win_rate_percent,
+        gross_pnl_krw=gross_pnl_krw,
+        net_pnl_krw=net_pnl_krw,
+        avg_gross_win_percent=avg_gross_win_percent,
+        avg_gross_loss_percent=avg_gross_loss_percent,
+        avg_net_win_percent=avg_net_win_percent,
+        avg_net_loss_percent=avg_net_loss_percent,
+        avg_gross_win_krw=avg_gross_win_krw,
+        avg_gross_loss_krw=avg_gross_loss_krw,
+        avg_net_win_krw=avg_net_win_krw,
+        avg_net_loss_krw=avg_net_loss_krw,
+        gross_payoff_ratio=gross_payoff_ratio,
+        net_payoff_ratio=net_payoff_ratio,
+        gross_required_win_rate_percent=gross_required_win_rate_percent,
+        net_required_win_rate_percent=net_required_win_rate_percent,
+        net_expectancy_krw=net_expectancy_krw,
+        net_expectancy_percent=net_expectancy_percent,
         trades=trades,
     )
 
