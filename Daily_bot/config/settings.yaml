@@ -19,7 +19,7 @@ trend_filter:
 
 strategy:
   top_ratio: 0.2
-  max_buy_count: 0
+  max_buy_count: 3
   min_expected_return_percent: 0.15
   max_spread_percent: 0.0
   # Disabled: the final filter now only checks trend, expected return, and target > price.
@@ -33,13 +33,13 @@ strategy:
 
 risk:
   dry_run: false
-  max_position_count: 0
-  # Keep at least 3 slots even when capital is small.
+  max_position_count: 3
+  # Keep the daily bot in a fixed 3-name round-trip batch.
   min_slot_count: 3
   # Used as the target slot unit when deriving how many slots the account can support.
   slot_budget_unit_krw: 5000000
-  # Cap the session slot plan at 10 names.
-  max_slot_count: 10
+  # Cap the session slot plan at 3 names for round-trip mode.
+  max_slot_count: 3
   # Ratio-based sizing is kept as a fallback when slot_budget_unit_krw is 0.
   target_budget_ratio_per_stock: 0.50
   max_budget_per_cycle_krw: 0
@@ -72,7 +72,7 @@ accounting:
 # 기대수익률: 0.15% 이상
 # 주문충격: 주문금액 <= 5호가 매도잔량의 30%
 # 손절: 1%
-# 슬롯: 최소 3개, 자금 커지면 증가
+# 매수 방식: 최대 3종목 왕복거래형. 보유/미체결로 빈 슬롯만 생겨도 추가 매수하지 않음.
 
 
 # 6/16에 봐야 할 것
