@@ -6,6 +6,7 @@ from Daily_bot.models import Candidate, Position
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 
 PLANNED_BUDGET_ATTR = "planned_budget_krw"
+ROUND_TRIP_BATCH_SIZE = 3
 
 
 def has_position(positions: list[Position]) -> bool:
@@ -103,6 +104,17 @@ def resolve_equal_slot_budget(remaining_cash_krw: int, remaining_slots: int, max
     return per_slot_budget
 
 
+def _is_partial_round_trip_refill_request(max_buy_count: int) -> bool:
+    """Return True when the live loop is trying to refill only empty slots.
+
+    The round-trip daily mode opens up to three names as one batch and then
+    waits until every position/order from that batch is fully cleared before
+    allowing another buy batch. In the current loop, a refill attempt is visible
+    here as a requested max count below the full three-name batch size.
+    """
+    return 0 < max_buy_count < ROUND_TRIP_BATCH_SIZE
+
+
 def select_affordable_targets(
     candidates: list[Candidate],
     max_buy_count: int,
@@ -112,6 +124,8 @@ def select_affordable_targets(
     max_orderbook_ask_depth_ratio: float = 0.20,
 ) -> list[Candidate]:
     if available_cash_krw <= 0:
+        return []
+    if _is_partial_round_trip_refill_request(max_buy_count):
         return []
 
     eligible = trim_targets(candidates, 0, budget_per_stock_krw, sell_tick_offset)
