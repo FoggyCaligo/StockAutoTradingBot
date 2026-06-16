@@ -1,7 +1,7 @@
 market:
   prewarm_start_time: "08:55"
   start_buy_time: "09:30"
-  stop_buy_time: "14:00"
+  stop_buy_time: "13:30"
   force_sell_time: "15:00"
   reconcile_time: "15:15"
   end_time: "15:20"
@@ -15,12 +15,12 @@ universe:
   min_trading_value_krw: 3000000000
 
 trend_filter:
-  enabled: false
+  enabled: true
 
 strategy:
   top_ratio: 0.2
   max_buy_count: 0
-  min_expected_return_percent: 0.3
+  min_expected_return_percent: 0.15
   max_spread_percent: 0.7
   # Require higher expected return when spread is wide: max(base threshold, spread * multiplier).
   spread_expected_return_multiplier: 1.2
