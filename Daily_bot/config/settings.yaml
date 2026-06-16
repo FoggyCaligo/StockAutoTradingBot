@@ -21,11 +21,11 @@ strategy:
   top_ratio: 0.2
   max_buy_count: 0
   min_expected_return_percent: 0.15
-  max_spread_percent: 0.7
-  # Require higher expected return when spread is wide: max(base threshold, spread * multiplier).
-  spread_expected_return_multiplier: 1.2
-  # Exclude names that rose too much on the previous day.
-  max_prev_day_change_percent: 7.0
+  max_spread_percent: 0.0
+  # Disabled: the final filter now only checks trend, expected return, and target > price.
+  spread_expected_return_multiplier: 0.0
+  # Disabled: the final filter now only checks trend, expected return, and target > price.
+  max_prev_day_change_percent: 0.0
   # Exclude names that already jumped too much versus the previous scan.
   max_intraday_jump_from_prev_scan_percent: 1.0
   sell_tick_offset: 1
@@ -66,10 +66,10 @@ accounting:
 
 # 후보 탐색: KOSPI200 전체
 # 랭킹 컷: 상위 20%
-# 전일 급등: +7% 이상 제외
+# 전일 급등: 비활성화
 # 당일 급등: 직전 스캔 대비 +1% 이상 제외
-# 스프레드: 최대 0.7%
-# 기대수익률: max(0.3%, spread × 1.2)
+# 스프레드: 비활성화
+# 기대수익률: 0.15% 이상
 # 주문충격: 주문금액 <= 5호가 매도잔량의 30%
 # 손절: 1%
 # 슬롯: 최소 3개, 자금 커지면 증가
@@ -82,7 +82,7 @@ accounting:
 # 내일 돌렸을 때는 이 순서로 보면 돼.
 
 # 매수가 너무 안 나온다
-# → max_orderbook_ask_depth_ratio: 호가잔량 비율이 너무 낮거나, spread_expected_return_multiplier: 1.2도 아직 빡셀 수 있음.
+# → max_orderbook_ask_depth_ratio: 호가잔량 비율이 너무 낮을 수 있음.
 # 후보는 많은데 실제 target이 적다
 # → 호가잔량 필터에서 많이 탈락하는 것일 가능성이 큼.
 # 진입 후 바로 손절된다
