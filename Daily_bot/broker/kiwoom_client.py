@@ -3,8 +3,10 @@ from __future__ import annotations
 import os
 import re
 import time
+import json
 from collections import OrderedDict
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -44,6 +46,7 @@ class KiwoomClient:
         self.access_token: str | None = None
         self.session = requests.Session()
         self._limiter = RateLimiter(int(os.getenv("KIWOOM_RATE_LIMIT_PER_SECOND", "5")))
+        self._last_orderable_cash_log_signature = ""
 
     def auth(self) -> str:
         if not self.app_key or not self.app_secret:
@@ -229,7 +232,9 @@ class KiwoomClient:
             "qry_tp": "2",  # 일반조회
         }
         raw = self._request("POST", self.DOMESTIC_ACCOUNT_PATH, api_id=self.TR_KT00001_CASH, json=payload)
-        return self._extract_orderable_cash(raw)
+        orderable_cash = self._extract_orderable_cash(raw)
+        self._log_orderable_cash_debug(raw, orderable_cash)
+        return orderable_cash
 
     def get_open_orders(self) -> list[dict[str, Any]]:
         payload = {
@@ -532,14 +537,24 @@ class KiwoomClient:
                 return 0
 
     def _extract_orderable_cash(self, raw: Any) -> int:
-        # Prefer explicit stock-buying-power / orderable-cash fields first.
-        # Some responses also include deposit-like values (for example elwdpst_evlta),
-        # which can look larger than the actual buyable amount and should only be a
-        # last-resort fallback.
-        preferred_keys = [
+        # Prefer the highest non-zero stock orderable amount among the margin buckets
+        # exposed by kt00001. Using only the 100% bucket can understate buying power
+        # materially when the actual candidate is a 20/30/40/50/60% margin stock.
+        margin_bucket_keys = [
+            "20stk_ord_alow_amt",
+            "30stk_ord_alow_amt",
+            "40stk_ord_alow_amt",
+            "50stk_ord_alow_amt",
+            "60stk_ord_alow_amt",
             "100stk_ord_alow_amt",
             "100_stk_ord_alow_amt",
             "stock_100_ord_alow_amt",
+        ]
+        margin_bucket_value = max((self._extract_number(raw, [key]) for key in margin_bucket_keys), default=0)
+        if margin_bucket_value > 0:
+            return margin_bucket_value
+
+        preferred_keys = [
             "ord_psbl_cash",
             "ord_psbl_amt",
             "buy_psbl_cash",
@@ -574,6 +589,66 @@ class KiwoomClient:
                 "cash",
             ],
         )
+
+    def _candidate_orderable_cash_values(self, raw: Any) -> dict[str, int]:
+        candidate_keys = [
+            "20stk_ord_alow_amt",
+            "30stk_ord_alow_amt",
+            "40stk_ord_alow_amt",
+            "50stk_ord_alow_amt",
+            "60stk_ord_alow_amt",
+            "100stk_ord_alow_amt",
+            "100_stk_ord_alow_amt",
+            "stock_100_ord_alow_amt",
+            "ord_psbl_cash",
+            "ord_psbl_amt",
+            "buy_psbl_cash",
+            "buy_psbl_amt",
+            "mgn100_ord_psbl_amt",
+            "mgn_100_ord_psbl_amt",
+            "stock_ord_psbl_amt",
+            "cash_ord_psbl_amt",
+            "ord_alow_amt",
+            "ord_alowa",
+            "wthd_alowa",
+            "pymn_alow_amt",
+            "elwdpst_evlta",
+            "dnca_tot_amt",
+            "deposit",
+            "cash",
+        ]
+        return {key: self._extract_number(raw, [key]) for key in candidate_keys}
+
+    def _orderable_cash_debug_log_path(self) -> Path:
+        return Path(__file__).resolve().parent.parent / "logs" / f"kt00001_cash_debug_{datetime.now().strftime('%Y%m%d')}.jsonl"
+
+    def _log_orderable_cash_debug(self, raw: Any, orderable_cash: int) -> None:
+        try:
+            candidate_values = self._candidate_orderable_cash_values(raw)
+            signature = json.dumps(
+                {
+                    "resolved_orderable_cash": orderable_cash,
+                    "nonzero_candidate_values": {key: value for key, value in candidate_values.items() if value > 0},
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            if signature == self._last_orderable_cash_log_signature:
+                return
+            self._last_orderable_cash_log_signature = signature
+
+            payload = {
+                "logged_at": datetime.now().isoformat(),
+                "resolved_orderable_cash": orderable_cash,
+                "candidate_values": candidate_values,
+                "raw": raw,
+            }
+            log_path = self._orderable_cash_debug_log_path()
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            with log_path.open("a", encoding="utf-8") as fp:
+                fp.write(json.dumps(payload, ensure_ascii=False) + "\n")
+        except Exception as exc:
+            print(f"Failed to log kt00001 cash debug payload: {exc}")
 
     def _normalize_ticker(self, ticker: str) -> str:
         normalized = ticker.strip()

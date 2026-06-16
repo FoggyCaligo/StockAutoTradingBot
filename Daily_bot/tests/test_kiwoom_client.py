@@ -8,6 +8,7 @@ def test_get_orderable_cash_prefers_stock_buying_power(monkeypatch):
         "elwdpst_evlta": "000000000211315",
         "pymn_alow_amt": "000000000024449",
         "ord_alow_amt": "000000000024449",
+        "40stk_ord_alow_amt": "000000001899472",
         "100stk_ord_alow_amt": "000000000211315",
         "return_code": 0,
     }
@@ -15,7 +16,7 @@ def test_get_orderable_cash_prefers_stock_buying_power(monkeypatch):
 
     result = client.get_orderable_cash()
 
-    assert result == 211315
+    assert result == 1_899_472
 
 
 def test_get_orderable_cash_prefers_explicit_orderable_amount_over_deposit_like_value(monkeypatch):
@@ -31,6 +32,24 @@ def test_get_orderable_cash_prefers_explicit_orderable_amount_over_deposit_like_
     result = client.get_orderable_cash()
 
     assert result == 1_250_000
+
+
+def test_get_orderable_cash_prefers_highest_margin_bucket_when_present(monkeypatch):
+    client = KiwoomClient(base_url="https://example.com")
+    response = {
+        "20stk_ord_alow_amt": "000000001500000",
+        "40stk_ord_alow_amt": "000000002100000",
+        "60stk_ord_alow_amt": "000000001300000",
+        "100stk_ord_alow_amt": "000000000800000",
+        "ord_alow_amt": "000000000600000",
+        "elwdpst_evlta": "000000000820000",
+        "return_code": 0,
+    }
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: response)
+
+    result = client.get_orderable_cash()
+
+    assert result == 2_100_000
 
 
 def test_get_orderable_cash_falls_back_to_generic_amount_when_stock_buying_power_missing(monkeypatch):
@@ -58,6 +77,30 @@ def test_get_orderable_cash_uses_deposit_like_value_only_as_last_resort(monkeypa
     result = client.get_orderable_cash()
 
     assert result == 211315
+
+
+def test_get_orderable_cash_writes_debug_log_once_per_unique_signature(monkeypatch, tmp_path):
+    client = KiwoomClient(base_url="https://example.com")
+    response = {
+        "40stk_ord_alow_amt": "000000001899472",
+        "ord_psbl_amt": "000000001250000",
+        "elwdpst_evlta": "000000005000000",
+        "return_code": 0,
+    }
+    log_path = tmp_path / "kt00001_cash_debug.jsonl"
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: response)
+    monkeypatch.setattr(client, "_orderable_cash_debug_log_path", lambda: log_path)
+
+    first = client.get_orderable_cash()
+    second = client.get_orderable_cash()
+
+    assert first == 1_899_472
+    assert second == 1_899_472
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    assert '"resolved_orderable_cash": 1899472' in lines[0]
+    assert '"40stk_ord_alow_amt": 1899472' in lines[0]
+    assert '"ord_psbl_amt": 1250000' in lines[0]
 
 
 def test_wait_buy_filled_requires_full_quantity(monkeypatch):
