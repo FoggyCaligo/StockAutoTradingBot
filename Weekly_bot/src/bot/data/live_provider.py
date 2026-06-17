@@ -1,29 +1,16 @@
 from __future__ import annotations
 
-import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
 from dotenv import load_dotenv
 
 from bot.data.base import MarketDataProvider
+from bot.data.universe_provider import get_kospi200_list
+from bot.integrations.kiwoom_client import KiwoomClient
 from bot.models import MarketSnapshot
-
-
-def _load_daily_bot_modules():
-    weekly_root = Path(__file__).resolve().parents[3]
-    workspace_root = weekly_root.parent
-    daily_bot_root = workspace_root / "Daily_bot"
-    if str(daily_bot_root) not in sys.path:
-        sys.path.insert(0, str(daily_bot_root))
-
-    from broker.kiwoom_client import KiwoomClient  # type: ignore
-    from strategy.universe import get_kospi200_list  # type: ignore
-    from utils import get_tick_size  # type: ignore
-
-    return KiwoomClient, get_kospi200_list, get_tick_size
+from bot.utils import get_tick_size
 
 
 def _safe_int(value: Any) -> int:
@@ -75,11 +62,8 @@ def _get_row_value(row: pd.Series, candidates: list[str]) -> Any:
 class LiveKrxMarketDataProvider(MarketDataProvider):
     def __init__(self):
         load_dotenv()
-        client_class, universe_loader, tick_size_fn = _load_daily_bot_modules()
-        self.client = client_class()
+        self.client = KiwoomClient()
         self.client.auth()
-        self._get_kospi200_list = universe_loader
-        self._get_tick_size = tick_size_fn
         self._universe_df: pd.DataFrame | None = None
         self._universe_rows_by_code: dict[str, pd.Series] = {}
         self._history_cache: dict[str, pd.DataFrame] = {}
@@ -139,7 +123,7 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
 
     def _load_universe_df(self) -> pd.DataFrame:
         if self._universe_df is None:
-            self._universe_df = self._get_kospi200_list(source="KOSPI200", refresh_daily=True)
+            self._universe_df = get_kospi200_list(source="KOSPI200", refresh_daily=True)
         return self._universe_df
 
     def _get_universe_row(self, code: str) -> pd.Series | None:
@@ -193,7 +177,7 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
 
         hoga = self.client.get_20hoga(code)
         current_price = int(hoga.current_price)
-        tick_size = int(self._get_tick_size(current_price))
+        tick_size = int(get_tick_size(current_price))
         best_bid = hoga.bids[0].price if hoga.bids else current_price - tick_size
         best_ask = hoga.asks[0].price if hoga.asks else current_price + tick_size
 

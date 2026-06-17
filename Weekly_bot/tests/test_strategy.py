@@ -84,3 +84,35 @@ def test_spread_filter_can_be_disabled():
 
     passed, _ = strategy._passes_filters(snapshot)
     assert passed is True
+
+
+def test_select_candidates_is_not_capped_by_max_positions():
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    strategy = WeeklyPullbackStrategy(replace(base_config, max_positions=1))
+    snapshots = [
+        MarketSnapshot(
+            code=f"{index:06d}",
+            name=f"stock-{index}",
+            is_kospi200=True,
+            market_cap_krw=400_000_000_000,
+            current_price=100,
+            change_pct=-3.0,
+            turnover_krw=10_000_000_000,
+            volume=0,
+            ma20=110.0,
+            ma30=120.0,
+            ma30_prev=119.0,
+            ma50=130.0,
+            ma50_prev=129.0,
+            ma120=140.0,
+            ma120_prev=139.0,
+            bid_price_1=99,
+            ask_price_1=100,
+            tick_size=1,
+        )
+        for index in range(3)
+    ]
+
+    candidates = strategy.select_candidates(snapshots)
+
+    assert len(candidates) == 3

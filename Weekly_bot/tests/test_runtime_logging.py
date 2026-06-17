@@ -6,6 +6,8 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from dataclasses import replace
+
 from bot.config import load_config
 from bot.data.base import MarketDataProvider
 from bot.execution.base import OrderExecutor
@@ -66,7 +68,8 @@ def _snapshot() -> MarketSnapshot:
 
 
 def test_runtime_logs_unfilled_timeout_event(tmp_path):
-    config = load_config(ROOT / "config/strategy.yaml")
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    config = replace(base_config, min_positions=1)
     provider = _DataProviderStub([_snapshot()])
     executor = _ExecutorStub(
         [

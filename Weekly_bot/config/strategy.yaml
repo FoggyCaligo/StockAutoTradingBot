@@ -24,7 +24,7 @@ moving_average:
 position_sizing:
   deploy_cash_ratio: 0.90
   max_positions: 10
-  min_positions: 0
+  min_positions: 5
 
 exit_rules:
   take_profit_pct: 3.0

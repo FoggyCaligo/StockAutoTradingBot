@@ -1,5 +1,11 @@
 {
   "python-envs.pythonProjects": [],
   "python.envFile": "${workspaceFolder}/.env",
-  "python.terminal.useEnvFile": true
+  "python.terminal.useEnvFile": true,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/Weekly_bot/src"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/Weekly_bot/src"
+  ]
 }

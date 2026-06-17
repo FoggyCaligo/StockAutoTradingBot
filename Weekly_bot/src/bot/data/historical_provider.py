@@ -71,10 +71,7 @@ class HistoricalKrxDataProvider:
     @staticmethod
     def _local_listing_fallback_path() -> Path | None:
         repo_root = Path(__file__).resolve().parents[4]
-        candidates = [
-            repo_root / "Weekly_bot" / "data" / "kospi200_latest.csv",
-            repo_root / "Daily_bot" / "data" / "kospi200_latest.csv",
-        ]
+        candidates = [repo_root / "Weekly_bot" / "data" / "kospi200_latest.csv"]
         for path in candidates:
             if path.exists():
                 return path

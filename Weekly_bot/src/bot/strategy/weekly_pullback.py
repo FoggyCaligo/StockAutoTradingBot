@@ -22,7 +22,7 @@ class WeeklyPullbackStrategy:
                 )
             )
         candidates.sort(key=lambda c: c.score, reverse=True)
-        return candidates[: self.config.max_positions]
+        return candidates
 
     def _passes_filters(self, s: MarketSnapshot) -> tuple[bool, list[str]]:
         reasons: list[str] = []

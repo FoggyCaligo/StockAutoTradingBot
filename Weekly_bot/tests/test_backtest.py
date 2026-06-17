@@ -9,6 +9,8 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from bot.backtest import BacktestSettings, WeeklyBacktester
+from dataclasses import replace
+
 from bot.config import load_config
 from bot.data.historical_provider import HistoricalKrxDataProvider, HistoricalMarketData
 
@@ -53,7 +55,8 @@ def test_weekly_backtester_runs_and_writes_outputs(tmp_path, monkeypatch):
 
     monkeypatch.setattr(HistoricalKrxDataProvider, "load", _fake_load)
 
-    config = load_config(ROOT / "config/strategy.yaml")
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    config = replace(base_config, min_positions=1)
     backtester = WeeklyBacktester(
         config=config,
         settings=BacktestSettings(
@@ -88,7 +91,8 @@ def test_same_day_collision_can_prefer_take_profit(tmp_path, monkeypatch):
 
     monkeypatch.setattr(HistoricalKrxDataProvider, "load", _fake_load)
 
-    config = load_config(ROOT / "config/strategy.yaml")
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    config = replace(base_config, min_positions=1)
     backtester = WeeklyBacktester(
         config=config,
         settings=BacktestSettings(
@@ -116,7 +120,8 @@ def test_unreliable_monday_approx_falls_back_to_friday_signal(tmp_path, monkeypa
 
     monkeypatch.setattr(HistoricalKrxDataProvider, "load", _fake_load)
 
-    config = load_config(ROOT / "config/strategy.yaml")
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    config = replace(base_config, min_positions=1)
     backtester = WeeklyBacktester(
         config=config,
         settings=BacktestSettings(
@@ -137,7 +142,8 @@ def test_unreliable_monday_approx_falls_back_to_friday_signal(tmp_path, monkeypa
 
 
 def test_mid_price_approximation_is_supported():
-    config = load_config(ROOT / "config/strategy.yaml")
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    config = replace(base_config, min_positions=1)
     backtester = WeeklyBacktester(
         config=config,
         settings=BacktestSettings(
@@ -167,7 +173,8 @@ def test_liquidation_offset_extends_holding_window(tmp_path, monkeypatch):
 
     monkeypatch.setattr(HistoricalKrxDataProvider, "load", _fake_load)
 
-    config = load_config(ROOT / "config/strategy.yaml")
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    config = replace(base_config, min_positions=1)
     backtester = WeeklyBacktester(
         config=config,
         settings=BacktestSettings(

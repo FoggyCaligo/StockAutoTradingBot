@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -9,19 +8,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from bot.execution.base import OrderExecutor
+from bot.integrations.kiwoom_client import KiwoomClient
 from bot.models import OrderExecutionResult, OrderIntent, Position
-
-
-def _load_daily_bot_client_class():
-    weekly_root = Path(__file__).resolve().parents[3]
-    workspace_root = weekly_root.parent
-    daily_bot_root = workspace_root / "Daily_bot"
-    if str(daily_bot_root) not in sys.path:
-        sys.path.insert(0, str(daily_bot_root))
-
-    from broker.kiwoom_client import KiwoomClient  # type: ignore
-
-    return KiwoomClient
 
 
 class KiwoomRealExecutor(OrderExecutor):
@@ -35,8 +23,7 @@ class KiwoomRealExecutor(OrderExecutor):
         self.orders_path = self.log_dir / "orders.csv"
         self.positions_path = self.log_dir / "positions.csv"
 
-        client_class = _load_daily_bot_client_class()
-        self.client = client_class()
+        self.client = KiwoomClient()
         self.client.auth()
 
     def get_available_cash(self) -> int:
