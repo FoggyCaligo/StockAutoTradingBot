@@ -7,7 +7,7 @@ Real-trading update:
 - Real-run scripts look for `Weekly_bot\data\market_snapshot.csv` by default.
 - To use a different file, set `WEEKLY_BOT_DATA_PATH` in your environment.
 
-월요일 오전 10시에 KOSPI200 종목 중 눌림목 후보를 선별하고, 예수금의 90%를 최대 10종목에 균등 분배하여 매수한 뒤, 주중에는 익절/손절을 감시하고 금요일에는 남은 종목을 전량 청산하는 자동매매 봇 초안입니다.
+월요일 오전 10시에 KOSPI200 종목 중 눌림목 후보를 선별하고, 예수금의 90%를 최대 10종목에 균등 분배하여 매수합니다. 월요일에 자본금 기준으로 채울 수 있었던 슬롯이 실제 보유 종목 수만큼 채워지지 않았으면, 화요일에도 `buy`를 한 번 더 실행해 이미 보유 중인 종목을 제외하고 빈 슬롯만 추가 매수할 수 있습니다. 주중에는 익절/손절을 감시하고 금요일에는 남은 종목을 전량 청산하는 자동매매 봇 초안입니다.
 
 > ⚠️ 이 프로젝트는 **실거래 베타용 골격**입니다. 기본 실행기는 `DryRunExecutor`이며 실제 주문은 발생하지 않습니다. 키움 OpenAPI+ 연동부는 `KiwoomExecutorStub`에 TODO 형태로 분리되어 있습니다.
 
@@ -17,7 +17,8 @@ Real-trading update:
 
 ### 매수 시점
 
-- 매주 월요일 오전 10:00
+- 1차 매수: 매주 월요일 오전 10:00
+- 보충 매수: 화요일 오전 10:00, 월요일 매수 후 `max_positions` 기준 빈 슬롯이 남아 있을 때만 실행
 
 ### 대상 종목
 
@@ -41,6 +42,8 @@ Real-trading update:
 - 최종 후보가 1~10개면 전부 매수
 - 최종 후보가 10개 초과면 점수 상위 10개 매수
 - 예수금의 90%를 선정 종목 수만큼 균등 분배
+- 보충 매수 시 현재 보유 중인 종목 코드는 후보에서 제외
+- 보충 매수 시 `max_positions - 현재 보유 종목 수`만큼만 신규 주문을 만든다
 
 ### 매도 조건
 
@@ -65,6 +68,7 @@ kospi200_weekly_pullback_bot/
     .gitkeep
   scripts/
     run_monday_scan_buy.ps1
+    run_tuesday_top_up_buy.ps1
     run_monitor.ps1
     run_friday_liquidate.ps1
   src/
@@ -106,6 +110,12 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 
 ```powershell
 .\.venv\Scripts\python.exe main.py scan --data data\sample_market_snapshot.csv
+```
+
+화요일 보충 매수는 별도 명령이 아니라 같은 `buy` 명령을 한 번 더 실행합니다. 이미 보유 중인 종목은 제외하고 빈 슬롯이 있을 때만 신규 매수 주문이 생성됩니다.
+
+```powershell
+.\scripts\run_tuesday_top_up_buy.ps1
 ```
 
 ## Backtest
@@ -193,6 +203,7 @@ Backtest assumptions currently used:
 
 ```powershell
 .\.venv\Scripts\python.exe .\Weekly_bot\main.py buy --real --data .\Weekly_bot\data\market_snapshot.csv --log-dir .\Weekly_bot\logs
+.\Weekly_bot\scripts\run_tuesday_top_up_buy.ps1
 .\.venv\Scripts\python.exe .\Weekly_bot\main.py monitor --real --data .\Weekly_bot\data\market_snapshot.csv --log-dir .\Weekly_bot\logs
 .\.venv\Scripts\python.exe .\Weekly_bot\main.py friday-liquidate --real --log-dir .\Weekly_bot\logs
 ```
