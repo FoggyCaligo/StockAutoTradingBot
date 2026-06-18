@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Collection
+
 from bot.config import StrategyConfig
 from bot.models import Candidate, OrderIntent
 
@@ -8,7 +10,14 @@ class EqualWeightPositionSizer:
     def __init__(self, config: StrategyConfig):
         self.config = config
 
-    def build_buy_orders(self, candidates: list[Candidate], available_cash: int) -> list[OrderIntent]:
+    def build_buy_orders(
+        self,
+        candidates: list[Candidate],
+        available_cash: int,
+        max_orders: int | None = None,
+        excluded_codes: Collection[str] | None = None,
+    ) -> list[OrderIntent]:
+        candidates = self._filter_candidates(candidates, excluded_codes)
         if not candidates:
             return []
 
@@ -19,6 +28,10 @@ class EqualWeightPositionSizer:
         max_target_count = len(candidates)
         if self.config.max_positions > 0:
             max_target_count = min(max_target_count, self.config.max_positions)
+        if max_orders is not None:
+            max_target_count = min(max_target_count, max(int(max_orders), 0))
+        if max_target_count <= 0:
+            return []
 
         selected = self._select_affordable_candidates(candidates, deploy_cash, max_target_count)
         if not selected:
@@ -104,6 +117,13 @@ class EqualWeightPositionSizer:
             if len(selected) == target_count:
                 return selected
         return []
+
+    @staticmethod
+    def _filter_candidates(candidates: list[Candidate], excluded_codes: Collection[str] | None) -> list[Candidate]:
+        if not excluded_codes:
+            return candidates
+        excluded = set(excluded_codes)
+        return [candidate for candidate in candidates if candidate.snapshot.code not in excluded]
 
     @staticmethod
     def build_market_sell_order(code: str, name: str, quantity: int, reason: str, reference_price: int) -> OrderIntent:

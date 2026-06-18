@@ -3,6 +3,7 @@ universe: KOSPI200
 
 buy_schedule:
   weekday: monday
+  top_up_weekday: tuesday
   time: "10:00"
 
 filters:

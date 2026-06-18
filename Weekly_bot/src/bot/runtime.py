@@ -8,7 +8,7 @@ from pathlib import Path
 from bot.config import StrategyConfig
 from bot.data.base import MarketDataProvider
 from bot.execution.base import OrderExecutor
-from bot.models import Candidate, ExitDecision, OrderExecutionResult
+from bot.models import Candidate, ExitDecision, OrderExecutionResult, Position
 from bot.risk.position_sizing import EqualWeightPositionSizer
 from bot.strategy.weekly_pullback import WeeklyPullbackStrategy
 
@@ -38,12 +38,43 @@ class BotRuntime:
         return candidates
 
     def monday_buy(self) -> list[str]:
+        return self.fill_entry_slots()
+
+    def fill_entry_slots(self) -> list[str]:
         candidates = self.scan_candidates()
+        positions = self.executor.get_positions()
+        held_codes = {position.code for position in positions if position.quantity > 0}
+        open_slots = self._available_entry_slots(candidates, positions)
+        if open_slots <= 0:
+            self._write_runtime_event(
+                "weekly_buy",
+                "",
+                "BUY",
+                "SKIPPED",
+                f"no_entry_slots_available current_positions={len(held_codes)} max_positions={self.config.max_positions}",
+            )
+            return []
+
         cash = self.executor.get_available_cash()
-        orders = self.sizer.build_buy_orders(candidates, cash)
+        orders = self.sizer.build_buy_orders(
+            candidates,
+            cash,
+            max_orders=open_slots,
+            excluded_codes=held_codes,
+        )
+        if not orders:
+            self._write_runtime_event(
+                "weekly_buy",
+                "",
+                "BUY",
+                "SKIPPED",
+                f"no_affordable_top_up_order open_slots={open_slots} available_cash={cash} held_codes={len(held_codes)}",
+            )
+            return []
+
         order_ids: list[str] = []
         for order in orders:
-            result = self._submit_order_with_logging("monday_buy", order)
+            result = self._submit_order_with_logging("weekly_buy", order)
             if result.order_id:
                 order_ids.append(result.order_id)
         return order_ids
@@ -147,6 +178,12 @@ class BotRuntime:
             )
 
         return result
+
+    def _available_entry_slots(self, candidates: list[Candidate], positions: list[Position]) -> int:
+        active_position_count = sum(1 for position in positions if position.quantity > 0)
+        if self.config.max_positions <= 0:
+            return max(len(candidates) - active_position_count, 0)
+        return max(self.config.max_positions - active_position_count, 0)
 
     def _write_runtime_event(self, phase: str, code: str, side: str, status: str, message: str) -> None:
         path = self.log_dir / "runtime_events.csv"
