@@ -96,3 +96,38 @@ def test_build_buy_orders_falls_back_below_soft_minimum_position_count():
     orders = sizer.build_buy_orders(candidates, available_cash=10_000_000)
 
     assert [order.code for order in orders] == ["000001", "000002", "000003", "000004"]
+
+
+def test_build_buy_orders_limits_new_orders_to_open_slots():
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    config = replace(base_config, max_positions=3, min_positions=1)
+    sizer = EqualWeightPositionSizer(config)
+    candidates = [
+        _candidate("000001", 100_000, 10.0),
+        _candidate("000002", 100_000, 9.0),
+        _candidate("000003", 100_000, 8.0),
+    ]
+
+    orders = sizer.build_buy_orders(candidates, available_cash=1_000_000, max_orders=1)
+
+    assert [order.code for order in orders] == ["000001"]
+
+
+def test_build_buy_orders_excludes_already_held_codes_when_topping_up():
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    config = replace(base_config, max_positions=3, min_positions=1)
+    sizer = EqualWeightPositionSizer(config)
+    candidates = [
+        _candidate("000001", 100_000, 10.0),
+        _candidate("000002", 100_000, 9.0),
+        _candidate("000003", 100_000, 8.0),
+    ]
+
+    orders = sizer.build_buy_orders(
+        candidates,
+        available_cash=1_000_000,
+        max_orders=2,
+        excluded_codes={"000001"},
+    )
+
+    assert [order.code for order in orders] == ["000002", "000003"]
