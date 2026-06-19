@@ -1,15 +1,17 @@
 # KOSPI200 Weekly Pullback Bot v0.1
 
-Real-trading update:
-- `python main.py ... --real` now uses Kiwoom REST to submit live market orders.
-- Live execution is implemented in `src/bot/execution/kiwoom_real.py`.
-- `scan`, `buy`, and `monitor` still require a market snapshot CSV input.
-- Real-run scripts look for `Weekly_bot\data\market_snapshot.csv` by default.
-- To use a different file, set `WEEKLY_BOT_DATA_PATH` in your environment.
+실거래 업데이트:
 
-월요일 오전 10시에 KOSPI200 종목 중 눌림목 후보를 선별하고, 예수금의 90%를 최대 10종목에 균등 분배하여 매수합니다. 월요일에 자본금 기준으로 채울 수 있었던 슬롯이 실제 보유 종목 수만큼 채워지지 않았으면, 화요일에도 `buy`를 한 번 더 실행해 이미 보유 중인 종목을 제외하고 빈 슬롯만 추가 매수할 수 있습니다. 주중에는 익절/손절을 감시하고 금요일에는 남은 종목을 전량 청산하는 자동매매 봇 초안입니다.
+- `python main.py ... --real`은 키움 REST를 통해 실제 주문을 전송합니다.
+- 실거래 실행기는 `src/bot/execution/kiwoom_real.py`에 구현되어 있습니다.
+- `scan`, `buy`, `monitor`는 `--data live`로 실시간 데이터 기반 실행이 가능합니다.
+- 스크립트 실행 시 기본 스냅샷 경로는 `Weekly_bot\data\market_snapshot.csv`입니다.
+- 다른 파일을 쓰려면 환경변수 `WEEKLY_BOT_DATA_PATH`를 지정하면 됩니다.
+- 현재 운영 기준 문서는 `Weekly_bot/CURRENT_RULES.md`, `Weekly_bot/strategy.txt`입니다.
 
-> ⚠️ 이 프로젝트는 **실거래 베타용 골격**입니다. 기본 실행기는 `DryRunExecutor`이며 실제 주문은 발생하지 않습니다. 키움 OpenAPI+ 연동부는 `KiwoomExecutorStub`에 TODO 형태로 분리되어 있습니다.
+월요일 오전 10시에 KOSPI200 종목 중 눌림목 후보를 선별하고, 가용 현금의 90%를 활용해 후보 종목들에 균등 분배하여 매수합니다. 월요일 매수 후 빈 슬롯이 남아 있으면 화요일에도 `buy`를 한 번 더 실행해 이미 보유 중인 종목을 제외하고 추가 매수를 진행할 수 있습니다. 주중에는 익절과 손절을 감시하고, 금요일에는 남은 종목을 전량 청산하는 주간 자동매매 봇입니다.
+
+> 현재는 실거래 경로까지 연결되어 있으며, 주간 스케줄러는 월요일 1차 매수, 화요일 추가 매수, 주중 모니터링, 금요일 강제청산 기준으로 맞춰져 있습니다.
 
 ---
 
@@ -18,7 +20,7 @@ Real-trading update:
 ### 매수 시점
 
 - 1차 매수: 매주 월요일 오전 10:00
-- 보충 매수: 화요일 오전 10:00, 월요일 매수 후 `max_positions` 기준 빈 슬롯이 남아 있을 때만 실행
+- 보충 매수: 매주 화요일 오전 10:00, 월요일 매수 후 `max_positions` 기준 빈 슬롯이 남아 있을 때만 실행
 
 ### 대상 종목
 
@@ -27,28 +29,30 @@ Real-trading update:
 ### 매수 필터
 
 1. 시가총액 3,000억 원 이상
-2. 당일 등락률 -1% ~ -10%
+2. 전일 등락률 -7.0% ~ -2.0%
 3. 거래대금 10억 원 이상
-4. 현재가가 Envelope 하단 2.6% 아래
+4. 현재가가 Envelope 하단 기준 아래
 5. 추세 조건 통과
    - `(MA30 우상향 OR MA50 우상향)`
    - `OR (MA120 우상향 AND 현재가 > MA120)`
-6. 스프레드 필터는 현재 비활성화
+6. 스프레드 필터는 현재 기본 비활성화
 
 ### 종목 수 / 자금 배분
 
-- 최소 종목 수 제한 없음
+- 목표 최대 종목 수는 10개
+- `min_positions=5`는 참고용 목표치이며 강제 조건은 아님
 - 최종 후보가 0개면 매수하지 않음
-- 최종 후보가 1~10개면 전부 매수
-- 최종 후보가 10개 초과면 점수 상위 10개 매수
-- 예수금의 90%를 선정 종목 수만큼 균등 분배
+- 최종 후보가 1개 이상이면 자금과 종목 가격을 기준으로 실제 매수 가능한 수량만큼 진입
+- 가용 현금의 90%를 최종 선정 종목 수만큼 균등 분배
+- 자본이 부족해 5종목을 채울 수 없더라도 매수 가능한 종목은 그대로 매수
 - 보충 매수 시 현재 보유 중인 종목 코드는 후보에서 제외
 - 보충 매수 시 `max_positions - 현재 보유 종목 수`만큼만 신규 주문을 만든다
 
 ### 매도 조건
 
-- 익절: 매수가 대비 +3.0%
-- 손절: 매수가 대비 -5.0%
+- 익절: 평균매수가 대비 +3.0%
+- 손절: 평균매수가 대비 -5.0%
+- 주중 모니터링은 보유 포지션의 평균매수가(`avg_price`) 기준으로 판단
 - 금요일: 남은 보유 종목 전량 시장가 매도
 
 ---
@@ -56,11 +60,12 @@ Real-trading update:
 ## 폴더 구조
 
 ```text
-kospi200_weekly_pullback_bot/
+Weekly_bot/
   main.py
   requirements.txt
   .env.example
   config/
+    settings.yaml
     strategy.yaml
   data/
     sample_market_snapshot.csv
@@ -73,22 +78,17 @@ kospi200_weekly_pullback_bot/
     run_friday_liquidate.ps1
   src/
     bot/
+      backtest.py
       config.py
       models.py
       runtime.py
+      utils.py
       data/
-        base.py
-        csv_provider.py
       execution/
-        base.py
-        dry_run.py
-        kiwoom_real.py
+      integrations/
       risk/
-        position_sizing.py
       strategy/
-        weekly_pullback.py
   tests/
-    test_strategy.py
 ```
 
 ---
@@ -99,23 +99,23 @@ kospi200_weekly_pullback_bot/
 python -m venv .venv
 source .venv/Scripts/activate  # Git Bash / Windows
 pip install -r requirements.txt
-python main.py scan --data data/sample_market_snapshot.csv
-python main.py buy --data data/sample_market_snapshot.csv --cash 1000000
-python main.py monitor --positions logs/positions.csv --data data/sample_market_snapshot.csv
-python main.py friday-liquidate --positions logs/positions.csv
-python main.py backtest --start 2024-01-01 --end 2024-12-31 --cash 10000000 --source auto --log-dir logs
+python .\Weekly_bot\main.py scan --data .\Weekly_bot\data\sample_market_snapshot.csv
+python .\Weekly_bot\main.py buy --data .\Weekly_bot\data\sample_market_snapshot.csv --cash 1000000
+python .\Weekly_bot\main.py monitor --positions .\Weekly_bot\logs\positions.csv --data .\Weekly_bot\data\sample_market_snapshot.csv
+python .\Weekly_bot\main.py friday-liquidate --positions .\Weekly_bot\logs\positions.csv
+python .\Weekly_bot\main.py backtest --start 2024-01-01 --end 2024-12-31 --cash 10000000 --source auto --log-dir .\Weekly_bot\logs
 ```
 
 PowerShell에서는 다음처럼 실행할 수 있습니다.
 
 ```powershell
-.\.venv\Scripts\python.exe main.py scan --data data\sample_market_snapshot.csv
+.\.venv\Scripts\python.exe .\Weekly_bot\main.py scan --data .\Weekly_bot\data\sample_market_snapshot.csv
 ```
 
-화요일 보충 매수는 별도 명령이 아니라 같은 `buy` 명령을 한 번 더 실행합니다. 이미 보유 중인 종목은 제외하고 빈 슬롯이 있을 때만 신규 매수 주문이 생성됩니다.
+화요일 보충 매수는 별도 전략이 아니라 같은 `buy` 명령을 한 번 더 실행하는 방식입니다. 이미 보유 중인 종목은 제외하고, 빈 슬롯이 남아 있을 때만 신규 매수 주문이 생성됩니다.
 
 ```powershell
-.\scripts\run_tuesday_top_up_buy.ps1
+.\Weekly_bot\scripts\run_tuesday_top_up_buy.ps1
 ```
 
 ## Backtest
@@ -123,12 +123,11 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 `backtest` 명령은 KOSPI200 현재 구성 종목을 기준으로 과거 일봉 데이터를 자동 수집해서 주간 전략을 간이 재현합니다.
 
 - 기본 데이터 소스는 `auto`이며, `FinanceDataReader`를 우선 사용하고 실패 시 `yfinance` 가격 데이터를 시도합니다.
-- 기본 백테스트는 전주 금요일 신호 생성, 다음 거래일인 월요일 시가 매수, 진입일~금요일 일봉 OHLC 기준 익절·손절 판정, 금요일 종가 강제청산으로 근사합니다.
+- 기본 백테스트는 전주 금요일 신호 생성, 다음 거래일인 월요일 진입, 주중 익절·손절 판정, 금요일 강제청산 흐름으로 근사합니다.
 - 같은 날 익절가와 손절가가 모두 닿으면 기본적으로 `익절 75% / 손절 25%` 비율이 되도록 종목/날짜 기준으로 결정합니다.
-- `--approx-monday-10am` 옵션을 켜면, 금요일 이동평균/거래대금 지표는 유지하되 월요일 시가를 현재가처럼 넣어 월요일 10:00 신호를 우선 근사합니다.
-- `--monday-approx-price-mode open|mid|weighted` 로 월요일 근사 가격을 고를 수 있습니다. `mid`는 `(금요일 종가 + 월요일 시가) / 2` 혼합값입니다.
-- 다만 월요일 시가가 전주 금요일 종가 대비 너무 크게 벌어져 있거나 계산이 불가능하면, 해당 종목은 금요일 신호로 되돌리고 같은 날 익절/손절 충돌도 `익절 75% / 손절 25%` fallback 규칙을 사용합니다.
-- 과거 호가 데이터가 없기 때문에 스프레드는 1틱 매수호가/매도호가 차이로 단순화합니다.
+- `--approx-monday-10am` 옵션을 켜면 월요일 10:00 진입을 더 가깝게 근사합니다.
+- `--monday-approx-price-mode open|mid|weighted`로 월요일 근사 가격을 고를 수 있습니다.
+- 과거 호가 데이터가 없기 때문에 스프레드는 1틱 차이 수준으로 단순화합니다.
 
 예시:
 
@@ -143,48 +142,34 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 - `logs\backtests\weekly.csv`
 - `logs\backtests\monthly.csv`
 
-## Current Baseline
+## 현재 기준값
 
-Current working baseline after iterative backtests:
+현재 백테스트 기준 기본값은 다음과 같습니다.
 
 - `change_pct`: `-7.0% ~ -2.0%`
 - `min_turnover_krw`: `1,000,000,000`
 - `envelope_lower_pct`: `2.6%`
 - `take_profit_pct`: `3.0%`
 - `stop_loss_pct`: `-5.0%`
-- `min_volume`: disabled (`0`)
-- `max_spread_ticks`: disabled (`0`)
+- `min_volume`: 비활성화 (`0`)
+- `max_spread_ticks`: 비활성화 (`0`)
 
-Backtest assumptions currently used:
+현재 백테스트 가정:
 
-- Signal day: previous Friday
-- Entry: next trading day open, with Monday 10:00 approximation tried first
-- Exit: intraday TP/SL touch assumed at target price, gap open handled at open
-- Weekly fallback: Friday close liquidation for remaining positions
+- 신호일: 이전 금요일 기준
+- 진입: 다음 거래일 기준, 필요 시 월요일 10:00 근사 우선 적용
+- 청산: 장중 TP/SL 터치 기준, 남은 포지션은 금요일 강제청산
 
 ---
 
-## 실제 키움 연동 시 할 일
+## 실제 키움 연동 관련 메모
 
-`src/bot/execution/kiwoom_stub.py`의 TODO를 실제 키움 OpenAPI+ 호출로 교체해야 합니다.
-
-필수 구현 항목:
-
-1. 예수금 조회
-2. 현재가/호가 조회
-3. 시장가 매수 주문
-4. 시장가 매도 주문
-5. 보유잔고 조회
-6. 주문 체결 확인
-7. 미체결 주문 취소
-8. 장중 감시 루프 안정화
-
-실거래 전에는 반드시 다음 순서로 검증하세요.
+현재 `src/bot/execution/kiwoom_real.py`를 통해 실거래 주문 경로가 연결되어 있습니다. 다만 실거래 확대 전에는 아래 순서로 검증을 유지하는 것이 안전합니다.
 
 1. CSV 데이터 기반 dry-run
-2. 실시간 시세 조회만 연결
-3. 주문 없는 실시간 paper trading
-4. 1주/1종목/최소 금액 실거래
+2. 실시간 시세 조회 연결
+3. 소액 또는 주문 없는 실시간 검증
+4. 제한된 종목 수와 금액으로 실거래
 5. 전략 고정 후 4주 이상 로그 축적
 
 ---
@@ -198,12 +183,13 @@ Backtest assumptions currently used:
 - 보유 포지션 로그: `logs/positions.csv`
 - 매도 판단 로그: `logs/exit_decisions.csv`
 
-초기 4주 동안은 조건을 자주 바꾸지 않는 것을 권장합니다. 조건을 바꾸면 전략 자체의 유효성 검증이 어려워집니다.
+초기 검증 기간에는 조건을 너무 자주 바꾸지 않는 것을 권장합니다. 조건을 자주 바꾸면 전략 자체의 유효성 검증이 어려워집니다.
+
 ## Real Mode Examples
 
 ```powershell
-.\.venv\Scripts\python.exe .\Weekly_bot\main.py buy --real --data .\Weekly_bot\data\market_snapshot.csv --log-dir .\Weekly_bot\logs
+.\Weekly_bot\scripts\run_monday_scan_buy.ps1
 .\Weekly_bot\scripts\run_tuesday_top_up_buy.ps1
-.\.venv\Scripts\python.exe .\Weekly_bot\main.py monitor --real --data .\Weekly_bot\data\market_snapshot.csv --log-dir .\Weekly_bot\logs
-.\.venv\Scripts\python.exe .\Weekly_bot\main.py friday-liquidate --real --log-dir .\Weekly_bot\logs
+.\Weekly_bot\scripts\run_monitor.ps1
+.\Weekly_bot\scripts\run_friday_liquidate.ps1
 ```
