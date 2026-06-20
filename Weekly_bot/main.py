@@ -70,6 +70,7 @@ def main() -> None:
     parser.add_argument("--buy-fee-bps", type=float, default=0.0, help="Backtest buy fee in basis points")
     parser.add_argument("--sell-fee-bps", type=float, default=0.0, help="Backtest sell fee in basis points")
     parser.add_argument("--sell-tax-bps", type=float, default=0.0, help="Backtest sell-side tax in basis points")
+    parser.add_argument("--run-name", help="Optional subfolder name for this backtest run")
     args = parser.parse_args()
 
     if args.real and args.dry_run:
@@ -102,6 +103,7 @@ def main() -> None:
                 sell_fee_bps=args.sell_fee_bps,
                 sell_tax_bps=args.sell_tax_bps,
                 output_dir=_resolve_path(args.log_dir) / "backtests",
+                run_name=args.run_name,
             ),
         )
         artifacts = backtester.run()

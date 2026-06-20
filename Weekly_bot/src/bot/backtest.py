@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import datetime
+import json
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 from bot.config import StrategyConfig
 from bot.data.historical_provider import HistoricalKrxDataProvider
@@ -47,6 +50,7 @@ class BacktestSettings:
     sell_fee_bps: float = 0.0
     sell_tax_bps: float = 0.0
     output_dir: str | Path = "logs/backtests"
+    run_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -64,7 +68,9 @@ class WeeklyBacktester:
         self.settings = settings
         self.strategy = WeeklyPullbackStrategy(config)
         self.sizer = EqualWeightPositionSizer(config)
-        self.output_dir = Path(settings.output_dir)
+        self.base_output_dir = Path(settings.output_dir)
+        self.base_output_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir = self.base_output_dir / self._build_run_name()
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def run(self) -> BacktestArtifacts:
@@ -384,6 +390,37 @@ class WeeklyBacktester:
                     "buy_fee_bps": self.settings.buy_fee_bps,
                     "sell_fee_bps": self.settings.sell_fee_bps,
                     "sell_tax_bps": self.settings.sell_tax_bps,
+                    "strategy_name": self.config.strategy_name,
+                    "universe": self.config.universe,
+                    "min_market_cap_krw": self.config.min_market_cap_krw,
+                    "min_change_pct": self.config.min_change_pct,
+                    "max_change_pct": self.config.max_change_pct,
+                    "min_turnover_krw": self.config.min_turnover_krw,
+                    "min_volume": self.config.min_volume,
+                    "envelope_ma_days": self.config.envelope_ma_days,
+                    "envelope_lower_pct": self.config.envelope_lower_pct,
+                    "max_spread_ticks": self.config.max_spread_ticks,
+                    "ma_short_days": self.config.ma_short_days,
+                    "ma_mid_days": self.config.ma_mid_days,
+                    "ma_long_days": self.config.ma_long_days,
+                    "slope_lookback_days": self.config.slope_lookback_days,
+                    "deploy_cash_ratio": self.config.deploy_cash_ratio,
+                    "max_positions": self.config.max_positions,
+                    "min_positions": self.config.min_positions,
+                    "take_profit_pct": self.config.take_profit_pct,
+                    "stop_loss_pct": self.config.stop_loss_pct,
+                    "monitor_poll_seconds": self.config.monitor_poll_seconds,
+                    "monitor_end_time": self.config.monitor_end_time,
+                    "friday_liquidation_time": self.config.friday_liquidation_time,
+                    "signal_weekday": self.settings.signal_weekday,
+                    "entry_offset_trading_days": self.settings.entry_offset_trading_days,
+                    "liquidation_offset_trading_days": self.settings.liquidation_offset_trading_days,
+                    "approximate_monday_10am": self.settings.approximate_monday_10am,
+                    "monday_approx_price_mode": self.settings.monday_approx_price_mode,
+                    "monday_approx_max_gap_pct": self.settings.monday_approx_max_gap_pct,
+                    "collision_take_profit_ratio": self.settings.collision_take_profit_ratio,
+                    "data_source": self.settings.data_source,
+                    "run_name": self.output_dir.name,
                 }
             ]
         )
@@ -528,3 +565,32 @@ class WeeklyBacktester:
         trades_df.to_csv(self.output_dir / "trades.csv", index=False, encoding="utf-8")
         weekly_df.to_csv(self.output_dir / "weekly.csv", index=False, encoding="utf-8")
         monthly_df.to_csv(self.output_dir / "monthly.csv", index=False, encoding="utf-8")
+        self._write_run_metadata()
+
+    def _build_run_name(self) -> str:
+        if self.settings.run_name:
+            return self.settings.run_name
+        return datetime.now().strftime("run_%Y%m%d_%H%M%S")
+
+    def _write_run_metadata(self) -> None:
+        manifest = {
+            "run_name": self.output_dir.name,
+            "output_dir": str(self.output_dir),
+            "config": asdict(self.config),
+            "settings": {
+                key: str(value) if isinstance(value, Path) else value
+                for key, value in asdict(self.settings).items()
+            },
+        }
+        with (self.output_dir / "run_manifest.json").open("w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
+        with (self.output_dir / "config_snapshot.yaml").open("w", encoding="utf-8") as f:
+            yaml.safe_dump(
+                {
+                    "strategy_config": manifest["config"],
+                    "backtest_settings": manifest["settings"],
+                },
+                f,
+                allow_unicode=True,
+                sort_keys=False,
+            )

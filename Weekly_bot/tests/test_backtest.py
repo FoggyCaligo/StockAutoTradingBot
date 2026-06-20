@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+import json
 
 import pandas as pd
 
@@ -65,6 +66,7 @@ def test_weekly_backtester_runs_and_writes_outputs(tmp_path, monkeypatch):
             initial_cash=1_000_000,
             signal_weekday="monday",
             entry_offset_trading_days=1,
+            run_name="test-run",
             output_dir=tmp_path,
         ),
     )
@@ -78,8 +80,21 @@ def test_weekly_backtester_runs_and_writes_outputs(tmp_path, monkeypatch):
     assert artifacts.trades.iloc[0]["entry_date"] == "2024-07-09"
     assert int(artifacts.trades.iloc[0]["holding_days"]) == 1
     assert float(artifacts.summary.iloc[0]["ending_cash"]) > 1_000_000
-    assert (tmp_path / "summary.csv").exists()
-    assert (tmp_path / "trades.csv").exists()
+    assert artifacts.output_dir == tmp_path / "test-run"
+    assert (artifacts.output_dir / "summary.csv").exists()
+    assert (artifacts.output_dir / "trades.csv").exists()
+    assert (artifacts.output_dir / "weekly.csv").exists()
+    assert (artifacts.output_dir / "monthly.csv").exists()
+    assert (artifacts.output_dir / "run_manifest.json").exists()
+    assert (artifacts.output_dir / "config_snapshot.yaml").exists()
+
+    manifest = json.loads((artifacts.output_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["run_name"] == "test-run"
+    assert manifest["config"]["min_positions"] == 1
+    assert manifest["settings"]["signal_weekday"] == "monday"
+    assert artifacts.summary.iloc[0]["run_name"] == "test-run"
+    assert artifacts.summary.iloc[0]["min_change_pct"] == config.min_change_pct
+    assert artifacts.summary.iloc[0]["max_positions"] == config.max_positions
 
 
 def test_same_day_collision_can_prefer_take_profit(tmp_path, monkeypatch):
@@ -102,6 +117,7 @@ def test_same_day_collision_can_prefer_take_profit(tmp_path, monkeypatch):
             signal_weekday="monday",
             entry_offset_trading_days=1,
             collision_take_profit_ratio=1.0,
+            run_name="collision-run",
             output_dir=tmp_path,
         ),
     )
@@ -132,6 +148,7 @@ def test_unreliable_monday_approx_falls_back_to_friday_signal(tmp_path, monkeypa
             entry_offset_trading_days=1,
             approximate_monday_10am=True,
             monday_approx_max_gap_pct=0.5,
+            run_name="approx-fallback-run",
             output_dir=tmp_path,
         ),
     )
@@ -152,6 +169,7 @@ def test_mid_price_approximation_is_supported():
             initial_cash=1_000_000,
             approximate_monday_10am=True,
             monday_approx_price_mode="mid",
+            run_name="mid-mode-run",
         ),
     )
 
@@ -184,6 +202,7 @@ def test_liquidation_offset_extends_holding_window(tmp_path, monkeypatch):
             signal_weekday="monday",
             entry_offset_trading_days=1,
             liquidation_offset_trading_days=1,
+            run_name="extended-liquidation-run",
             output_dir=tmp_path,
         ),
     )

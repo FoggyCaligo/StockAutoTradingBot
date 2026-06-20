@@ -137,10 +137,14 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 
 생성 파일:
 
-- `logs\backtests\summary.csv`
-- `logs\backtests\trades.csv`
-- `logs\backtests\weekly.csv`
-- `logs\backtests\monthly.csv`
+- `logs\backtests\run_YYYYMMDD_HHMMSS\summary.csv`
+- `logs\backtests\run_YYYYMMDD_HHMMSS\trades.csv`
+- `logs\backtests\run_YYYYMMDD_HHMMSS\weekly.csv`
+- `logs\backtests\run_YYYYMMDD_HHMMSS\monthly.csv`
+- `logs\backtests\run_YYYYMMDD_HHMMSS\run_manifest.json`
+- `logs\backtests\run_YYYYMMDD_HHMMSS\config_snapshot.yaml`
+
+`--run-name` 옵션을 주면 실행별 폴더 이름을 직접 지정할 수 있습니다. 각 실행 폴더에는 전략 설정값과 백테스트 실행 옵션이 함께 저장되므로, 설정값을 바꿔가며 실험한 이력을 나중에 추적할 수 있습니다.
 
 ## 현재 기준값
 
