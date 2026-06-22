@@ -68,7 +68,7 @@ class BotRuntime:
                 "",
                 "BUY",
                 "SKIPPED",
-                f"no_affordable_top_up_order open_slots={open_slots} available_cash={cash} held_codes={len(held_codes)}",
+                f"no_affordable_order open_slots={open_slots} deposit_cash={cash} held_codes={len(held_codes)}",
             )
             return []
 

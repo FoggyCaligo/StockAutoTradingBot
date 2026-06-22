@@ -5,7 +5,6 @@ This file reflects the current operating intent of `Weekly_bot` and takes preced
 ## Schedule
 
 - Monday 10:00: first buy
-- Tuesday 10:00: top-up buy
 - Monday to Friday during market hours: monitor take-profit / stop-loss
 - Friday 14:50: forced liquidation
 
@@ -21,22 +20,16 @@ This file reflects the current operating intent of `Weekly_bot` and takes preced
 
 ## Position Sizing
 
-- Use 90% of available cash
+- Use 90% of deposit cash
 - Maximum 10 names
 - `min_positions=5` is a soft target, not a hard requirement
-- The actual number of bought names is computed dynamically from available cash and candidate prices
-- If cash cannot fill 5 names, buy as many affordable names as possible
+- The actual number of bought names is computed dynamically from deposit cash and candidate prices
+- If deposit cash cannot fill 5 names, buy as many affordable names as possible
 - Allocation is equal-weighted across the finally selected names
-
-## Tuesday Top-up
-
-- Tuesday uses the same `buy` flow again
-- Already-held names are excluded
-- Only empty slots up to `max_positions` are filled
 
 ## Exit Rules
 
-- Take profit: `+3.0%`
+- Take profit: `+5.0%`
 - Stop loss: `-5.0%`
 - Monitoring compares current price against the held average price (`avg_price`)
 - Any remaining position is force-liquidated on Friday at 14:50

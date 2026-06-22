@@ -27,7 +27,7 @@ class KiwoomRealExecutor(OrderExecutor):
         self.client.auth()
 
     def get_available_cash(self) -> int:
-        return self.client.get_orderable_cash()
+        return self.client.get_deposit_cash()
 
     def get_positions(self) -> list[Position]:
         positions = [self._map_position(p) for p in self.client.get_positions() if getattr(p, "quantity", 0) > 0]
