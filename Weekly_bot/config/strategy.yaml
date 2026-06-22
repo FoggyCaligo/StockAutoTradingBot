@@ -3,8 +3,10 @@ universe: KOSPI200
 
 buy_schedule:
   weekday: monday
-  top_up_weekday: tuesday
   time: "10:00"
+
+entry_rules:
+  previous_close_discount_pct: 3.0
 
 filters:
   min_market_cap_krw: 300000000000
@@ -28,7 +30,7 @@ position_sizing:
   min_positions: 5
 
 exit_rules:
-  take_profit_pct: 3.0
+  take_profit_pct: 5.0
   stop_loss_pct: -5.0
   monitor_poll_seconds: 60
   monitor_end_time: "15:10"

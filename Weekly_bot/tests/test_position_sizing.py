@@ -131,3 +131,23 @@ def test_build_buy_orders_excludes_already_held_codes_when_topping_up():
     )
 
     assert [order.code for order in orders] == ["000002", "000003"]
+
+
+def test_build_buy_orders_can_use_discounted_limit_prices():
+    base_config = load_config(ROOT / "config/strategy.yaml")
+    config = replace(base_config, min_positions=1)
+    sizer = EqualWeightPositionSizer(config)
+    candidates = [
+        _candidate("000001", 100_000, 10.0),
+        _candidate("000002", 100_000, 9.0),
+    ]
+
+    orders = sizer.build_buy_orders(
+        candidates,
+        available_cash=1_000_000,
+        price_by_code={"000001": 97_000, "000002": 97_000},
+        order_type="LIMIT",
+    )
+
+    assert [order.order_type for order in orders] == ["LIMIT", "LIMIT"]
+    assert [order.reference_price for order in orders] == [97_000, 97_000]

@@ -41,7 +41,10 @@ class KiwoomRealExecutor(OrderExecutor):
         submitted_at = datetime.now()
         try:
             if order.side == "BUY":
-                submitted_order = self.client.buy_market(order.code, order.quantity)
+                if order.order_type == "LIMIT":
+                    submitted_order = self.client.buy_limit(order.code, order.quantity, int(order.reference_price))
+                else:
+                    submitted_order = self.client.buy_market(order.code, order.quantity)
             elif order.side == "SELL":
                 submitted_order = self.client.sell_market(order.code, order.quantity)
             else:

@@ -157,6 +157,14 @@ class KiwoomClient:
         )
 
     def buy_market(self, ticker: str, quantity: int) -> OrderResult:
+        return self._submit_buy_order(ticker=ticker, quantity=quantity, price=0, trade_type="3")
+
+    def buy_limit(self, ticker: str, quantity: int, price: int) -> OrderResult:
+        if price <= 0:
+            raise ValueError(f"Limit price must be positive: {price}")
+        return self._submit_buy_order(ticker=ticker, quantity=quantity, price=price, trade_type="0")
+
+    def _submit_buy_order(self, ticker: str, quantity: int, price: int, trade_type: str) -> OrderResult:
         raw = self._request(
             "POST",
             self.DOMESTIC_ORDER_PATH,
@@ -165,12 +173,12 @@ class KiwoomClient:
                 "dmst_stex_tp": self.default_dmst_stex_tp,
                 "stk_cd": ticker,
                 "ord_qty": str(quantity),
-                "ord_uv": "",
-                "trde_tp": "3",
+                "ord_uv": "" if price <= 0 else str(price),
+                "trde_tp": trade_type,
                 "cond_uv": "",
             },
         )
-        return self._parse_order_result(raw, ticker=ticker, side="BUY", quantity=quantity, price=0)
+        return self._parse_order_result(raw, ticker=ticker, side="BUY", quantity=quantity, price=price)
 
     def sell_market(self, ticker: str, quantity: int) -> OrderResult:
         raw = self._request(

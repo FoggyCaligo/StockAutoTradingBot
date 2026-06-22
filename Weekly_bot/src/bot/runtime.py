@@ -11,8 +11,6 @@ from bot.execution.base import OrderExecutor
 from bot.models import Candidate, ExitDecision, OrderExecutionResult, Position
 from bot.risk.position_sizing import EqualWeightPositionSizer
 from bot.strategy.weekly_pullback import WeeklyPullbackStrategy
-
-
 class BotRuntime:
     SUCCESS_STATUSES = {"FILLED", "POSITION_CONFIRMED_AFTER_TIMEOUT", "POSITION_CLEARED_AFTER_TIMEOUT"}
 
@@ -34,7 +32,7 @@ class BotRuntime:
     def scan_candidates(self) -> list[Candidate]:
         snapshots = self.data_provider.load_snapshots()
         candidates = self.strategy.select_candidates(snapshots)
-        self._write_candidates(candidates)
+        self._append_tracking_candidates(candidates)
         return candidates
 
     def monday_buy(self) -> list[str]:
@@ -45,7 +43,9 @@ class BotRuntime:
         positions = self.executor.get_positions()
         held_codes = {position.code for position in positions if position.quantity > 0}
         open_slots = self._available_entry_slots(candidates, positions)
+        buy_candidates = [candidate for candidate in candidates if candidate.snapshot.code not in held_codes]
         if open_slots <= 0:
+            self._write_today_buy_candidates([], [])
             self._write_runtime_event(
                 "weekly_buy",
                 "",
@@ -57,11 +57,13 @@ class BotRuntime:
 
         cash = self.executor.get_available_cash()
         orders = self.sizer.build_buy_orders(
-            candidates,
+            buy_candidates,
             cash,
             max_orders=open_slots,
-            excluded_codes=held_codes,
+            order_type="MARKET",
+            reason="weekly_pullback_entry",
         )
+        self._write_today_buy_candidates(buy_candidates, orders)
         if not orders:
             self._write_runtime_event(
                 "weekly_buy",
@@ -214,8 +216,9 @@ class BotRuntime:
         return now <= cutoff
 
     def _write_candidates(self, candidates: list[Candidate]) -> None:
-        path = self.log_dir / "candidates.csv"
-        with path.open("w", encoding="utf-8", newline="") as f:
+        path = self.log_dir / "candidate_tracking.csv"
+        exists = path.exists()
+        with path.open("a", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(
                 f,
                 fieldnames=[
@@ -225,6 +228,7 @@ class BotRuntime:
                     "name",
                     "score",
                     "current_price",
+                    "target_buy_price",
                     "change_pct",
                     "market_cap_krw",
                     "turnover_krw",
@@ -232,7 +236,8 @@ class BotRuntime:
                     "reasons",
                 ],
             )
-            writer.writeheader()
+            if not exists:
+                writer.writeheader()
             for idx, c in enumerate(candidates, start=1):
                 s = c.snapshot
                 writer.writerow(
@@ -243,11 +248,57 @@ class BotRuntime:
                         "name": s.name,
                         "score": round(c.score, 4),
                         "current_price": s.current_price,
+                        "target_buy_price": s.current_price,
                         "change_pct": s.change_pct,
                         "market_cap_krw": s.market_cap_krw,
                         "turnover_krw": s.turnover_krw,
                         "spread_ticks": s.spread_ticks,
                         "reasons": "|".join(c.reasons),
+                    }
+                )
+
+    def _append_tracking_candidates(self, candidates: list[Candidate]) -> None:
+        self._write_candidates(candidates)
+
+    def _write_today_buy_candidates(self, candidates: list[Candidate], orders: list) -> None:
+        order_map = {order.code: order for order in orders}
+        path = self.log_dir / "today_buy_candidates.csv"
+        with path.open("w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "time",
+                    "rank",
+                    "code",
+                    "name",
+                    "score",
+                    "signal_price",
+                    "target_buy_price",
+                    "quantity",
+                    "estimated_cost",
+                    "included_for_buy",
+                    "reasons",
+                ],
+            )
+            writer.writeheader()
+            for idx, candidate in enumerate(candidates, start=1):
+                snapshot = candidate.snapshot
+                order = order_map.get(snapshot.code)
+                target_buy_price = int(order.reference_price) if order else snapshot.current_price
+                quantity = int(order.quantity) if order else 0
+                writer.writerow(
+                    {
+                        "time": datetime.now().isoformat(timespec="seconds"),
+                        "rank": idx,
+                        "code": snapshot.code,
+                        "name": snapshot.name,
+                        "score": round(candidate.score, 4),
+                        "signal_price": snapshot.current_price,
+                        "target_buy_price": target_buy_price,
+                        "quantity": quantity,
+                        "estimated_cost": target_buy_price * quantity,
+                        "included_for_buy": "Y" if order else "N",
+                        "reasons": "|".join(candidate.reasons),
                     }
                 )
 

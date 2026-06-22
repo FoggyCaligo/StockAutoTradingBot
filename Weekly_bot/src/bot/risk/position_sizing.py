@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from collections.abc import Mapping
 
 from bot.config import StrategyConfig
 from bot.models import Candidate, OrderIntent
@@ -16,6 +17,9 @@ class EqualWeightPositionSizer:
         available_cash: int,
         max_orders: int | None = None,
         excluded_codes: Collection[str] | None = None,
+        price_by_code: Mapping[str, int] | None = None,
+        order_type: str = "MARKET",
+        reason: str = "weekly_pullback_entry",
     ) -> list[OrderIntent]:
         candidates = self._filter_candidates(candidates, excluded_codes)
         if not candidates:
@@ -33,7 +37,7 @@ class EqualWeightPositionSizer:
         if max_target_count <= 0:
             return []
 
-        selected = self._select_affordable_candidates(candidates, deploy_cash, max_target_count)
+        selected = self._select_affordable_candidates(candidates, deploy_cash, max_target_count, price_by_code)
         if not selected:
             return []
 
@@ -42,23 +46,25 @@ class EqualWeightPositionSizer:
         remaining_slots = len(selected)
         for candidate in selected:
             s = candidate.snapshot
-            if s.current_price <= 0 or remaining_slots <= 0:
+            unit_price = self._resolve_order_price(candidate, price_by_code)
+            if unit_price <= 0 or remaining_slots <= 0:
                 continue
             per_stock_cash = remaining_cash // remaining_slots
-            quantity = per_stock_cash // s.current_price
+            quantity = per_stock_cash // unit_price
             if quantity <= 0:
                 remaining_slots -= 1
                 continue
-            estimated_cost = quantity * s.current_price
+            estimated_cost = quantity * unit_price
             orders.append(
                 OrderIntent(
                     code=s.code,
                     name=s.name,
                     side="BUY",
                     quantity=quantity,
-                    order_type="MARKET",
-                    reason="weekly_pullback_entry",
-                    reference_price=s.current_price,
+                    order_type=order_type,
+                    reason=reason,
+                    reference_price=unit_price,
+                    trigger_price=s.current_price,
                 )
             )
             remaining_cash -= estimated_cost
@@ -70,6 +76,7 @@ class EqualWeightPositionSizer:
         candidates: list[Candidate],
         deploy_cash: int,
         max_target_count: int,
+        price_by_code: Mapping[str, int] | None = None,
     ) -> list[Candidate]:
         if deploy_cash <= 0 or max_target_count <= 0:
             return []
@@ -81,7 +88,7 @@ class EqualWeightPositionSizer:
             remaining_cash = deploy_cash
             selected: list[Candidate] = []
             for candidate in candidates:
-                price = int(candidate.snapshot.current_price)
+                price = self._resolve_order_price(candidate, price_by_code)
                 if price <= 0:
                     continue
                 remaining_slots = target_count - len(selected)
@@ -101,7 +108,7 @@ class EqualWeightPositionSizer:
             remaining_cash = deploy_cash
             selected: list[Candidate] = []
             for candidate in candidates:
-                price = int(candidate.snapshot.current_price)
+                price = self._resolve_order_price(candidate, price_by_code)
                 if price <= 0:
                     continue
                 remaining_slots = target_count - len(selected)
@@ -124,6 +131,12 @@ class EqualWeightPositionSizer:
             return candidates
         excluded = set(excluded_codes)
         return [candidate for candidate in candidates if candidate.snapshot.code not in excluded]
+
+    @staticmethod
+    def _resolve_order_price(candidate: Candidate, price_by_code: Mapping[str, int] | None) -> int:
+        if price_by_code is None:
+            return int(candidate.snapshot.current_price)
+        return int(price_by_code.get(candidate.snapshot.code, candidate.snapshot.current_price))
 
     @staticmethod
     def build_market_sell_order(code: str, name: str, quantity: int, reason: str, reference_price: int) -> OrderIntent:

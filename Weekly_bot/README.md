@@ -50,7 +50,7 @@
 
 ### 매도 조건
 
-- 익절: 평균매수가 대비 +3.0%
+- 익절: 평균매수가 대비 +5.0%
 - 손절: 평균매수가 대비 -5.0%
 - 주중 모니터링은 보유 포지션의 평균매수가(`avg_price`) 기준으로 판단
 - 금요일: 남은 보유 종목 전량 시장가 매도
@@ -73,7 +73,6 @@ Weekly_bot/
     .gitkeep
   scripts/
     run_monday_scan_buy.ps1
-    run_tuesday_top_up_buy.ps1
     run_monitor.ps1
     run_friday_liquidate.ps1
   src/
@@ -112,12 +111,6 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 .\.venv\Scripts\python.exe .\Weekly_bot\main.py scan --data .\Weekly_bot\data\sample_market_snapshot.csv
 ```
 
-화요일 보충 매수는 별도 전략이 아니라 같은 `buy` 명령을 한 번 더 실행하는 방식입니다. 이미 보유 중인 종목은 제외하고, 빈 슬롯이 남아 있을 때만 신규 매수 주문이 생성됩니다.
-
-```powershell
-.\Weekly_bot\scripts\run_tuesday_top_up_buy.ps1
-```
-
 ## Backtest
 
 `backtest` 명령은 KOSPI200 현재 구성 종목을 기준으로 과거 일봉 데이터를 자동 수집해서 주간 전략을 간이 재현합니다.
@@ -153,7 +146,7 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 - `change_pct`: `-7.0% ~ -2.0%`
 - `min_turnover_krw`: `1,000,000,000`
 - `envelope_lower_pct`: `2.6%`
-- `take_profit_pct`: `3.0%`
+- `take_profit_pct`: `5.0%`
 - `stop_loss_pct`: `-5.0%`
 - `min_volume`: 비활성화 (`0`)
 - `max_spread_ticks`: 비활성화 (`0`)
@@ -193,7 +186,6 @@ PowerShell에서는 다음처럼 실행할 수 있습니다.
 
 ```powershell
 .\Weekly_bot\scripts\run_monday_scan_buy.ps1
-.\Weekly_bot\scripts\run_tuesday_top_up_buy.ps1
 .\Weekly_bot\scripts\run_monitor.ps1
 .\Weekly_bot\scripts\run_friday_liquidate.ps1
 ```

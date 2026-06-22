@@ -11,6 +11,10 @@ This file reflects the current operating intent of `Weekly_bot` and takes preced
 ## Entry Rules
 
 - Universe: KOSPI200
+- Signal price basis: previous trading day's close
+- Real buy order: market buy on the live Monday session
+- Backtest entry: assume a fill at previous trading day's close discounted by `2.0%`
+- Backtest validity check: keep the trade only when the entry-day bar actually touched that `-2.0%` price
 - Market cap: at least KRW 300 billion
 - Daily change: `-7.0%` to `-2.0%`
 - Turnover: at least KRW 1 billion
@@ -23,9 +27,14 @@ This file reflects the current operating intent of `Weekly_bot` and takes preced
 - Use 90% of deposit cash
 - Maximum 10 names
 - `min_positions=5` is a soft target, not a hard requirement
-- The actual number of bought names is computed dynamically from deposit cash and candidate prices
+- The actual number of bought names is computed dynamically from deposit cash and target limit prices
 - If deposit cash cannot fill 5 names, buy as many affordable names as possible
 - Allocation is equal-weighted across the finally selected names
+
+## Candidate Files
+
+- `candidate_tracking.csv`: append-only tracking log of all scanned candidates
+- `today_buy_candidates.csv`: overwrite-per-run file for the current buy session, including the live order reference price, quantity, and inclusion status
 
 ## Exit Rules
 

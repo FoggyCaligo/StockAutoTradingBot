@@ -11,6 +11,7 @@ import yaml
 class StrategyConfig:
     strategy_name: str
     universe: str
+    entry_discount_pct: float
     min_market_cap_krw: int
     min_change_pct: float
     max_change_pct: float
@@ -46,6 +47,7 @@ def load_config(path: str | Path = "config/strategy.yaml") -> StrategyConfig:
     return StrategyConfig(
         strategy_name=raw["strategy_name"],
         universe=raw["universe"],
+        entry_discount_pct=float(raw.get("entry_rules", {}).get("previous_close_discount_pct", 3.0)),
         min_market_cap_krw=int(filters["min_market_cap_krw"]),
         min_change_pct=float(filters["min_change_pct"]),
         max_change_pct=float(filters["max_change_pct"]),

@@ -30,6 +30,7 @@ class _ExecutorStub(OrderExecutor):
     def __init__(self, results: list[OrderExecutionResult], positions: list[Position] | None = None):
         self.results = results
         self.positions = positions or []
+        self.submitted_orders: list[OrderIntent] = []
 
     def get_available_cash(self) -> int:
         return 1_000_000
@@ -38,6 +39,7 @@ class _ExecutorStub(OrderExecutor):
         return self.positions
 
     def submit_order(self, order: OrderIntent) -> OrderExecutionResult:
+        self.submitted_orders.append(order)
         return self.results.pop(0)
 
     def recheck_account_state(self) -> tuple[list[Position], str]:
@@ -88,6 +90,12 @@ def test_runtime_logs_unfilled_timeout_event(tmp_path):
     order_ids = runtime.monday_buy()
 
     assert order_ids == ["OID-1"]
+    assert [order.order_type for order in executor.submitted_orders] == ["MARKET"]
     runtime_events = (tmp_path / "runtime_events.csv").read_text(encoding="utf-8")
     assert "UNFILLED_TIMEOUT" in runtime_events
     assert "positions=0 open_orders=1" in runtime_events
+    tracking = (tmp_path / "candidate_tracking.csv").read_text(encoding="utf-8")
+    today_buy = (tmp_path / "today_buy_candidates.csv").read_text(encoding="utf-8")
+    assert "target_buy_price" in tracking
+    assert "included_for_buy" in today_buy
+    assert "70000" in today_buy

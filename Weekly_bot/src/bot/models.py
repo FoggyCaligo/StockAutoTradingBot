@@ -48,6 +48,7 @@ class OrderIntent:
     order_type: str
     reason: str
     reference_price: int
+    trigger_price: int | None = None
 
 
 @dataclass(frozen=True)

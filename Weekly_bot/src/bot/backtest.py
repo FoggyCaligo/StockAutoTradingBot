@@ -4,15 +4,19 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 import json
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import yaml
 
 from bot.config import StrategyConfig
 from bot.data.historical_provider import HistoricalKrxDataProvider
-from bot.models import MarketSnapshot
+from bot.models import MarketSnapshot, OrderIntent
 from bot.risk.position_sizing import EqualWeightPositionSizer
 from bot.strategy.weekly_pullback import WeeklyPullbackStrategy
+from bot.utils import discounted_limit_price
+MIN_EXPECTED_KOSPI200_SIZE = 180
+MAX_EXPECTED_KOSPI200_SIZE = 230
 
 
 def _get_tick_size(price: int) -> int:
@@ -40,6 +44,7 @@ class BacktestSettings:
     signal_weekday: str = "friday"
     entry_offset_trading_days: int = 1
     liquidation_offset_trading_days: int = 0
+    signal_price_basis: str = "previous_close"
     approximate_monday_10am: bool = False
     monday_approx_price_mode: str = "open"
     monday_approx_max_gap_pct: float = 2.0
@@ -49,6 +54,11 @@ class BacktestSettings:
     buy_fee_bps: float = 0.0
     sell_fee_bps: float = 0.0
     sell_tax_bps: float = 0.0
+    entry_trigger_change_pct: float = -2.0
+    use_entry_cost_aware_sizing: bool = False
+    use_historical_universe: bool = True
+    historical_universe_index_ticker: str = "1028"
+    require_historical_universe: bool = False
     output_dir: str | Path = "logs/backtests"
     run_name: str | None = None
 
@@ -72,12 +82,20 @@ class WeeklyBacktester:
         self.base_output_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir = self.base_output_dir / self._build_run_name()
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._historical_universe_cache: dict[str, set[str]] = {}
+        self._historical_universe_sources: dict[str, str] = {}
+        self._historical_universe_counts: dict[str, int] = {"local": 0, "remote": 0, "fallback": 0}
+        self._fallback_universe_codes: set[str] = set()
 
     def run(self) -> BacktestArtifacts:
-        provider = HistoricalKrxDataProvider(source=self.settings.data_source)
+        provider = HistoricalKrxDataProvider(
+            source=self.settings.data_source,
+            listing_market="KOSPI" if self.settings.use_historical_universe else "KOSPI200",
+        )
         market_data = provider.load(start=self.settings.start, end=self.settings.end)
 
         listing_by_code = self._listing_by_code(market_data.listing)
+        self._fallback_universe_codes = self._load_fallback_universe_codes(listing_by_code)
         prepared = {
             code: self._prepare_history(code, history, listing_by_code.get(code, {}))
             for code, history in market_data.histories.items()
@@ -92,114 +110,12 @@ class WeeklyBacktester:
         end_ts = pd.Timestamp(self.settings.end)
         signal_dates = [dt for dt in trading_dates if dt.weekday() == self._signal_weekday_index() and start_ts <= dt <= end_ts]
         for signal_date in signal_dates:
-            entry_date = self._offset_trading_date(signal_date, trading_dates, self.settings.entry_offset_trading_days)
-            if entry_date is None:
+            week_result = self._run_week(signal_date, trading_dates, prepared, cash)
+            if week_result is None:
                 continue
-            week_end = self._liquidation_date(entry_date, trading_dates, self.settings.liquidation_offset_trading_days)
-            if week_end is None:
-                continue
-
-            snapshots, signal_modes = self._build_snapshots_for_date(
-                signal_date,
-                prepared,
-                entry_date=entry_date if self.settings.approximate_monday_10am else None,
-            )
-            candidates = self.strategy.select_candidates(snapshots)
-            orders = self.sizer.build_buy_orders(candidates, int(cash))
-            if entry_date > week_end:
-                weekly_rows.append(
-                    {
-                        "week_start": entry_date.date().isoformat(),
-                        "week_end": week_end.date().isoformat(),
-                        "signal_date": signal_date.date().isoformat(),
-                        "entry_date": "",
-                        "start_cash": round(cash, 2),
-                        "end_cash": round(cash, 2),
-                        "pnl_krw": 0.0,
-                        "pnl_pct": 0.0,
-                        "num_candidates": len(candidates),
-                        "num_orders": 0,
-                        "num_trades": 0,
-                        "realized_pnl_krw": 0.0,
-                    }
-                )
-                continue
-
-            week_start_cash = cash
-            week_realized = 0.0
-            week_trades = 0
-
-            for order in orders:
-                history = prepared.get(order.code)
-                if history is None or entry_date not in history.index:
-                    continue
-
-                entry_bar = history.loc[entry_date]
-                entry_price = self._apply_buy_costs(float(entry_bar["Open"]))
-                quantity = order.quantity
-                gross_cost = entry_price * quantity
-                buy_fee = gross_cost * self.settings.buy_fee_bps / 10_000.0
-                total_cost = gross_cost + buy_fee
-                if total_cost > cash:
-                    continue
-
-                cash -= total_cost
-                exit_info = self._simulate_exit(
-                    code=order.code,
-                    name=order.name,
-                    history=history,
-                    entry_date=entry_date,
-                    week_end=week_end,
-                    entry_price=entry_price,
-                    quantity=quantity,
-                    collision_mode=signal_modes.get(order.code, "fallback"),
-                )
-                cash += exit_info["net_proceeds"]
-                pnl_krw = exit_info["net_proceeds"] - total_cost
-                pnl_pct = (pnl_krw / total_cost * 100.0) if total_cost > 0 else 0.0
-
-                trade_rows.append(
-                    {
-                        "week_start": entry_date.date().isoformat(),
-                        "signal_date": signal_date.date().isoformat(),
-                        "entry_date": entry_date.date().isoformat(),
-                        "exit_date": exit_info["exit_date"],
-                        "code": order.code,
-                        "name": order.name,
-                        "signal_mode": signal_modes.get(order.code, "fallback"),
-                        "quantity": quantity,
-                        "entry_price": round(entry_price, 4),
-                        "exit_price": round(exit_info["exit_price"], 4),
-                        "exit_reason": exit_info["exit_reason"],
-                        "holding_days": exit_info["holding_days"],
-                        "gross_cost": round(gross_cost, 2),
-                        "buy_fee": round(buy_fee, 2),
-                        "sell_fee": round(exit_info["sell_fee"], 2),
-                        "sell_tax": round(exit_info["sell_tax"], 2),
-                        "net_proceeds": round(exit_info["net_proceeds"], 2),
-                        "pnl_krw": round(pnl_krw, 2),
-                        "pnl_pct": round(pnl_pct, 4),
-                    }
-                )
-                week_realized += pnl_krw
-                week_trades += 1
-
-            weekly_rows.append(
-                {
-                    "week_start": entry_date.date().isoformat(),
-                    "week_end": week_end.date().isoformat(),
-                    "signal_date": signal_date.date().isoformat(),
-                    "entry_date": entry_date.date().isoformat(),
-                    "start_cash": round(week_start_cash, 2),
-                    "end_cash": round(cash, 2),
-                    "pnl_krw": round(cash - week_start_cash, 2),
-                    "pnl_pct": round(((cash / week_start_cash) - 1.0) * 100.0, 4) if week_start_cash > 0 else 0.0,
-                    "num_candidates": len(candidates),
-                    "num_orders": len(orders),
-                    "num_trades": week_trades,
-                    "realized_pnl_krw": round(week_realized, 2),
-                }
-            )
+            cash = week_result["ending_cash"]
+            trade_rows.extend(week_result["trade_rows"])
+            weekly_rows.append(week_result["weekly_row"])
 
         trades_df = pd.DataFrame(trade_rows)
         weekly_df = pd.DataFrame(weekly_rows)
@@ -212,6 +128,7 @@ class WeeklyBacktester:
         self,
         date_key: pd.Timestamp,
         histories: dict[str, pd.DataFrame],
+        universe_codes: set[str],
         entry_date: pd.Timestamp | None = None,
     ) -> tuple[list[MarketSnapshot], dict[str, str]]:
         snapshots: list[MarketSnapshot] = []
@@ -239,7 +156,7 @@ class WeeklyBacktester:
                 MarketSnapshot(
                     code=code,
                     name=str(row["name"]),
-                    is_kospi200=True,
+                    is_kospi200=code in universe_codes,
                     market_cap_krw=int(row["market_cap_krw"]),
                     current_price=current_price,
                     change_pct=change_pct,
@@ -370,6 +287,12 @@ class WeeklyBacktester:
         avg_trade_pct = float(trades_df["pnl_pct"].mean()) if not trades_df.empty else 0.0
         avg_monthly_pct = float(weekly_df["pnl_pct"].mean()) if not weekly_df.empty else 0.0
         max_drawdown_pct = self._max_drawdown_pct(weekly_df)
+        historical_universe_dates = sum(self._historical_universe_counts.values())
+        historical_universe_fallback_pct = (
+            self._historical_universe_counts["fallback"] / historical_universe_dates * 100.0
+            if historical_universe_dates > 0
+            else 0.0
+        )
 
         return pd.DataFrame(
             [
@@ -415,10 +338,18 @@ class WeeklyBacktester:
                     "signal_weekday": self.settings.signal_weekday,
                     "entry_offset_trading_days": self.settings.entry_offset_trading_days,
                     "liquidation_offset_trading_days": self.settings.liquidation_offset_trading_days,
+                    "signal_price_basis": self._signal_price_basis(),
                     "approximate_monday_10am": self.settings.approximate_monday_10am,
                     "monday_approx_price_mode": self.settings.monday_approx_price_mode,
                     "monday_approx_max_gap_pct": self.settings.monday_approx_max_gap_pct,
                     "collision_take_profit_ratio": self.settings.collision_take_profit_ratio,
+                    "entry_trigger_change_pct": self.settings.entry_trigger_change_pct,
+                    "entry_cost_aware_sizing": self.settings.use_entry_cost_aware_sizing,
+                    "historical_universe_local_hits": self._historical_universe_counts["local"],
+                    "historical_universe_remote_hits": self._historical_universe_counts["remote"],
+                    "historical_universe_fallbacks": self._historical_universe_counts["fallback"],
+                    "historical_universe_dates": historical_universe_dates,
+                    "historical_universe_fallback_pct": round(historical_universe_fallback_pct, 4),
                     "data_source": self.settings.data_source,
                     "run_name": self.output_dir.name,
                 }
@@ -448,7 +379,17 @@ class WeeklyBacktester:
         df["ma120_prev"] = df["ma120"].shift(1)
         df["change_pct"] = pd.to_numeric(df["Change"], errors="coerce").fillna(0.0) * 100.0
         df["turnover_krw"] = (close * pd.to_numeric(df["Volume"], errors="coerce").fillna(0)).fillna(0)
-        df["market_cap_krw"] = int(listing_row.get("Marcap") or listing_row.get("MarketCap") or listing_row.get("market_cap") or 0)
+        shares = int(
+            listing_row.get("Stocks")
+            or listing_row.get("ListedShares")
+            or listing_row.get("listed_shares")
+            or 0
+        )
+        static_market_cap = int(listing_row.get("Marcap") or listing_row.get("MarketCap") or listing_row.get("market_cap") or 0)
+        if shares > 0:
+            df["market_cap_krw"] = (close * shares).fillna(0)
+        else:
+            df["market_cap_krw"] = static_market_cap
         df["name"] = str(listing_row.get("Name") or listing_row.get("name") or code)
         return df
 
@@ -515,7 +456,7 @@ class WeeklyBacktester:
         return bucket < threshold
 
     def _is_monday_approx_reliable(self, signal_row: pd.Series, approx_change_pct: float) -> bool:
-        if not self.settings.approximate_monday_10am:
+        if self._signal_price_basis() != "entry_open_proxy":
             return False
         if pd.isna(approx_change_pct):
             return False
@@ -534,6 +475,14 @@ class WeeklyBacktester:
         if mode == "weighted":
             return int(round(friday_close * 0.6 + monday_open * 0.4))
         raise ValueError(f"Unsupported monday approximation price mode: {self.settings.monday_approx_price_mode}")
+
+    def _signal_price_basis(self) -> str:
+        basis = self.settings.signal_price_basis.strip().lower()
+        if basis in {"previous_close", "entry_open_proxy"}:
+            return basis
+        if self.settings.approximate_monday_10am:
+            return "entry_open_proxy"
+        return "previous_close"
 
     @staticmethod
     def _trading_day_distance(start_date: pd.Timestamp, end_date: pd.Timestamp) -> int:
@@ -565,6 +514,7 @@ class WeeklyBacktester:
         trades_df.to_csv(self.output_dir / "trades.csv", index=False, encoding="utf-8")
         weekly_df.to_csv(self.output_dir / "weekly.csv", index=False, encoding="utf-8")
         monthly_df.to_csv(self.output_dir / "monthly.csv", index=False, encoding="utf-8")
+        self._build_universe_coverage_df().to_csv(self.output_dir / "universe_coverage.csv", index=False, encoding="utf-8")
         self._write_run_metadata()
 
     def _build_run_name(self) -> str:
@@ -594,3 +544,496 @@ class WeeklyBacktester:
                 allow_unicode=True,
                 sort_keys=False,
             )
+
+    def _run_week(
+        self,
+        signal_date: pd.Timestamp,
+        trading_dates: list[pd.Timestamp],
+        prepared: dict[str, pd.DataFrame],
+        starting_cash: float,
+    ) -> dict[str, Any] | None:
+        entry_date = self._offset_trading_date(signal_date, trading_dates, self.settings.entry_offset_trading_days)
+        if entry_date is None:
+            return None
+        week_end = self._liquidation_date(entry_date, trading_dates, self.settings.liquidation_offset_trading_days)
+        if week_end is None:
+            return None
+
+        primary_universe_codes = self._universe_codes_for_date(signal_date)
+        primary_snapshots, primary_signal_modes = self._build_snapshots_for_date(
+            signal_date,
+            prepared,
+            primary_universe_codes,
+            entry_date=entry_date if self._signal_price_basis() == "entry_open_proxy" else None,
+        )
+        primary_candidates = self.strategy.select_candidates(primary_snapshots)
+        primary_orders = self._build_backtest_buy_orders(
+            candidates=primary_candidates,
+            prepared=prepared,
+            signal_date=signal_date,
+            entry_date=entry_date,
+            available_cash=int(starting_cash),
+        )
+
+        cash_end_week = starting_cash
+        total_orders = 0
+        total_candidates = len(primary_candidates)
+        weekly_trade_rows: list[dict[str, object]] = []
+        week_realized = 0.0
+
+        for order in primary_orders:
+            trade_row, pnl_krw = self._simulate_order_trade(
+                week_start=entry_date,
+                signal_date=signal_date,
+                entry_date=entry_date,
+                week_end=week_end,
+                order=order,
+                history=prepared.get(order.code),
+                signal_mode=primary_signal_modes.get(order.code, "fallback"),
+            )
+            if trade_row is None:
+                continue
+            total_orders += 1
+            weekly_trade_rows.append(trade_row)
+            week_realized += pnl_krw
+            cash_end_week += pnl_krw
+
+        if entry_date > week_end:
+            return {
+                "ending_cash": round(starting_cash, 2),
+                "trade_rows": [],
+                "weekly_row": {
+                    "week_start": entry_date.date().isoformat(),
+                    "week_end": week_end.date().isoformat(),
+                    "signal_date": signal_date.date().isoformat(),
+                    "entry_date": "",
+                    "start_cash": round(starting_cash, 2),
+                    "end_cash": round(starting_cash, 2),
+                    "pnl_krw": 0.0,
+                    "pnl_pct": 0.0,
+                    "num_candidates": total_candidates,
+                    "num_orders": 0,
+                    "num_trades": 0,
+                    "realized_pnl_krw": 0.0,
+                },
+            }
+
+        return {
+            "ending_cash": round(cash_end_week, 2),
+            "trade_rows": weekly_trade_rows,
+            "weekly_row": {
+                "week_start": entry_date.date().isoformat(),
+                "week_end": week_end.date().isoformat(),
+                "signal_date": signal_date.date().isoformat(),
+                "entry_date": entry_date.date().isoformat(),
+                "start_cash": round(starting_cash, 2),
+                "end_cash": round(cash_end_week, 2),
+                "pnl_krw": round(cash_end_week - starting_cash, 2),
+                "pnl_pct": round(((cash_end_week / starting_cash) - 1.0) * 100.0, 4) if starting_cash > 0 else 0.0,
+                "num_candidates": total_candidates,
+                "num_orders": total_orders,
+                "num_trades": len(weekly_trade_rows),
+                "realized_pnl_krw": round(week_realized, 2),
+            },
+        }
+
+    def _simulate_order_trade(
+        self,
+        week_start: pd.Timestamp,
+        signal_date: pd.Timestamp,
+        entry_date: pd.Timestamp,
+        week_end: pd.Timestamp,
+        order: Any,
+        history: pd.DataFrame | None,
+        signal_mode: str,
+    ) -> tuple[dict[str, object] | None, float]:
+        if history is None or entry_date not in history.index:
+            return None, 0.0
+
+        entry_price = self._resolve_entry_price(order, history, signal_date, entry_date)
+        if entry_price <= 0:
+            return None, 0.0
+        quantity = order.quantity
+        gross_cost = entry_price * quantity
+        buy_fee = gross_cost * self.settings.buy_fee_bps / 10_000.0
+        total_cost = gross_cost + buy_fee
+
+        exit_info = self._simulate_exit(
+            code=order.code,
+            name=order.name,
+            history=history,
+            entry_date=entry_date,
+            week_end=week_end,
+            entry_price=entry_price,
+            quantity=quantity,
+            collision_mode=signal_mode,
+        )
+        pnl_krw = exit_info["net_proceeds"] - total_cost
+        pnl_pct = (pnl_krw / total_cost * 100.0) if total_cost > 0 else 0.0
+
+        return (
+            {
+                "week_start": week_start.date().isoformat(),
+                "signal_date": signal_date.date().isoformat(),
+                "entry_date": entry_date.date().isoformat(),
+                "exit_date": exit_info["exit_date"],
+                "code": order.code,
+                "name": order.name,
+                "signal_mode": signal_mode,
+                "quantity": quantity,
+                "entry_price": round(entry_price, 4),
+                "exit_price": round(exit_info["exit_price"], 4),
+                "exit_reason": exit_info["exit_reason"],
+                "holding_days": exit_info["holding_days"],
+                "gross_cost": round(gross_cost, 2),
+                "buy_fee": round(buy_fee, 2),
+                "sell_fee": round(exit_info["sell_fee"], 2),
+                "sell_tax": round(exit_info["sell_tax"], 2),
+                "net_proceeds": round(exit_info["net_proceeds"], 2),
+                "pnl_krw": round(pnl_krw, 2),
+                "pnl_pct": round(pnl_pct, 4),
+            },
+            pnl_krw,
+        )
+
+    def _resolve_entry_price(
+        self,
+        order: Any,
+        history: pd.DataFrame,
+        signal_date: pd.Timestamp,
+        entry_date: pd.Timestamp,
+    ) -> float:
+        target_price = float(order.reference_price)
+        if target_price <= 0:
+            signal_close = float(history.loc[signal_date, "Close"]) if signal_date in history.index else 0.0
+            target_price = float(self._target_entry_price(int(round(signal_close))))
+        entry_bar = history.loc[entry_date]
+        entry_high = float(entry_bar["High"])
+        entry_low = float(entry_bar["Low"])
+        if target_price <= 0 or not (entry_low <= target_price <= entry_high):
+            return 0.0
+        return self._apply_buy_costs(target_price)
+
+    def _build_backtest_buy_orders(
+        self,
+        candidates: list[Any],
+        prepared: dict[str, pd.DataFrame],
+        signal_date: pd.Timestamp,
+        entry_date: pd.Timestamp,
+        available_cash: int,
+    ) -> list[OrderIntent]:
+        deploy_cash = int(available_cash * self.config.deploy_cash_ratio)
+        if deploy_cash <= 0:
+            return []
+
+        max_target_count = len(candidates)
+        if self.config.max_positions > 0:
+            max_target_count = min(max_target_count, self.config.max_positions)
+        if max_target_count <= 0:
+            return []
+
+        selected = self._select_affordable_backtest_candidates(
+            candidates,
+            prepared,
+            signal_date,
+            entry_date,
+            deploy_cash,
+            max_target_count,
+        )
+        if not selected:
+            return []
+
+        orders: list[OrderIntent] = []
+        remaining_cash = deploy_cash
+        remaining_slots = len(selected)
+        for candidate in selected:
+            unit_cost = self._entry_unit_cost(candidate.snapshot.code, prepared, signal_date, entry_date)
+            if unit_cost <= 0 or remaining_slots <= 0:
+                remaining_slots -= 1
+                continue
+            per_stock_cash = remaining_cash // remaining_slots
+            quantity = int(per_stock_cash // unit_cost)
+            if quantity <= 0:
+                remaining_slots -= 1
+                continue
+            estimated_cost = quantity * unit_cost
+            orders.append(
+                OrderIntent(
+                    code=candidate.snapshot.code,
+                    name=candidate.snapshot.name,
+                    side="BUY",
+                    quantity=quantity,
+                    order_type="LIMIT",
+                    reason="weekly_pullback_entry_prev_close_minus_2pct",
+                    reference_price=self._signal_date_target_price(prepared.get(candidate.snapshot.code), signal_date),
+                    trigger_price=int(candidate.snapshot.current_price),
+                )
+            )
+            remaining_cash -= int(estimated_cost)
+            remaining_slots -= 1
+        return orders
+
+    def _select_affordable_backtest_candidates(
+        self,
+        candidates: list[Any],
+        prepared: dict[str, pd.DataFrame],
+        signal_date: pd.Timestamp,
+        entry_date: pd.Timestamp,
+        deploy_cash: int,
+        max_target_count: int,
+    ) -> list[Any]:
+        if deploy_cash <= 0 or max_target_count <= 0:
+            return []
+
+        min_target_count = min(max(int(self.config.min_positions), 1), min(max_target_count, len(candidates)))
+        desired_max = min(max_target_count, len(candidates))
+        for target_count in range(desired_max, min_target_count - 1, -1):
+            selected = self._try_select_backtest_candidates(
+                candidates,
+                prepared,
+                signal_date,
+                entry_date,
+                deploy_cash,
+                target_count,
+            )
+            if len(selected) == target_count:
+                return selected
+
+        for target_count in range(min_target_count - 1, 0, -1):
+            selected = self._try_select_backtest_candidates(
+                candidates,
+                prepared,
+                signal_date,
+                entry_date,
+                deploy_cash,
+                target_count,
+            )
+            if len(selected) == target_count:
+                return selected
+        return []
+
+    def _try_select_backtest_candidates(
+        self,
+        candidates: list[Any],
+        prepared: dict[str, pd.DataFrame],
+        signal_date: pd.Timestamp,
+        entry_date: pd.Timestamp,
+        deploy_cash: int,
+        target_count: int,
+    ) -> list[Any]:
+        remaining_cash = deploy_cash
+        selected: list[Any] = []
+        for candidate in candidates:
+            unit_cost = self._entry_unit_cost(candidate.snapshot.code, prepared, signal_date, entry_date)
+            if unit_cost <= 0:
+                continue
+            remaining_slots = target_count - len(selected)
+            if remaining_slots <= 0:
+                break
+            per_stock_cash = remaining_cash // remaining_slots
+            quantity = int(per_stock_cash // unit_cost)
+            estimated_cost = quantity * unit_cost
+            if quantity <= 0 or estimated_cost <= 0 or estimated_cost > remaining_cash:
+                continue
+            selected.append(candidate)
+            remaining_cash -= int(estimated_cost)
+        return selected
+
+    def _entry_unit_cost(
+        self,
+        code: str,
+        prepared: dict[str, pd.DataFrame],
+        signal_date: pd.Timestamp,
+        entry_date: pd.Timestamp,
+    ) -> float:
+        history = prepared.get(code)
+        if history is None or entry_date not in history.index:
+            return 0.0
+        target_price = self._signal_date_target_price(history, signal_date)
+        if target_price <= 0:
+            return 0.0
+        entry_bar = history.loc[entry_date]
+        entry_high = float(entry_bar["High"])
+        entry_low = float(entry_bar["Low"])
+        if not (entry_low <= target_price <= entry_high):
+            return 0.0
+        entry_price = self._apply_buy_costs(target_price)
+        return entry_price * (1.0 + self.settings.buy_fee_bps / 10_000.0)
+
+    def _signal_date_target_price(self, history: pd.DataFrame | None, signal_date: pd.Timestamp) -> int:
+        if history is None or signal_date not in history.index:
+            return 0
+        signal_close = int(round(float(history.loc[signal_date, "Close"])))
+        return self._target_entry_price(signal_close)
+
+    def _target_entry_price(self, signal_price: int) -> int:
+        if signal_price <= 0:
+            return 0
+        return discounted_limit_price(signal_price, abs(self.settings.entry_trigger_change_pct))
+
+    def _build_universe_coverage_df(self) -> pd.DataFrame:
+        rows = [
+            {
+                "date": date_key,
+                "source": source,
+                "count": len(self._historical_universe_cache.get(date_key, set())),
+            }
+            for date_key, source in sorted(self._historical_universe_sources.items())
+        ]
+        return pd.DataFrame(rows, columns=["date", "source", "count"])
+
+    def _universe_codes_for_date(self, date_key: pd.Timestamp) -> set[str]:
+        cache_key = date_key.date().isoformat()
+        if cache_key in self._historical_universe_cache:
+            return self._historical_universe_cache[cache_key]
+
+        resolved, source = self._load_historical_universe_codes(date_key)
+        if not resolved:
+            if self.settings.require_historical_universe:
+                raise RuntimeError(f"Historical KOSPI200 universe unavailable for {cache_key}")
+            resolved = set(self._fallback_universe_codes)
+            source = "fallback"
+        self._historical_universe_cache[cache_key] = resolved
+        self._historical_universe_sources[cache_key] = source
+        self._historical_universe_counts[source] = self._historical_universe_counts.get(source, 0) + 1
+        return resolved
+
+    def _load_historical_universe_codes(self, date_key: pd.Timestamp) -> tuple[set[str], str]:
+        if not self.settings.use_historical_universe:
+            return set(self._fallback_universe_codes), "fallback"
+
+        local_codes = self._load_local_historical_universe_codes(date_key)
+        if local_codes:
+            return local_codes, "local"
+        try:
+            from pykrx import stock  # type: ignore[import]
+
+            codes = stock.get_index_portfolio_deposit_file(
+                self.settings.historical_universe_index_ticker,
+                date_key.strftime("%Y%m%d"),
+            )
+        except Exception:
+            return set(), "remote"
+
+        normalized: set[str] = set()
+        if isinstance(codes, pd.DataFrame):
+            values = []
+            for column in ("종목코드", "티커", "ticker", "code"):
+                if column in codes.columns:
+                    values = codes[column].tolist()
+                    break
+        else:
+            values = list(codes)
+        for value in values:
+            code = str(value or "").strip().replace(".KS", "").replace(".KQ", "")
+            if code:
+                normalized.add(code.zfill(6))
+        return normalized, "remote"
+
+    @staticmethod
+    def _historical_universe_data_dir() -> Path:
+        return Path(__file__).resolve().parents[2] / "data" / "historical_kospi200"
+
+    def _load_local_historical_universe_codes(self, date_key: pd.Timestamp) -> set[str]:
+        data_dir = self._historical_universe_data_dir()
+        if not data_dir.exists():
+            return set()
+
+        iso_key = date_key.strftime("%Y-%m-%d")
+        compact_key = date_key.strftime("%Y%m%d")
+        for candidate_path in (
+            data_dir / f"{iso_key}.csv",
+            data_dir / f"{compact_key}.csv",
+        ):
+            codes = self._read_historical_universe_file(candidate_path)
+            if codes:
+                return codes
+
+        membership_path = data_dir / "membership.csv"
+        if membership_path.exists():
+            try:
+                membership_df = pd.read_csv(membership_path, dtype=str)
+            except Exception:
+                return set()
+            date_column = next((column for column in membership_df.columns if column.lower() in {"date", "dt", "as_of_date"}), None)
+            code_column = next((column for column in membership_df.columns if column.lower() in {"code", "ticker", "symbol"}), None)
+            if date_column and code_column:
+                matched = membership_df.loc[membership_df[date_column].astype(str).str.strip() == iso_key, code_column]
+                codes = self._normalize_universe_codes(matched.tolist())
+                if codes:
+                    return codes
+            if code_column:
+                start_column = next(
+                    (
+                        column
+                        for column in membership_df.columns
+                        if column.lower() in {"start_date", "from_date", "effective_from", "start", "from"}
+                    ),
+                    None,
+                )
+                end_column = next(
+                    (
+                        column
+                        for column in membership_df.columns
+                        if column.lower() in {"end_date", "to_date", "effective_to", "end", "to"}
+                    ),
+                    None,
+                )
+                if start_column:
+                    date_value = pd.Timestamp(date_key).normalize()
+                    start_dates = pd.to_datetime(membership_df[start_column], errors="coerce").dt.normalize()
+                    if end_column:
+                        end_dates = pd.to_datetime(membership_df[end_column], errors="coerce").dt.normalize()
+                    else:
+                        end_dates = pd.Series(pd.NaT, index=membership_df.index)
+                    matched = membership_df.loc[
+                        start_dates.notna()
+                        & (start_dates <= date_value)
+                        & (end_dates.isna() | (date_value <= end_dates)),
+                        code_column,
+                    ]
+                    codes = self._normalize_universe_codes(matched.tolist())
+                    if codes:
+                        return codes
+        return set()
+
+    @staticmethod
+    def _read_historical_universe_file(csv_path: Path) -> set[str]:
+        if not csv_path.exists():
+            return set()
+        try:
+            df = pd.read_csv(csv_path, dtype=str)
+        except Exception:
+            return set()
+        for column in ("Code", "code", "ticker", "Ticker", "Symbol", "symbol"):
+            if column in df.columns:
+                return WeeklyBacktester._normalize_universe_codes(df[column].tolist())
+        return set()
+
+    @staticmethod
+    def _normalize_universe_codes(values: list[object]) -> set[str]:
+        return {
+            str(value).strip().replace(".KS", "").replace(".KQ", "").zfill(6)
+            for value in values
+            if str(value).strip()
+        }
+
+    @staticmethod
+    def _is_expected_kospi200_codes(codes: set[str]) -> bool:
+        return MIN_EXPECTED_KOSPI200_SIZE <= len(codes) <= MAX_EXPECTED_KOSPI200_SIZE
+
+    @staticmethod
+    def _load_fallback_universe_codes(listing_by_code: dict[str, dict[str, object]]) -> set[str]:
+        csv_path = Path(__file__).resolve().parents[2] / "data" / "kospi200_latest.csv"
+        if csv_path.exists():
+            try:
+                df = pd.read_csv(csv_path, dtype=str)
+                codes = WeeklyBacktester._normalize_universe_codes(df.get("Code", []).tolist())
+                if WeeklyBacktester._is_expected_kospi200_codes(codes):
+                    return codes
+            except Exception:
+                pass
+        fallback_codes = set(listing_by_code)
+        if WeeklyBacktester._is_expected_kospi200_codes(fallback_codes):
+            return fallback_codes
+        return set()

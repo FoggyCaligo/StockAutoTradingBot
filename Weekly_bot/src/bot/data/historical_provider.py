@@ -26,8 +26,9 @@ class HistoricalMarketData:
 
 
 class HistoricalKrxDataProvider:
-    def __init__(self, source: str = "auto"):
+    def __init__(self, source: str = "auto", listing_market: str = "KOSPI200"):
         self.source = source.lower()
+        self.listing_market = listing_market.upper()
 
     def load(self, start: str, end: str) -> HistoricalMarketData:
         start_date = date.fromisoformat(start)
@@ -53,7 +54,7 @@ class HistoricalKrxDataProvider:
             try:
                 import FinanceDataReader as fdr  # type: ignore[import]
 
-                listing = fdr.StockListing("KOSPI200")
+                listing = fdr.StockListing(self.listing_market)
                 if isinstance(listing, pd.DataFrame) and not listing.empty:
                     return listing
             except Exception:
@@ -66,7 +67,7 @@ class HistoricalKrxDataProvider:
             if isinstance(listing, pd.DataFrame) and not listing.empty:
                 return listing
 
-        raise RuntimeError("Unable to load KOSPI200 listing. Install FinanceDataReader or choose a supported source.")
+        raise RuntimeError(f"Unable to load listing for market={self.listing_market}. Install FinanceDataReader or choose a supported source.")
 
     @staticmethod
     def _local_listing_fallback_path() -> Path | None:

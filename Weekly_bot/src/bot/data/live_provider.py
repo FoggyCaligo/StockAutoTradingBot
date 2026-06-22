@@ -142,54 +142,40 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
         return None
 
     def _prefilter_listing(self, df: pd.DataFrame) -> pd.DataFrame:
-        df = df.copy()
-
-        market_cap = pd.to_numeric(
-            df.apply(lambda row: _get_row_value(row, ["Marcap", "MarketCap", "market_cap"]), axis=1),
-            errors="coerce",
-        ).fillna(0)
-        change_pct = pd.to_numeric(
-            df.apply(lambda row: _get_row_value(row, ["ChagesRatio", "ChangesRatio", "ChangeRate", "change_pct"]), axis=1),
-            errors="coerce",
-        ).fillna(0.0)
-        volume = pd.to_numeric(
-            df.apply(lambda row: _get_row_value(row, ["Volume", "volume"]), axis=1),
-            errors="coerce",
-        ).fillna(0)
-        turnover = pd.to_numeric(
-            df.apply(lambda row: _get_row_value(row, ["Amount", "TradingValue", "trading_value"]), axis=1),
-            errors="coerce",
-        ).fillna(0)
-
-        return df.loc[
-            (market_cap >= 300_000_000_000)
-            & (change_pct >= -7.0)
-            & (change_pct <= -2.0)
-            & (volume >= 10_000)
-            & (turnover >= 500_000_000)
-        ]
+        return df
 
     def _build_snapshot(self, row: pd.Series, code: str) -> MarketSnapshot:
         history = self._load_history(code)
         close_series = history["Close"].astype(float)
         if len(close_series) < 121:
             raise RuntimeError("insufficient price history")
+        if len(history.index) < 2:
+            raise RuntimeError("insufficient daily bars for previous-close snapshot")
+
+        prev_bar = history.iloc[-1]
+        prev_close = _safe_int(prev_bar.get("Close"))
+        if prev_close <= 0:
+            raise RuntimeError("previous close unavailable")
+
+        prev_prev_close = _safe_float(history.iloc[-2].get("Close"))
+        prev_change_pct = ((prev_close / prev_prev_close) - 1.0) * 100.0 if prev_prev_close > 0 else 0.0
+        prev_volume = _safe_int(prev_bar.get("Volume"))
+        prev_turnover = int(prev_close * prev_volume)
 
         hoga = self.client.get_20hoga(code)
-        current_price = int(hoga.current_price)
-        tick_size = int(get_tick_size(current_price))
-        best_bid = hoga.bids[0].price if hoga.bids else current_price - tick_size
-        best_ask = hoga.asks[0].price if hoga.asks else current_price + tick_size
+        tick_size = int(get_tick_size(prev_close))
+        best_bid = hoga.bids[0].price if hoga.bids else prev_close - tick_size
+        best_ask = hoga.asks[0].price if hoga.asks else prev_close + tick_size
 
         return MarketSnapshot(
             code=code,
             name=_safe_str(_get_row_value(row, ["Name", "name"])) or code,
             is_kospi200=True,
             market_cap_krw=_safe_int(_get_row_value(row, ["Marcap", "MarketCap", "market_cap"])),
-            current_price=current_price,
-            change_pct=_safe_float(_get_row_value(row, ["ChagesRatio", "ChangesRatio", "ChangeRate", "change_pct"])),
-            turnover_krw=_safe_int(_get_row_value(row, ["Amount", "TradingValue", "trading_value"])),
-            volume=_safe_int(_get_row_value(row, ["Volume", "volume"])),
+            current_price=prev_close,
+            change_pct=prev_change_pct,
+            turnover_krw=prev_turnover,
+            volume=prev_volume,
             ma20=float(close_series.rolling(20).mean().iloc[-1]),
             ma30=float(close_series.rolling(30).mean().iloc[-1]),
             ma30_prev=float(close_series.rolling(30).mean().iloc[-2]),
