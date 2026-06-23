@@ -60,7 +60,7 @@ class BotRuntime:
             buy_candidates,
             cash,
             max_orders=open_slots,
-            order_type="MARKET",
+            order_type="LIMIT",
             reason="weekly_pullback_entry",
         )
         self._write_today_buy_candidates(buy_candidates, orders)
