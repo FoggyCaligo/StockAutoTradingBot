@@ -9,6 +9,10 @@ import pandas as pd
 
 DEFAULT_KOSPI200_CSV = Path("data/kospi200.csv")
 DEFAULT_KOSPI200_CACHE = Path("data/kospi200_latest.csv")
+DEFAULT_BROAD_LISTING_CANDIDATES = [
+    Path("data/kospi200_latest.csv"),
+    Path("Daily_bot/data/kospi200_latest.csv"),
+]
 MIN_EXPECTED_KOSPI200_SIZE = 180
 MAX_EXPECTED_KOSPI200_SIZE = 230
 NUMERIC_COLUMNS = [
@@ -68,6 +72,20 @@ def _is_expected_kospi200_listing(df: pd.DataFrame, source: str) -> bool:
     return MIN_EXPECTED_KOSPI200_SIZE <= len(codes) <= MAX_EXPECTED_KOSPI200_SIZE
 
 
+def _filter_listing_to_codes(df: pd.DataFrame, codes: set[str]) -> pd.DataFrame:
+    if not codes:
+        return pd.DataFrame(columns=df.columns)
+    code_column = next((column for column in ("Code", "code", "Symbol", "symbol", "ticker", "Ticker") if column in df.columns), None)
+    if code_column is None:
+        return pd.DataFrame(columns=df.columns)
+    normalized_codes = df[code_column].astype(str).str.strip().str.replace(".KS", "", regex=False).str.replace(".KQ", "", regex=False).str.zfill(6)
+    filtered = df.loc[normalized_codes.isin(codes)].copy()
+    if code_column in filtered.columns:
+        filtered[code_column] = filtered[code_column].astype(str).str.strip().str.replace(".KS", "", regex=False).str.replace(".KQ", "", regex=False).str.zfill(6)
+        filtered = filtered.drop_duplicates(subset=[code_column]).sort_values(code_column)
+    return filtered
+
+
 def _load_fdr_listing(source: str) -> pd.DataFrame:
     import FinanceDataReader as fdr  # type: ignore[import]
 
@@ -92,6 +110,29 @@ def _load_fdr_listing(source: str) -> pd.DataFrame:
     raise RuntimeError(f"FinanceDataReader failed to load source={source}") from last_error
 
 
+def _load_valid_component_codes(path: Path, source: str) -> set[str]:
+    if not path.exists():
+        return set()
+    df = _load_local_universe(path)
+    if not _is_expected_kospi200_listing(df, source):
+        return set()
+    return _extract_codes(df)
+
+
+def _refresh_kospi200_from_broad_listing(fallback_path: Path, cache_path: Path) -> pd.DataFrame:
+    component_codes = _load_valid_component_codes(fallback_path, "KOSPI200")
+    if not component_codes:
+        component_codes = _load_valid_component_codes(cache_path, "KOSPI200")
+    if not component_codes:
+        raise RuntimeError("No valid KOSPI200 component code source available for KOSPI rebuild.")
+
+    broad_listing = _load_fdr_listing("KOSPI")
+    filtered = _filter_listing_to_codes(broad_listing, component_codes)
+    if not _is_expected_kospi200_listing(filtered, "KOSPI200"):
+        raise RuntimeError(f"Filtered KOSPI listing has unexpected size: {len(_extract_codes(filtered))}")
+    return filtered
+
+
 def get_kospi200_list(
     csv_path: str | None = None,
     cache_path: str | None = None,
@@ -111,6 +152,13 @@ def get_kospi200_list(
             _save_cache(df, cache)
             return df
         except Exception as exc:
+            if source.upper() == "KOSPI200":
+                try:
+                    rebuilt = _refresh_kospi200_from_broad_listing(fallback_path, cache)
+                    _save_cache(rebuilt, cache)
+                    return rebuilt
+                except Exception:
+                    pass
             warnings.warn(
                 f"Daily universe refresh failed; falling back to local CSV/cache. reason={exc}",
                 UserWarning,

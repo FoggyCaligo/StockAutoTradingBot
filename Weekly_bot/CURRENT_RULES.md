@@ -7,6 +7,7 @@ This file reflects the current operating intent of `Weekly_bot` and takes preced
 - Monday 10:00: first buy
 - Monday to Friday during market hours: monitor take-profit / stop-loss
 - Friday 14:50: forced liquidation
+- Before weekday live runs, refresh the local KOSPI200 universe files from the latest available listing source
 
 ## Entry Rules
 

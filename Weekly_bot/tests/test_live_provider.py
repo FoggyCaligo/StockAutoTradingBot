@@ -51,6 +51,24 @@ def test_get_snapshot_refreshes_live_price_even_when_cache_exists():
     assert provider._snapshots[0].current_price == 72500
 
 
+def test_get_snapshot_uses_broad_listing_when_universe_row_missing():
+    provider = LiveKrxMarketDataProvider.__new__(LiveKrxMarketDataProvider)
+    provider._snapshots = None
+    provider._universe_df = None
+    provider._universe_rows_by_code = {}
+    provider._listing_df = None
+    provider._listing_rows_by_code = {}
+    provider._history_cache = {}
+    provider._get_universe_row = lambda code: None  # type: ignore[method-assign]
+    provider._get_listing_row = lambda code: pd.Series({"Code": code, "Name": "Fallback Name"})  # type: ignore[method-assign]
+    provider._build_snapshot = lambda row, code: _snapshot(72500)  # type: ignore[method-assign]
+
+    refreshed = provider.get_snapshot("005387")
+
+    assert refreshed is not None
+    assert refreshed.current_price == 72500
+
+
 def test_build_snapshot_uses_previous_close_for_signal_basis():
     provider = LiveKrxMarketDataProvider.__new__(LiveKrxMarketDataProvider)
     provider.client = type(

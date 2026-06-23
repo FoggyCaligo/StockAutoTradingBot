@@ -4,6 +4,7 @@ $WorkspaceRoot = Split-Path -Parent $BotRoot
 $PythonPath = Join-Path $WorkspaceRoot ".venv\Scripts\python.exe"
 $LogDir = Join-Path $BotRoot "logs"
 $MainPath = Join-Path $BotRoot "main.py"
+$RefreshScriptPath = Join-Path $BotRoot "scripts\refresh_kospi200_universe.py"
 $LockPath = Join-Path $LogDir "run_monday_scan_buy.lock"
 
 function Test-BotPythonRunning {
@@ -40,6 +41,7 @@ if (Test-Path $LockPath) {
 Set-Content -Path $LockPath -Value "pid=$PID`nstarted_at=$(Get-Date -Format o)" -Encoding ascii
 Set-Location $BotRoot
 try {
+    & $PythonPath $RefreshScriptPath
     & $PythonPath main.py buy --real --data live --log-dir $LogDir
 }
 finally {

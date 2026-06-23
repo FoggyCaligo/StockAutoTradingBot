@@ -66,6 +66,8 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
         self.client.auth()
         self._universe_df: pd.DataFrame | None = None
         self._universe_rows_by_code: dict[str, pd.Series] = {}
+        self._listing_df: pd.DataFrame | None = None
+        self._listing_rows_by_code: dict[str, pd.Series] = {}
         self._history_cache: dict[str, pd.DataFrame] = {}
         self._snapshots: list[MarketSnapshot] | None = None
 
@@ -96,6 +98,8 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
     def get_snapshot(self, code: str) -> MarketSnapshot | None:
         normalized = _normalize_code(code)
         row = self._get_universe_row(normalized)
+        if row is None:
+            row = self._get_listing_row(normalized)
         if row is None:
             return None
         try:
@@ -137,6 +141,51 @@ class LiveKrxMarketDataProvider(MarketDataProvider):
                 continue
             if normalized not in self._universe_rows_by_code:
                 self._universe_rows_by_code[normalized] = row
+            if normalized == code:
+                return row
+        return None
+
+    def _load_listing_df(self) -> pd.DataFrame:
+        if self._listing_df is not None:
+            return self._listing_df
+
+        try:
+            import FinanceDataReader as fdr  # type: ignore[import]
+
+            listing = fdr.StockListing("KOSPI")
+            if isinstance(listing, pd.DataFrame) and not listing.empty:
+                self._listing_df = listing
+                return listing
+        except Exception:
+            pass
+
+        for candidate in (
+            Path("data/kospi200_latest.csv"),
+            Path("Daily_bot/data/kospi200_latest.csv"),
+            Path("Weekly_bot/data/kospi200_latest.csv"),
+        ):
+            if candidate.exists():
+                listing = pd.read_csv(candidate, dtype=str)
+                if isinstance(listing, pd.DataFrame) and not listing.empty:
+                    self._listing_df = listing
+                    return listing
+
+        self._listing_df = pd.DataFrame()
+        return self._listing_df
+
+    def _get_listing_row(self, code: str) -> pd.Series | None:
+        if code in self._listing_rows_by_code:
+            return self._listing_rows_by_code[code]
+
+        listing_df = self._load_listing_df()
+        if listing_df.empty:
+            return None
+        for _, row in listing_df.iterrows():
+            normalized = _normalize_code(_get_row_value(row, ["Code", "Symbol", "code"]))
+            if not normalized:
+                continue
+            if normalized not in self._listing_rows_by_code:
+                self._listing_rows_by_code[normalized] = row
             if normalized == code:
                 return row
         return None
