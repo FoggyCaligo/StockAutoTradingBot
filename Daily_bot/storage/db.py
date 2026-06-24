@@ -660,6 +660,29 @@ class Recorder:
                 return True
         return False
 
+    def get_latest_planned_stop_loss_price(self, ticker: str) -> int:
+        row = self.conn.execute(
+            """
+            SELECT raw_json
+            FROM orders
+            WHERE ticker = ?
+              AND side = 'SELL'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (ticker,),
+        ).fetchone()
+        if row is None:
+            return 0
+        try:
+            raw = json.loads(row["raw_json"] or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return 0
+        try:
+            return int(raw.get("planned_stop_loss_price") or 0)
+        except (TypeError, ValueError):
+            return 0
+
     def rebuild_session_fill_exports(self, session_date: str) -> None:
         fill_rows = self.get_session_fills(session_date)
         fills_csv_path = self.log_dir / f"fills_{session_date.replace('-', '')}.csv"

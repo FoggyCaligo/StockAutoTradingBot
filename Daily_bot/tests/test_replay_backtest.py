@@ -4,6 +4,7 @@ from pathlib import Path
 from Daily_bot.backtest.replay_market_traces import (
     load_selected_signals,
     pick_entries,
+    _resolve_stop_loss_price,
     run_backtest,
     write_backtest_reports,
 )
@@ -119,6 +120,36 @@ def test_run_backtest_can_ignore_selected_signals_and_fall_back_to_top_ranked(tm
     assert len(trades) == 2
     assert trades[0].ticker == "BBB"
     assert trades[1].ticker == "AAA"
+
+
+def test_resolve_stop_loss_price_uses_dynamic_tick_distance_before_percent_fallback():
+    assert _resolve_stop_loss_price(
+        entry_price=10_000,
+        expect_price=10_200,
+        stop_loss_percent=6.0,
+        stop_loss_tick_count=0,
+        stop_loss_tick_multiplier=2.0,
+    ) == 9_920.0
+
+
+def test_resolve_stop_loss_price_uses_minimum_tick_count_when_dynamic_distance_is_smaller():
+    assert _resolve_stop_loss_price(
+        entry_price=10_000,
+        expect_price=10_200,
+        stop_loss_percent=6.0,
+        stop_loss_tick_count=5,
+        stop_loss_tick_multiplier=1.0,
+    ) == 9_950.0
+
+
+def test_resolve_stop_loss_price_uses_larger_of_minimum_ticks_and_expected_distance():
+    assert _resolve_stop_loss_price(
+        entry_price=10_000,
+        expect_price=10_300,
+        stop_loss_percent=6.0,
+        stop_loss_tick_count=5,
+        stop_loss_tick_multiplier=1.0,
+    ) == 9_940.0
 
 
 def test_run_backtest_replays_dynamic_reentry_with_slot_limit(tmp_path):

@@ -1,7 +1,7 @@
 market:
   prewarm_start_time: "08:55"
   start_buy_time: "09:10"
-  stop_buy_time: "13:30"
+  stop_buy_time: "12:00"
   force_sell_time: "15:00"
   reconcile_time: "15:15"
   end_time: "15:20"
@@ -20,35 +20,27 @@ trend_filter:
 strategy:
   top_ratio: 0.2
   max_buy_count: 3
-  min_expected_return_percent: 0.15
-  max_spread_percent: 0.0
-  # Disabled: the final filter now only checks trend, expected return, and target > price.
+  min_expected_return_percent: 0.5
+  max_spread_percent: 0.7
   spread_expected_return_multiplier: 0.0
-  # Disabled: the final filter now only checks trend, expected return, and target > price.
-  max_prev_day_change_percent: 0.0
-  # Exclude names that already jumped too much versus the previous scan.
-  max_intraday_jump_from_prev_scan_percent: 1.0
+  max_prev_day_change_percent: 10.0
+  max_intraday_jump_from_prev_scan_percent: 0.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
 risk:
   dry_run: false
-  max_position_count: 3
-  # Keep the daily bot in a fixed 3-name round-trip batch.
+  max_position_count: 10
   min_slot_count: 3
-  # Used as the target slot unit when deriving how many slots the account can support.
   slot_budget_unit_krw: 5000000
-  # Cap the session slot plan at 3 names for round-trip mode.
-  max_slot_count: 3
-  # Ratio-based sizing is kept as a fallback when slot_budget_unit_krw is 0.
+  max_slot_count: 10
   target_budget_ratio_per_stock: 0.50
   max_budget_per_cycle_krw: 0
-  # Hard cap per stock. Actual buy budget is derived from tradeable cash / slots, then capped by this value.
-  max_budget_per_stock_krw: 5000000
-  # Only allow planned order size up to this share of the top-5 ask depth amount.
-  max_orderbook_ask_depth_ratio: 0.30
-  # Current active stop-loss percent from entry. This value is being tested aggressively.
-  stop_loss_percent: 1.5 # 0.5% : 익절이 평균 0.6%에 대부분 1분 안에 체결된 것으로 보아, 굳이 길게 잡지 말고 손실날 종목은 빠르게 쳐내고 갈아타는 전략. (이게 안통한다면 2.5%로 수정하는 방향이 맞을 듯)
+  max_budget_per_stock_krw: 0
+  max_orderbook_ask_depth_ratio: 0.0
+  stop_loss_tick_count: 5
+  stop_loss_tick_multiplier: 1.0
+  stop_loss_percent: 1.5
   daily_loss_limit_percent: 10.0
 
 api:

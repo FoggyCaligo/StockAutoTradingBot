@@ -49,6 +49,23 @@ def test_select_affordable_targets_falls_back_to_smaller_affordable_set():
     assert [candidate.ticker for candidate in result] == ["383220"]
 
 
+def test_select_affordable_targets_allows_partial_slot_refill():
+    candidates = [
+        Candidate(ticker="111111", price=50_000, expect_price=51_000, ask_depth_5_amount_krw=1_000_000),
+        Candidate(ticker="222222", price=50_000, expect_price=51_000, ask_depth_5_amount_krw=1_000_000),
+    ]
+
+    result = select_affordable_targets(
+        candidates,
+        max_buy_count=1,
+        available_cash_krw=100_000,
+        budget_per_stock_krw=100_000,
+        sell_tick_offset=1,
+    )
+
+    assert [candidate.ticker for candidate in result] == ["111111"]
+
+
 def test_passes_orderbook_ask_depth_ratio_blocks_candidate_when_order_is_too_large_for_top5_asks():
     candidate = Candidate(
         ticker="005930",

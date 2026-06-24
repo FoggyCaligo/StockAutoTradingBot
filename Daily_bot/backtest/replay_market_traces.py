@@ -19,7 +19,7 @@ from Daily_bot.storage.audit_csv import (
 from Daily_bot.storage.db import DAILY_REV_FIELDNAMES
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import min_expected_return_with_spread
-from Daily_bot.utils import get_tick_size, round_to_tick
+from Daily_bot.utils import ceil_tick_count, count_ticks_between_prices, get_tick_size, move_price_by_ticks, round_to_tick
 
 
 @dataclass
@@ -364,6 +364,25 @@ def _resolve_target_price(expect_price: int, sell_tick_offset: int, entry_price:
     return target_price if target_price > 0 else min_sell_price
 
 
+def _resolve_stop_loss_price(
+    entry_price: int,
+    expect_price: int,
+    stop_loss_percent: float,
+    stop_loss_tick_count: int,
+    stop_loss_tick_multiplier: float,
+) -> float:
+    upward_ticks = count_ticks_between_prices(entry_price, expect_price)
+    dynamic_tick_distance = ceil_tick_count(upward_ticks * max(stop_loss_tick_multiplier, 0.0))
+    if dynamic_tick_distance <= 0 and stop_loss_tick_multiplier > 0:
+        dynamic_tick_distance = 1
+    stop_tick_distance = max(stop_loss_tick_count, dynamic_tick_distance)
+    if stop_tick_distance > 0:
+        return float(move_price_by_ticks(entry_price, -stop_tick_distance))
+    if stop_loss_percent > 0:
+        return entry_price * (1 - stop_loss_percent / 100)
+    return 0.0
+
+
 def _is_within_buy_window(created_at: str, start_buy_time: str, stop_buy_time: str) -> bool:
     return _is_within_time_window(created_at, start_buy_time, stop_buy_time)
 
@@ -598,6 +617,8 @@ def run_backtest(
     max_spread_percent: float,
     top_n_per_day: int,
     stop_loss_percent: float,
+    stop_loss_tick_count: int = 0,
+    stop_loss_tick_multiplier: float = 2.0,
     use_selected_signals: bool = True,
     take_profit_percent: float = 0.25,
     top_ratio: float = 1.0,
@@ -784,7 +805,13 @@ def run_backtest(
                     invested_amount=estimated_cost,
                     entry_price=entry_price,
                     target_price=target_price,
-                    stop_loss_price=entry_price * (1 - stop_loss_percent / 100),
+                    stop_loss_price=_resolve_stop_loss_price(
+                        entry_price=entry_price,
+                        expect_price=candidate.expect_price,
+                        stop_loss_percent=stop_loss_percent,
+                        stop_loss_tick_count=stop_loss_tick_count,
+                        stop_loss_tick_multiplier=stop_loss_tick_multiplier,
+                    ),
                 )
                 available_cash -= estimated_cost
 
@@ -1064,6 +1091,8 @@ def parse_args():
     parser.add_argument("--top-ratio", type=float, default=1.0)
     parser.add_argument("--take-profit", type=float, default=0.25)
     parser.add_argument("--stop-loss", type=float, default=6.0)
+    parser.add_argument("--stop-loss-tick-count", type=int, default=0)
+    parser.add_argument("--stop-loss-tick-multiplier", type=float, default=2.0)
     parser.add_argument("--sell-tick-offset", type=int, default=1)
     parser.add_argument("--start-buy-time", default="09:30")
     parser.add_argument("--stop-buy-time", default="13:00")
@@ -1092,6 +1121,8 @@ if __name__ == "__main__":
         max_spread_percent=args.max_spread,
         top_n_per_day=args.top_n,
         stop_loss_percent=args.stop_loss,
+        stop_loss_tick_count=args.stop_loss_tick_count,
+        stop_loss_tick_multiplier=args.stop_loss_tick_multiplier,
         use_selected_signals=not args.ignore_selected_signals,
         take_profit_percent=args.take_profit,
         top_ratio=args.top_ratio,
