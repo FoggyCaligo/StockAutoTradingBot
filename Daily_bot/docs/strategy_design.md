@@ -49,18 +49,18 @@ target_sell_price = expect_price - 1 tick
 
 - `top_ratio = 0.20`
 - `max_spread_percent = 0.7`
-- `min_expected_return_percent = 0.30`
-- `spread_expected_return_multiplier = 1.2`
-- `max_prev_day_change_percent = 7.0`
-- `max_intraday_jump_from_prev_scan_percent = 1.0`
+- `min_expected_return_percent = 0.50`
+- `spread_expected_return_multiplier = 0.0`
+- `max_prev_day_change_percent = 10.0`
+- `max_intraday_jump_from_prev_scan_percent = 0.0`
 
-실제 기대수익률 하한은 고정 `0.30%`가 아니라 아래 식으로 결정된다.
+현재는 기대수익률 하한을 고정 `0.50%`로 사용한다.
 
 ```text
-required_expected_return = max(0.3, spread_percent * 1.2)
+required_expected_return = 0.5
 ```
 
-즉 스프레드가 넓은 종목일수록 더 높은 기대수익률을 요구한다.
+또한 `max_intraday_jump_from_prev_scan_percent = 0.0` 이므로 직전 스캔 대비 장중 급등 추격 방지 필터는 비활성화 상태다. 코드상 `0 이하`는 필터 미적용으로 해석된다.
 
 추가로 현재는 아래 조건도 함께 본다.
 
@@ -113,7 +113,9 @@ required_expected_return = max(0.3, spread_percent * 1.2)
 
 현재 활성 손절 기준은 다음과 같다.
 
-- 손절선: `매수가 대비 -1.0%`
+- 손절선: `매수가 대비 -1.5%`
+- 보조 손절 거리: `stop_loss_tick_count = 5`
+- 동적 손절 거리 배수: `stop_loss_tick_multiplier = 1.0`
 
 운용 흐름은 아래와 같다.
 
@@ -126,6 +128,14 @@ required_expected_return = max(0.3, spread_percent * 1.2)
 강제 청산을 시장가로 둔 이유는, 당일 안에 무조건 비우는 구조라면 마감 청산에서 지정가 미체결 리스크를 남기지 않는 편이 더 낫다고 봤기 때문이다.
 
 별도로 `daily_loss_limit_percent = 10.0` 가드가 있다. 이 값은 세션 중 누적 손실이 커졌을 때 신규 매수만 차단하는 장치이며, 즉시 전량 청산 스위치는 아니다. 계산 시에는 세션 중 외부 입출금도 보정한다.
+
+현재 손절 판단은 단일 퍼센트 비교 하나로 끝나지 않는다. 우선순위는 아래와 같다.
+
+1. 진입 또는 복구 매도 주문 생성 시 저장한 `planned_stop_loss_price`
+2. 계좌 스냅샷의 `prft_rt`
+3. 호가 스냅샷의 최우선 매수호가 기준 가격 비교
+
+손절 주문은 시장가가 아니라, 체결 가능성을 우선한 상단 매수호가 근처의 매도 지정가로 제출한다.
 
 ## 9. 시간대 해석
 

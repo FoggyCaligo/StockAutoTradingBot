@@ -24,6 +24,7 @@ strategy:
   max_spread_percent: 0.7
   spread_expected_return_multiplier: 0.0
   max_prev_day_change_percent: 10.0
+  # 0 or below disables the previous-scan intraday jump filter.
   max_intraday_jump_from_prev_scan_percent: 0.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
@@ -42,6 +43,13 @@ risk:
   stop_loss_tick_multiplier: 1.0
   stop_loss_percent: 1.5
   daily_loss_limit_percent: 10.0
+
+# Stop-loss execution priority:
+# 1. Use the latest planned_stop_loss_price recorded at entry/exit-plan time.
+# 2. Fallback to the account snapshot profit-rate field when available.
+# 3. Fallback to a hoga-based threshold check using the best bid.
+# Stop-loss exits are submitted as executable sell limits near the top bid,
+# not as market sells.
 
 api:
   quote_rate_limit_per_second: 5

@@ -30,15 +30,15 @@ universe:
   min_trading_value_krw: 3000000000
 
 trend_filter:
-  enabled: false
+  enabled: true
 
 strategy:
   top_ratio: 0.20
-  min_expected_return_percent: 0.30
+  min_expected_return_percent: 0.50
   max_spread_percent: 0.7
-  spread_expected_return_multiplier: 1.2
-  max_prev_day_change_percent: 7.0
-  max_intraday_jump_from_prev_scan_percent: 1.0
+  spread_expected_return_multiplier: 0.0
+  max_prev_day_change_percent: 10.0
+  max_intraday_jump_from_prev_scan_percent: 0.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
@@ -46,9 +46,11 @@ risk:
   min_slot_count: 3
   slot_budget_unit_krw: 5000000
   max_slot_count: 10
-  max_budget_per_stock_krw: 5000000
-  max_orderbook_ask_depth_ratio: 0.30
-  stop_loss_percent: 1.0
+  max_budget_per_stock_krw: 0
+  max_orderbook_ask_depth_ratio: 0.0
+  stop_loss_tick_count: 5
+  stop_loss_tick_multiplier: 1.0
+  stop_loss_percent: 1.5
   daily_loss_limit_percent: 10.0
 ```
 
@@ -67,20 +69,20 @@ risk:
 - 거래대금 하한: `30억`
 - 추세 필터: 현재 비활성화
 - 전일 급등 제외: `+7.0%` 이상 제외
-- 당일 급등 제외: 직전 스캔 대비 `+1.0%` 이상 제외
+- 당일 급등 제외: 현재 비활성화 (`max_intraday_jump_from_prev_scan_percent = 0.0`)
 - 스프레드 상한: `0.7%`
-- 기대수익률 하한: `max(0.3, spread_percent * 1.2)`
+- 기대수익률 하한: `0.5%`
 - 상위 후보 비율: `top_ratio = 0.20`
 
-즉 단순히 `기대수익률 0.3% 이상`만 보는 구조가 아니라, 스프레드가 큰 종목일수록 더 높은 기대수익률을 요구한다.
+즉 현재는 기대수익률 하한을 고정 `0.5%`로 두고, 직전 스캔 대비 점프 필터와 스프레드 배수 기반 추가 요구수익률은 끈 상태다.
 
 ## 자본 배분과 리스크
 
 - 최소 슬롯 수: `3`
 - 최대 슬롯 수: `10`
 - 슬롯 기준 금액: `500만원`
-- 종목당 최대 예산: `500만원`
-- 현재 활성 손절선: `매수가 대비 -1.0%`
+- 종목당 최대 예산: 현재 별도 상한 없음 (`0`)
+- 현재 활성 손절선: `매수가 대비 -1.5%`
 - 일일 손실 제한: `10.0%`
 
 현재 자본 계획은 세션 시작 시점의 거래가능현금을 기준으로 잡고, 그 범위 안에서 슬롯 수와 종목당 예산을 고정한다.
@@ -94,6 +96,8 @@ risk:
 - `top-5 ask depth` 대비 주문금액 비율
 
 또한 `daily_loss_limit_percent`는 손실이 일정 수준을 넘었을 때 포지션을 강제 청산하는 스위치가 아니라, 그날의 신규 매수만 막는 가드다. 이 계산은 세션 중 외부 입출금(`accounting.cash_flows`)을 보정한 뒤 수행한다.
+
+현재 `max_intraday_jump_from_prev_scan_percent`는 `0.0`이라 비활성화 상태다. 코드상 `0 이하`는 필터를 적용하지 않고 후보를 그대로 통과시킨다.
 
 ## 호가잔량 필터
 
@@ -114,6 +118,13 @@ risk:
 - 일반 매도는 `예상가 - 1틱` 기준 목표가 주문을 사용한다.
 - `15:00` 강제 청산은 지정가가 아니라 시장가 기준으로 정리한다.
 - 부분체결 뒤 추가 매수 체결이 확인되면 남은 수량도 이어서 매도 주문에 반영되도록 보정되어 있다.
+- 손절은 시장가가 아니라 최우선 매수호가 근처의 실행 가능한 매도 지정가로 나간다.
+
+손절 판단 우선순위는 아래와 같다.
+
+1. 진입 시 기록한 `planned_stop_loss_price`
+2. 계좌 스냅샷의 손익률(`prft_rt`)
+3. 호가 스냅샷의 최우선 매수호가 기준 가격 비교
 
 ## 기록 체계
 
