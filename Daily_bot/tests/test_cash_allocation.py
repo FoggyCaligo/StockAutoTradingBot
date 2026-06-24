@@ -277,6 +277,21 @@ def test_activate_buy_records_target_exit_fill_when_sell_fill_is_available():
     assert any(side == "SELL" and source == "target_exit" for _fill, side, source in recorder.fills)
 
 
+def test_activate_buy_attaches_planned_stop_loss_price_to_target_exit_order():
+    client = _ClientStub(orderable_cash=120_000)
+    client.fill_sequence = [Fill(order_id="BUY-1", ticker="005930", quantity=10, price=10_000)]
+    recorder = _RecorderStub(orders=[], fills=[])
+    targets = [Candidate(ticker="005930", price=10_000, expect_price=10_200)]
+
+    activate_buy(client, recorder, targets, _cfg())
+
+    sell_order = recorder.orders[-1]
+    assert sell_order.side == "SELL"
+    assert sell_order.raw["planned_profit_tick_distance"] == 4
+    assert sell_order.raw["planned_stop_loss_tick_distance"] == 8
+    assert sell_order.raw["planned_stop_loss_price"] == 9_920
+
+
 def test_activate_buy_uses_session_fixed_slot_budget_per_stock():
     client = _ClientStub(orderable_cash=120_000)
     recorder = _RecorderStub(orders=[], fills=[])
@@ -627,6 +642,21 @@ def test_resolve_target_budget_per_stock_keeps_max_budget_cap_when_slot_count_hi
     }
 
     assert resolve_target_budget_per_stock(cfg, planning_cash=100_000_000) == 5_000_000
+
+
+def test_resolve_target_budget_per_stock_grows_per_slot_budget_after_reaching_max_slots():
+    cfg = {
+        "risk": {
+            "min_slot_count": 3,
+            "slot_budget_unit_krw": 5_000_000,
+            "max_slot_count": 10,
+            "max_budget_per_stock_krw": 0,
+        },
+    }
+
+    assert resolve_target_budget_per_stock(cfg, planning_cash=50_000_000) == 5_000_000
+    assert resolve_target_budget_per_stock(cfg, planning_cash=60_000_000) == 6_000_000
+    assert resolve_target_budget_per_stock(cfg, planning_cash=100_000_000) == 10_000_000
 
 
 def test_find_existing_open_sell_price_recognizes_korean_sell_side_text():

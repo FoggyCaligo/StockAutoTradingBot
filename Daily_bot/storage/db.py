@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS market_traces (
     selected INTEGER DEFAULT 0,
     reason TEXT,
     price INTEGER,
+    prev_close_price INTEGER,
     current_price INTEGER,
     best_bid INTEGER,
     best_ask INTEGER,
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS market_traces (
     market_cap INTEGER,
     trading_value INTEGER,
     kospi_change_percent REAL,
+    prev_day_change_percent REAL,
     raw_json TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -120,10 +122,12 @@ TABLE_EXTRA_COLUMNS = {
     },
     "market_traces": {
         "scan_cycle_at": "TEXT",
+        "prev_close_price": "INTEGER",
         "ask_depth_5_amount_krw": "INTEGER",
         "market_cap": "INTEGER",
         "trading_value": "INTEGER",
         "kospi_change_percent": "REAL",
+        "prev_day_change_percent": "REAL",
     },
 }
 
@@ -360,6 +364,7 @@ class Recorder:
             "selected": 1 if selected else 0,
             "reason": reason,
             "price": candidate.price,
+            "prev_close_price": candidate.prev_close_price,
             "current_price": snapshot.current_price,
             "best_bid": best_bid,
             "best_ask": best_ask,
@@ -370,15 +375,16 @@ class Recorder:
             "market_cap": candidate.market_cap,
             "trading_value": candidate.trading_value,
             "kospi_change_percent": kospi_change_percent,
+            "prev_day_change_percent": candidate.prev_day_change_percent,
             "raw_json": raw_json,
         }
         self.conn.execute(
             """
             INSERT INTO market_traces
-            (session_date, phase, ticker, scan_cycle_at, selected, reason, price, current_price, best_bid, best_ask,
+            (session_date, phase, ticker, scan_cycle_at, selected, reason, price, prev_close_price, current_price, best_bid, best_ask,
              expect_price, expect_revenue_percent, spread_percent, ask_depth_5_amount_krw,
-             market_cap, trading_value, kospi_change_percent, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             market_cap, trading_value, kospi_change_percent, prev_day_change_percent, raw_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row["session_date"],
@@ -388,6 +394,7 @@ class Recorder:
                 row["selected"],
                 row["reason"],
                 row["price"],
+                row["prev_close_price"],
                 row["current_price"],
                 row["best_bid"],
                 row["best_ask"],
@@ -398,6 +405,7 @@ class Recorder:
                 row["market_cap"],
                 row["trading_value"],
                 row["kospi_change_percent"],
+                row["prev_day_change_percent"],
                 row["raw_json"],
             ),
         )
@@ -412,6 +420,7 @@ class Recorder:
                 "selected",
                 "reason",
                 "price",
+                "prev_close_price",
                 "current_price",
                 "best_bid",
                 "best_ask",
@@ -422,6 +431,7 @@ class Recorder:
                 "market_cap",
                 "trading_value",
                 "kospi_change_percent",
+                "prev_day_change_percent",
                 "raw_json",
             ],
             row,
@@ -659,6 +669,29 @@ class Recorder:
             if int(row["quantity"] or 0) >= max(1, minimum_quantity):
                 return True
         return False
+
+    def get_latest_planned_stop_loss_price(self, ticker: str) -> int:
+        row = self.conn.execute(
+            """
+            SELECT raw_json
+            FROM orders
+            WHERE ticker = ?
+              AND side = 'SELL'
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (ticker,),
+        ).fetchone()
+        if row is None:
+            return 0
+        try:
+            raw = json.loads(row["raw_json"] or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return 0
+        try:
+            return int(raw.get("planned_stop_loss_price") or 0)
+        except (TypeError, ValueError):
+            return 0
 
     def rebuild_session_fill_exports(self, session_date: str) -> None:
         fill_rows = self.get_session_fills(session_date)

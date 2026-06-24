@@ -26,7 +26,17 @@ from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import calc_expected_return, final_filter, get_candidates_top
 from Daily_bot.strategy.universe import UniverseConfig, get_candidates, get_kospi_change_percent
 from Daily_bot.telemetry.trace_helpers import trace_active_positions, trace_candidate_watchlist
-from Daily_bot.utils import RateLimiter, get_tick_size, is_after_now, is_between_now, load_yaml, round_to_tick
+from Daily_bot.utils import (
+    RateLimiter,
+    ceil_tick_count,
+    count_ticks_between_prices,
+    get_tick_size,
+    is_after_now,
+    is_between_now,
+    load_yaml,
+    move_price_by_ticks,
+    round_to_tick,
+)
 
 load_dotenv()
 
@@ -262,6 +272,54 @@ def _safe_target_sell_price(candidate: Candidate, tick_offset: int, buy_referenc
     return target_price
 
 
+def _resolve_stop_loss_tick_multiplier(cfg: dict | None = None) -> float:
+    if not isinstance(cfg, dict):
+        return 2.0
+    value = cfg.get("risk", {}).get("stop_loss_tick_multiplier", 2.0)
+    if value is None:
+        return 2.0
+    return float(value)
+
+
+def _resolve_stop_loss_tick_count(cfg: dict | None = None) -> int:
+    if not isinstance(cfg, dict):
+        return 0
+    value = cfg.get("risk", {}).get("stop_loss_tick_count", 0)
+    if value is None:
+        return 0
+    return max(0, int(value))
+
+
+def _build_exit_plan_metadata(
+    candidate: Candidate,
+    buy_reference_price: int,
+    target_price: int,
+    stop_loss_tick_count: int,
+    stop_loss_tick_multiplier: float,
+) -> dict[str, int | float]:
+    expected_price = max(0, int(candidate.expect_price or 0))
+    upward_ticks = count_ticks_between_prices(buy_reference_price, expected_price)
+    stop_tick_distance = 0
+    stop_loss_price = 0
+    dynamic_tick_distance = 0
+    if stop_loss_tick_multiplier > 0:
+        dynamic_tick_distance = ceil_tick_count(upward_ticks * stop_loss_tick_multiplier)
+        if dynamic_tick_distance <= 0:
+            dynamic_tick_distance = 1
+    stop_tick_distance = max(stop_loss_tick_count, dynamic_tick_distance)
+    if stop_tick_distance > 0:
+        stop_loss_price = move_price_by_ticks(buy_reference_price, -stop_tick_distance)
+    return {
+        "planned_entry_price": buy_reference_price,
+        "planned_expect_price": expected_price,
+        "planned_target_price": target_price,
+        "planned_profit_tick_distance": upward_ticks,
+        "planned_stop_loss_tick_distance": stop_tick_distance,
+        "planned_stop_loss_tick_multiplier": stop_loss_tick_multiplier,
+        "planned_stop_loss_price": stop_loss_price,
+    }
+
+
 def _record_fill_safely(client, recorder: Recorder, order_id: str, side: str, source: str) -> bool:
     if not order_id or not hasattr(client, "get_order_fill"):
         return False
@@ -306,22 +364,49 @@ def _submit_limit_exit_order(
     quantity: int,
     target_price: int,
     order_limiter: RateLimiter,
+    raw_metadata: dict[str, object] | None = None,
 ) -> None:
     order_limiter.wait()
     sell_order = client.sell_limit(ticker, quantity, target_price)
+    existing_raw = sell_order.raw if isinstance(getattr(sell_order, "raw", None), dict) else {}
+    sell_order.raw = {**existing_raw, **(raw_metadata or {})}
     recorder.save_order(sell_order)
     if not _record_fill_safely(client, recorder, sell_order.order_id, "SELL", "target_exit"):
         _poll_fill_until_recorded(client, recorder, sell_order.order_id, "SELL", "target_exit_safety_poll")
 
-
-def submit_exit_order(client, recorder: Recorder, candidate: Candidate, fill, tick_offset: int, order_limiter: RateLimiter) -> None:
+def submit_exit_order(
+    client,
+    recorder: Recorder,
+    candidate: Candidate,
+    fill,
+    tick_offset: int,
+    order_limiter: RateLimiter,
+    stop_loss_tick_count: int,
+    stop_loss_tick_multiplier: float,
+) -> None:
     decision_fill_price = _resolve_buy_fill_price(fill, candidate.price, candidate.ticker)
     target_price = _safe_target_sell_price(candidate, tick_offset, decision_fill_price)
+    stop_loss_metadata = _build_exit_plan_metadata(
+        candidate,
+        decision_fill_price,
+        target_price,
+        stop_loss_tick_count,
+        stop_loss_tick_multiplier,
+    )
     print(
         f"Submitting limit sell for {candidate.ticker}: "
-        f"target_price={target_price} decision_fill_price={decision_fill_price} raw_fill={fill.raw}"
+        f"target_price={target_price} stop_loss_price={stop_loss_metadata['planned_stop_loss_price']} "
+        f"decision_fill_price={decision_fill_price} raw_fill={fill.raw}"
     )
-    _submit_limit_exit_order(client, recorder, candidate.ticker, fill.quantity, target_price, order_limiter)
+    _submit_limit_exit_order(
+        client,
+        recorder,
+        candidate.ticker,
+        fill.quantity,
+        target_price,
+        order_limiter,
+        raw_metadata=stop_loss_metadata,
+    )
 
 
 def _find_existing_open_sell_price(open_orders: list[dict], ticker: str) -> int:
@@ -353,6 +438,8 @@ def _submit_recovery_exit_order_for_buy_delta_fill(
     open_orders: list[dict],
     tick_offset: int,
     order_limiter: RateLimiter,
+    stop_loss_tick_count: int,
+    stop_loss_tick_multiplier: float,
 ) -> None:
     buy_limit_price = max(0, int(order.get("price") or 0))
     reference_price = buy_limit_price or delta_fill.price
@@ -371,12 +458,35 @@ def _submit_recovery_exit_order_for_buy_delta_fill(
             expect_price=reference_price,
         )
         target_price = _safe_target_sell_price(synthetic_candidate, tick_offset, reference_price)
+    tick = get_tick_size(target_price) if target_price > 0 else get_tick_size(reference_price)
+    inferred_expect_price = target_price + tick if target_price > 0 and tick > 0 else reference_price
+    synthetic_candidate = Candidate(
+        ticker=delta_fill.ticker,
+        price=reference_price,
+        expect_price=inferred_expect_price,
+    )
+    stop_loss_metadata = _build_exit_plan_metadata(
+        synthetic_candidate,
+        reference_price,
+        target_price,
+        stop_loss_tick_count,
+        stop_loss_tick_multiplier,
+    )
     print(
         f"Recovered additional buy fill for {delta_fill.ticker}: "
         f"delta_quantity={delta_fill.quantity} total_order_fill={delta_fill.raw.get('total_fill_quantity')} "
-        f"buy_order_id={delta_fill.order_id} target_price={target_price}. Submitting recovery exit order."
+        f"buy_order_id={delta_fill.order_id} target_price={target_price} "
+        f"stop_loss_price={stop_loss_metadata['planned_stop_loss_price']}. Submitting recovery exit order."
     )
-    _submit_limit_exit_order(client, recorder, delta_fill.ticker, delta_fill.quantity, target_price, order_limiter)
+    _submit_limit_exit_order(
+        client,
+        recorder,
+        delta_fill.ticker,
+        delta_fill.quantity,
+        target_price,
+        order_limiter,
+        raw_metadata=stop_loss_metadata,
+    )
 
 
 def _refresh_remaining_cash(client, budget_per_cycle: int) -> int | None:
@@ -778,6 +888,8 @@ def poll_and_record_new_fills(client, recorder: Recorder, cfg: dict | None = Non
     if cfg is not None:
         order_limiter = RateLimiter(cfg["api"]["order_rate_limit_per_second"])
         tick_offset = int(cfg["strategy"].get("sell_tick_offset", 1) or 1)
+    stop_loss_tick_count = _resolve_stop_loss_tick_count(cfg)
+    stop_loss_tick_multiplier = _resolve_stop_loss_tick_multiplier(cfg)
     try:
         positions = client.get_positions()
     except Exception as exc:
@@ -837,6 +949,8 @@ def poll_and_record_new_fills(client, recorder: Recorder, cfg: dict | None = Non
                             open_orders,
                             tick_offset,
                             order_limiter,
+                            stop_loss_tick_count,
+                            stop_loss_tick_multiplier,
                         )
                     except Exception as exc:
                         print(
@@ -881,6 +995,8 @@ def poll_and_record_new_fills(client, recorder: Recorder, cfg: dict | None = Non
                     open_orders,
                     tick_offset,
                     order_limiter,
+                    stop_loss_tick_count,
+                    stop_loss_tick_multiplier,
                 )
             except Exception as exc:
                 print(
@@ -896,6 +1012,8 @@ def submit_target_exit_order_from_position_if_present(
     buy_order_id: str,
     tick_offset: int,
     order_limiter: RateLimiter,
+    stop_loss_tick_count: int,
+    stop_loss_tick_multiplier: float,
 ) -> bool:
     try:
         position = _find_position_for_candidate(client.get_positions(), candidate)
@@ -917,12 +1035,22 @@ def submit_target_exit_order_from_position_if_present(
     )
     recorder.save_fill(recovered_fill, side="BUY", source="position_recovery")
     target_price = _safe_target_sell_price(candidate, tick_offset, buy_reference_price)
+    stop_loss_metadata = _build_exit_plan_metadata(
+        candidate,
+        buy_reference_price,
+        target_price,
+        stop_loss_tick_count,
+        stop_loss_tick_multiplier,
+    )
     print(
         f"Position recovered for {candidate.ticker} after fill lookup failed: "
-        f"quantity={quantity} target_price={target_price}. Submitting target limit sell."
+        f"quantity={quantity} target_price={target_price} "
+        f"stop_loss_price={stop_loss_metadata['planned_stop_loss_price']}. Submitting target limit sell."
     )
     order_limiter.wait()
     sell_order = client.sell_limit(candidate.ticker, quantity, target_price)
+    existing_raw = sell_order.raw if isinstance(getattr(sell_order, "raw", None), dict) else {}
+    sell_order.raw = {**existing_raw, **stop_loss_metadata}
     recorder.save_order(sell_order)
     if not _record_fill_safely(client, recorder, sell_order.order_id, "SELL", "target_exit_recovery"):
         _poll_fill_until_recorded(client, recorder, sell_order.order_id, "SELL", "target_exit_recovery_safety_poll")
@@ -940,6 +1068,8 @@ def activate_buy(
     order_limiter = RateLimiter(cfg["api"]["order_rate_limit_per_second"])
     budget_per_cycle = cfg["risk"].get("max_budget_per_cycle_krw", 0)
     tick_offset = cfg["strategy"]["sell_tick_offset"]
+    stop_loss_tick_count = _resolve_stop_loss_tick_count(cfg)
+    stop_loss_tick_multiplier = _resolve_stop_loss_tick_multiplier(cfg)
     try:
         orderable_cash = client.get_orderable_cash()
     except Exception as exc:
@@ -1002,7 +1132,16 @@ def activate_buy(
                         f"Partial fill recovered after cancel for {candidate.ticker}: "
                         f"{partial_fill.quantity} shares at fill_price={partial_fill.price}. raw_fill={partial_fill.raw}."
                     )
-                    submit_exit_order(client, recorder, candidate, partial_fill, tick_offset, order_limiter)
+                    submit_exit_order(
+                        client,
+                        recorder,
+                        candidate,
+                        partial_fill,
+                        tick_offset,
+                        order_limiter,
+                        stop_loss_tick_count,
+                        stop_loss_tick_multiplier,
+                    )
                     return
                 if submit_target_exit_order_from_position_if_present(
                     client,
@@ -1011,6 +1150,8 @@ def activate_buy(
                     buy_order.order_id,
                     tick_offset,
                     order_limiter,
+                    stop_loss_tick_count,
+                    stop_loss_tick_multiplier,
                 ):
                     return
                 refreshed_cash = _refresh_remaining_cash(client, budget_per_cycle)
@@ -1020,7 +1161,16 @@ def activate_buy(
                 continue
 
             recorder.save_fill(fill, side="BUY", source="wait_buy_filled")
-            submit_exit_order(client, recorder, candidate, fill, tick_offset, order_limiter)
+            submit_exit_order(
+                client,
+                recorder,
+                candidate,
+                fill,
+                tick_offset,
+                order_limiter,
+                stop_loss_tick_count,
+                stop_loss_tick_multiplier,
+            )
             if remaining_cash < candidate.price:
                 break
         except Exception as exc:

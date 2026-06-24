@@ -4,6 +4,7 @@ from pathlib import Path
 from Daily_bot.backtest.replay_market_traces import (
     load_selected_signals,
     pick_entries,
+    _resolve_stop_loss_price,
     run_backtest,
     write_backtest_reports,
 )
@@ -119,6 +120,110 @@ def test_run_backtest_can_ignore_selected_signals_and_fall_back_to_top_ranked(tm
     assert len(trades) == 2
     assert trades[0].ticker == "BBB"
     assert trades[1].ticker == "AAA"
+
+
+def test_run_backtest_can_filter_candidates_by_prev_close_based_jump(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            prev_close_price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            prev_day_change_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, selected, reason, price, prev_close_price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, prev_day_change_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 111, 110, 112, 113, 1.8, 0.2, 11.0, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "scan_candidate", "BBB", 0, "", 100, 100, 108, 107, 109, 110, 1.5, 0.2, 8.0, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "BBB", 0, "", 100, 100, 110, 109, 111, 110, 1.5, 0.2, 10.0, "{}", "2026-06-02 09:31:00"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=1,
+        stop_loss_percent=1.0,
+        max_prev_day_change_percent=10.0,
+        use_selected_signals=False,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=1,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+    )
+
+    assert len(trades) == 1
+    assert trades[0].ticker == "BBB"
+
+
+def test_resolve_stop_loss_price_uses_dynamic_tick_distance_before_percent_fallback():
+    assert _resolve_stop_loss_price(
+        entry_price=10_000,
+        expect_price=10_200,
+        stop_loss_percent=6.0,
+        stop_loss_tick_count=0,
+        stop_loss_tick_multiplier=2.0,
+    ) == 9_920.0
+
+
+def test_resolve_stop_loss_price_uses_minimum_tick_count_when_dynamic_distance_is_smaller():
+    assert _resolve_stop_loss_price(
+        entry_price=10_000,
+        expect_price=10_200,
+        stop_loss_percent=6.0,
+        stop_loss_tick_count=5,
+        stop_loss_tick_multiplier=1.0,
+    ) == 9_950.0
+
+
+def test_resolve_stop_loss_price_uses_larger_of_minimum_ticks_and_expected_distance():
+    assert _resolve_stop_loss_price(
+        entry_price=10_000,
+        expect_price=10_300,
+        stop_loss_percent=6.0,
+        stop_loss_tick_count=5,
+        stop_loss_tick_multiplier=1.0,
+    ) == 9_940.0
 
 
 def test_run_backtest_replays_dynamic_reentry_with_slot_limit(tmp_path):

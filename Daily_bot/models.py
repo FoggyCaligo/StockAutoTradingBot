@@ -20,6 +20,7 @@ class Candidate:
     ticker: str
     name: str | None = None
     price: int = 0
+    prev_close_price: int = 0
     expect_price: int = 0
     expect_revenue_percent: float = 0.0
     spread_percent: float = 0.0

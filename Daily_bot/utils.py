@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import math
 from datetime import datetime, time as dtime
 from pathlib import Path
 from typing import Any
@@ -63,3 +64,38 @@ def get_tick_size(price: int) -> int:
 def round_to_tick(price: int) -> int:
     tick = get_tick_size(price)
     return int(price // tick * tick)
+
+
+def move_price_by_ticks(price: int, tick_count: int) -> int:
+    if price <= 0 or tick_count == 0:
+        return max(0, price)
+
+    moved_price = int(price)
+    if tick_count > 0:
+        for _ in range(tick_count):
+            moved_price += get_tick_size(moved_price)
+        return moved_price
+
+    for _ in range(abs(tick_count)):
+        step = get_tick_size(max(0, moved_price - 1))
+        moved_price = max(0, moved_price - step)
+    return moved_price
+
+
+def count_ticks_between_prices(start_price: int, end_price: int) -> int:
+    if start_price <= 0 or end_price <= start_price:
+        return 0
+
+    tick_count = 0
+    current_price = int(start_price)
+    while current_price < end_price:
+        next_price = move_price_by_ticks(current_price, 1)
+        if next_price <= current_price:
+            break
+        current_price = next_price
+        tick_count += 1
+    return tick_count
+
+
+def ceil_tick_count(value: float) -> int:
+    return max(0, int(math.ceil(value)))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from typing import Any
 
 from Daily_bot.models import HogaSnapshot, Position
 from Daily_bot.storage.db import Recorder
@@ -58,6 +59,12 @@ def is_stop_loss_triggered(position: Position, current_price: int, stop_loss_per
     return current_price <= threshold_price
 
 
+def is_stop_loss_triggered_by_price(current_price: int, stop_loss_price: int) -> bool:
+    if current_price <= 0 or stop_loss_price <= 0:
+        return False
+    return current_price <= stop_loss_price
+
+
 def get_stop_loss_reference_price(snapshot: HogaSnapshot) -> int:
     """Use a conservative executable price for stop-loss checks.
 
@@ -73,6 +80,16 @@ def get_stop_loss_reference_price(snapshot: HogaSnapshot) -> int:
 def get_stop_loss_limit_price(snapshot: HogaSnapshot) -> int:
     """Place stop-loss exits as executable sell limits near the top bid."""
     return get_stop_loss_reference_price(snapshot)
+
+
+def get_planned_stop_loss_price(recorder: Recorder | Any, ticker: str) -> int:
+    if recorder is None or not hasattr(recorder, "get_latest_planned_stop_loss_price"):
+        return 0
+    try:
+        return int(recorder.get_latest_planned_stop_loss_price(ticker) or 0)
+    except Exception as exc:
+        print(f"Failed to load planned stop-loss price for {ticker}: {exc}")
+        return 0
 
 
 def wait_until_no_open_orders_for_ticker(
@@ -129,29 +146,38 @@ def _poll_fill_until_recorded(
 
 def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], open_orders: list[dict], cfg: dict) -> bool:
     stop_loss_percent = float(cfg["risk"].get("stop_loss_percent", 2.0))
-    if stop_loss_percent <= 0:
+    if stop_loss_percent <= 0 and recorder is None:
         return False
 
     for position in positions:
         snapshot = client.get_20hoga(position.ticker)
         limit_price = get_stop_loss_limit_price(snapshot)
-        loss_percent = get_position_loss_percent(position)
-        if loss_percent is not None and loss_percent <= -stop_loss_percent:
+        reference_price = get_stop_loss_reference_price(snapshot)
+        planned_stop_loss_price = get_planned_stop_loss_price(recorder, position.ticker)
+
+        if planned_stop_loss_price > 0 and is_stop_loss_triggered_by_price(reference_price, planned_stop_loss_price):
             print(
-                "Stop-loss triggered from account snapshot: "
-                f"{position.ticker} avg={position.avg_price} loss_percent={loss_percent:.2f} limit_price={limit_price}"
+                "Stop-loss triggered from planned stop-loss price: "
+                f"{position.ticker} avg={position.avg_price} ref_price={reference_price} "
+                f"planned_stop_loss_price={planned_stop_loss_price} limit_price={limit_price}"
             )
         else:
-            reference_price = get_stop_loss_reference_price(snapshot)
-            if not is_stop_loss_triggered(position, reference_price, stop_loss_percent):
-                continue
+            loss_percent = get_position_loss_percent(position)
+            if loss_percent is not None and stop_loss_percent > 0 and loss_percent <= -stop_loss_percent:
+                print(
+                    "Stop-loss triggered from account snapshot fallback: "
+                    f"{position.ticker} avg={position.avg_price} loss_percent={loss_percent:.2f} limit_price={limit_price}"
+                )
+            else:
+                if not is_stop_loss_triggered(position, reference_price, stop_loss_percent):
+                    continue
 
-            threshold_price = position.avg_price * (1 - stop_loss_percent / 100)
-            print(
-                "Stop-loss triggered from hoga snapshot: "
-                f"{position.ticker} avg={position.avg_price} "
-                f"ref_price={reference_price} threshold={int(threshold_price)} limit_price={limit_price}"
-            )
+                threshold_price = position.avg_price * (1 - stop_loss_percent / 100)
+                print(
+                    "Stop-loss triggered from hoga snapshot fallback: "
+                    f"{position.ticker} avg={position.avg_price} "
+                    f"ref_price={reference_price} threshold={int(threshold_price)} limit_price={limit_price}"
+                )
 
         for order in open_orders:
             if _get_ticker(order) != position.ticker:
