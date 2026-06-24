@@ -47,13 +47,25 @@ def resolve_kospi_change_percent() -> float | None:
         return None
 
 
+def record_session_prev_close_prices(recorder: Recorder, cfg: dict) -> dict[str, int]:
+    candidates = get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
+    recorder.save_daily_reference_prices(candidates, source="candidate_monitor_startup")
+    return recorder.get_daily_reference_prices()
+
+
 def scan_filtered_candidates(
     client,
     recorder: Recorder,
     cfg: dict,
     kospi_change_percent: float | None = None,
+    prev_close_prices: dict[str, int] | None = None,
 ) -> dict[str, object]:
     candidates = get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
+    prev_close_prices = prev_close_prices or {}
+    for candidate in candidates.values():
+        prev_close_price = int(prev_close_prices.get(ticker_key(candidate.ticker), 0) or 0)
+        if prev_close_price > 0:
+            candidate.prev_close_price = prev_close_price
     limiter = RateLimiter(cfg["api"]["quote_rate_limit_per_second"])
     calculated = []
     scan_cycle_at = datetime.now()
@@ -83,6 +95,7 @@ def scan_filtered_candidates(
         cfg["strategy"]["min_expected_return_percent"],
         cfg["strategy"]["sell_tick_offset"],
         cfg["strategy"].get("max_spread_percent", 0.7),
+        cfg["strategy"].get("min_prev_day_change_percent", 0.0),
         cfg["strategy"].get("max_prev_day_change_percent", 15.0),
         cfg["strategy"].get("spread_expected_return_multiplier", 0.0),
     )
@@ -95,6 +108,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     client = build_client(dry_run)
     recorder = Recorder(Path("bot.sqlite3"))
     client.auth()
+    prev_close_prices = record_session_prev_close_prices(recorder, cfg)
 
     watchlist: dict[str, object] = {}
     print("Candidate monitor started. This process records quotes only and does not place orders.")
@@ -115,6 +129,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 recorder,
                 cfg,
                 kospi_change_percent=kospi_change_percent,
+                prev_close_prices=prev_close_prices,
             )
             watchlist.update(filtered)
             if watchlist:

@@ -87,6 +87,20 @@ CREATE TABLE IF NOT EXISTS market_traces (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS daily_reference_prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_date TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    name TEXT,
+    prev_close_price INTEGER NOT NULL,
+    market_cap INTEGER,
+    trading_value INTEGER,
+    trend_ok INTEGER DEFAULT 0,
+    source TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(session_date, ticker)
+);
+
 CREATE TABLE IF NOT EXISTS account_traces (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_date TEXT NOT NULL,
@@ -255,6 +269,83 @@ class Recorder:
             writer.writeheader()
             for row in rows:
                 writer.writerow({field: row.get(field, "") for field in fieldnames})
+
+    def save_daily_reference_prices(
+        self,
+        candidates: dict[str, Candidate] | list[Candidate],
+        session_date: str | None = None,
+        source: str = "universe_startup",
+    ) -> None:
+        normalized_session_date = session_date or datetime.now().strftime("%Y-%m-%d")
+        items = candidates.values() if isinstance(candidates, dict) else candidates
+        csv_path = self._daily_csv_path("daily_reference_prices")
+        fieldnames = [
+            "session_date",
+            "ticker",
+            "name",
+            "prev_close_price",
+            "market_cap",
+            "trading_value",
+            "trend_ok",
+            "source",
+        ]
+
+        for candidate in items:
+            prev_close_price = int(getattr(candidate, "prev_close_price", 0) or 0)
+            if prev_close_price <= 0:
+                continue
+            row = {
+                "session_date": normalized_session_date,
+                "ticker": candidate.ticker,
+                "name": candidate.name or "",
+                "prev_close_price": prev_close_price,
+                "market_cap": candidate.market_cap,
+                "trading_value": candidate.trading_value,
+                "trend_ok": 1 if candidate.trend_ok else 0,
+                "source": source,
+            }
+            self.conn.execute(
+                """
+                INSERT INTO daily_reference_prices
+                (session_date, ticker, name, prev_close_price, market_cap, trading_value, trend_ok, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(session_date, ticker) DO UPDATE SET
+                    name=excluded.name,
+                    prev_close_price=excluded.prev_close_price,
+                    market_cap=excluded.market_cap,
+                    trading_value=excluded.trading_value,
+                    trend_ok=excluded.trend_ok,
+                    source=excluded.source
+                """,
+                (
+                    row["session_date"],
+                    row["ticker"],
+                    row["name"],
+                    row["prev_close_price"],
+                    row["market_cap"],
+                    row["trading_value"],
+                    row["trend_ok"],
+                    row["source"],
+                ),
+            )
+            self._upsert_csv_row(csv_path, fieldnames, "ticker", row)
+        self.conn.commit()
+
+    def get_daily_reference_prices(self, session_date: str | None = None) -> dict[str, int]:
+        normalized_session_date = session_date or datetime.now().strftime("%Y-%m-%d")
+        rows = self.conn.execute(
+            """
+            SELECT ticker, prev_close_price
+            FROM daily_reference_prices
+            WHERE session_date = ?
+            """,
+            (normalized_session_date,),
+        ).fetchall()
+        return {
+            str(row["ticker"] or "").strip().upper().removeprefix("A"): int(row["prev_close_price"] or 0)
+            for row in rows
+            if int(row["prev_close_price"] or 0) > 0
+        }
 
     def _upsert_csv_row(self, path: Path, fieldnames: list[str], key_field: str, row: dict[str, Any]) -> None:
         existing_rows: list[dict[str, Any]] = []

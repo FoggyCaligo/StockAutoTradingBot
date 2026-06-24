@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
 from dataclasses import asdict
 from itertools import product
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent
+WORKSPACE_ROOT = ROOT.parent.parent
+if str(WORKSPACE_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORKSPACE_ROOT))
+
+from Daily_bot.backtest.replay_db_builder import resolve_replay_db_path
 from Daily_bot.backtest.replay_market_traces import run_backtest, summarize_trades
 
 
@@ -32,6 +39,7 @@ def run_sweep(
     top_ratio: float = 1.0,
     sell_tick_offset: int = 1,
 ) -> list[dict[str, object]]:
+    resolved_db_path = resolve_replay_db_path(db_path)
     rows: list[dict[str, object]] = []
     for min_expected_return, max_spread, top_n, stop_loss_percent in product(
         min_expected_returns,
@@ -40,7 +48,7 @@ def run_sweep(
         stop_loss_percents,
     ):
         trades = run_backtest(
-            db_path=db_path,
+            db_path=resolved_db_path,
             min_expected_return_percent=min_expected_return,
             max_spread_percent=max_spread,
             top_n_per_day=top_n,
@@ -86,6 +94,7 @@ def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
 def parse_args():
     parser = argparse.ArgumentParser(description="Sweep Daily_bot replay backtest settings.")
     parser.add_argument("--db", default="Daily_bot/bot.sqlite3")
+    parser.add_argument("--logs-dir", default="")
     parser.add_argument("--min-expected-returns", default="0.2,0.25,0.3")
     parser.add_argument("--max-spreads", default="0.5,0.7")
     parser.add_argument("--top-ns", default="1,2,3")
@@ -100,8 +109,14 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    resolved_db_path = resolve_replay_db_path(
+        Path(args.db),
+        Path(args.logs_dir) if args.logs_dir else None,
+    )
+    if resolved_db_path != Path(args.db):
+        print(f"Rebuilt replay DB from logs: {resolved_db_path}")
     rows = run_sweep(
-        db_path=Path(args.db),
+        db_path=resolved_db_path,
         min_expected_returns=_parse_number_list(args.min_expected_returns, float),
         max_spreads=_parse_number_list(args.max_spreads, float),
         top_ns=_parse_number_list(args.top_ns, int),

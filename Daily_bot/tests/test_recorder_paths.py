@@ -147,6 +147,53 @@ def test_recorder_persists_kospi_change_percent_for_account_and_fill_audit(tmp_p
     recorder.conn.close()
 
 
+def test_recorder_persists_daily_reference_prices(tmp_path):
+    recorder = Recorder(tmp_path / "bot.sqlite3")
+    candidates = {
+        "005930": Candidate(
+            ticker="005930",
+            name="Samsung Electronics",
+            prev_close_price=70_000,
+            market_cap=420_000_000_000,
+            trading_value=8_500_000_000,
+            trend_ok=True,
+        ),
+        "000660": Candidate(
+            ticker="000660",
+            name="SK hynix",
+            prev_close_price=210_000,
+            market_cap=150_000_000_000,
+            trading_value=7_000_000_000,
+            trend_ok=False,
+        ),
+    }
+
+    recorder.save_daily_reference_prices(candidates, session_date="2026-06-24")
+
+    price_map = recorder.get_daily_reference_prices("2026-06-24")
+    assert price_map == {"005930": 70_000, "000660": 210_000}
+
+    rows = recorder.conn.execute(
+        """
+        SELECT ticker, prev_close_price, trend_ok, source
+        FROM daily_reference_prices
+        WHERE session_date = ?
+        ORDER BY ticker
+        """,
+        ("2026-06-24",),
+    ).fetchall()
+    assert [(row["ticker"], row["prev_close_price"], row["trend_ok"], row["source"]) for row in rows] == [
+        ("000660", 210_000, 0, "universe_startup"),
+        ("005930", 70_000, 1, "universe_startup"),
+    ]
+
+    reference_csv = tmp_path / "logs" / f"daily_reference_prices_{datetime.now().strftime('%Y%m%d')}.csv"
+    reference_csv_text = reference_csv.read_text(encoding="utf-8-sig")
+    assert "prev_close_price" in reference_csv_text
+    assert "Samsung Electronics" in reference_csv_text
+    recorder.conn.close()
+
+
 def test_rebuild_session_fill_exports_keeps_other_sessions_in_trade_fill_audit(tmp_path):
     recorder = Recorder(tmp_path / "bot.sqlite3")
     recorder.save_fill(

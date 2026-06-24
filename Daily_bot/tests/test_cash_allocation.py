@@ -15,6 +15,7 @@ from Daily_bot.main import (
     resolve_session_capital_basis,
     resolve_total_slot_count,
     resolve_target_budget_per_stock,
+    should_wait_for_full_batch_exit,
 )
 from Daily_bot.models import Candidate, Fill, OrderResult
 
@@ -725,3 +726,9 @@ def test_resolve_buy_count_respects_empty_slots_and_explicit_max_buy_count():
 def test_resolve_empty_slots_treats_zero_position_limit_as_unlimited():
     assert resolve_empty_slots(max_position_count=0, active_count=3, candidate_count=12) == 12
     assert resolve_empty_slots(max_position_count=5, active_count=3, candidate_count=12) == 2
+
+
+def test_should_wait_for_full_batch_exit_blocks_rebuy_until_all_positions_close():
+    assert should_wait_for_full_batch_exit(0) is False
+    assert should_wait_for_full_batch_exit(1) is True
+    assert should_wait_for_full_batch_exit(3) is True

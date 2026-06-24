@@ -1,7 +1,7 @@
 market:
   prewarm_start_time: "08:55"
   start_buy_time: "09:10"
-  stop_buy_time: "12:00"
+  stop_buy_time: "11:30"
   force_sell_time: "15:00"
   reconcile_time: "15:15"
   end_time: "15:20"
@@ -15,15 +15,16 @@ universe:
   min_trading_value_krw: 3000000000
 
 trend_filter:
-  enabled: true
+  enabled: false
 
 strategy:
-  top_ratio: 0.2
+  top_ratio: 1.0
   max_buy_count: 3
-  min_expected_return_percent: 0.5
-  max_spread_percent: 0.7
+  min_expected_return_percent: 0.6
+  max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
-  max_prev_day_change_percent: 10.0
+  min_prev_day_change_percent: -1.5
+  max_prev_day_change_percent: 0.0
   # 0 or below disables the previous-scan intraday jump filter.
   max_intraday_jump_from_prev_scan_percent: 0.0
   sell_tick_offset: 1
@@ -39,17 +40,14 @@ risk:
   max_budget_per_cycle_krw: 0
   max_budget_per_stock_krw: 0
   max_orderbook_ask_depth_ratio: 0.0
-  stop_loss_tick_count: 5
-  stop_loss_tick_multiplier: 1.0
-  stop_loss_percent: 1.5
+  # Set all stop-loss values to 0 to disable intraday stop-loss handling.
+  stop_loss_tick_count: 0
+  stop_loss_tick_multiplier: 0.0
+  stop_loss_percent: 4.5
   daily_loss_limit_percent: 10.0
 
-# Stop-loss execution priority:
-# 1. Use the latest planned_stop_loss_price recorded at entry/exit-plan time.
-# 2. Fallback to the account snapshot profit-rate field when available.
-# 3. Fallback to a hoga-based threshold check using the best bid.
-# Stop-loss exits are submitted as executable sell limits near the top bid,
-# not as market sells.
+# Intraday stop-loss is currently disabled.
+# Positions are primarily cleared by target exits and the 15:00 force-sell flow.
 
 api:
   quote_rate_limit_per_second: 5

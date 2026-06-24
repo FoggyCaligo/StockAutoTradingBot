@@ -8,6 +8,7 @@ from Daily_bot.risk.stop_loss import (
     get_position_loss_percent,
     get_stop_loss_limit_price,
     get_stop_loss_reference_price,
+    is_stop_loss_enabled,
     is_stop_loss_triggered_by_price,
     is_stop_loss_triggered,
     monitor_stop_loss,
@@ -151,6 +152,12 @@ def test_get_planned_stop_loss_price_returns_zero_when_recorder_has_no_method():
     assert get_planned_stop_loss_price(object(), "005930") == 0
 
 
+def test_is_stop_loss_enabled_returns_false_when_all_stop_loss_controls_are_zero():
+    cfg = {"risk": {"stop_loss_percent": 0.0, "stop_loss_tick_count": 0, "stop_loss_tick_multiplier": 0.0}}
+
+    assert is_stop_loss_enabled(cfg) is False
+
+
 def test_get_stop_loss_reference_price_prefers_best_bid():
     snapshot = HogaSnapshot(
         ticker="005930",
@@ -240,3 +247,17 @@ def test_monitor_stop_loss_triggers_from_account_snapshot_loss_rate_without_hoga
 
     assert triggered is True
     assert client.limit_sell_calls == [("005930", 3, 9750)]
+
+
+def test_monitor_stop_loss_does_not_trigger_when_stop_loss_is_disabled():
+    client = _ClientStub()
+    recorder = _RecorderStub(planned_stop_loss_by_ticker={"005930": 9800})
+    positions = [_Position(ticker="005930", quantity=3, avg_price=10000)]
+    open_orders = client.get_open_orders()
+    cfg = {"risk": {"stop_loss_percent": 0.0, "stop_loss_tick_count": 0, "stop_loss_tick_multiplier": 0.0}}
+
+    triggered = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+
+    assert triggered is False
+    assert client.cancel_calls == []
+    assert client.limit_sell_calls == []

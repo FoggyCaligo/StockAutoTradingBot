@@ -92,6 +92,14 @@ def get_planned_stop_loss_price(recorder: Recorder | Any, ticker: str) -> int:
         return 0
 
 
+def is_stop_loss_enabled(cfg: dict) -> bool:
+    risk_cfg = cfg.get("risk", {}) if isinstance(cfg, dict) else {}
+    stop_loss_percent = float(risk_cfg.get("stop_loss_percent", 0.0) or 0.0)
+    stop_loss_tick_count = int(risk_cfg.get("stop_loss_tick_count", 0) or 0)
+    stop_loss_tick_multiplier = float(risk_cfg.get("stop_loss_tick_multiplier", 0.0) or 0.0)
+    return stop_loss_percent > 0 or stop_loss_tick_count > 0 or stop_loss_tick_multiplier > 0
+
+
 def wait_until_no_open_orders_for_ticker(
     client,
     ticker: str,
@@ -145,9 +153,10 @@ def _poll_fill_until_recorded(
 
 
 def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], open_orders: list[dict], cfg: dict) -> bool:
-    stop_loss_percent = float(cfg["risk"].get("stop_loss_percent", 2.0))
-    if stop_loss_percent <= 0 and recorder is None:
+    if not is_stop_loss_enabled(cfg):
         return False
+
+    stop_loss_percent = float(cfg["risk"].get("stop_loss_percent", 2.0))
 
     for position in positions:
         snapshot = client.get_20hoga(position.ticker)

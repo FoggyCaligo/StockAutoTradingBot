@@ -47,7 +47,7 @@ target_sell_price = expect_price - 1 tick
 
 현재 실운용 기준 주요 필터는 아래와 같다.
 
-- `top_ratio = 0.20`
+- `top_ratio = 0.15`
 - `max_spread_percent = 0.7`
 - `min_expected_return_percent = 0.50`
 - `spread_expected_return_multiplier = 0.0`
@@ -114,8 +114,8 @@ required_expected_return = 0.5
 현재 활성 손절 기준은 다음과 같다.
 
 - 손절선: `매수가 대비 -1.5%`
-- 보조 손절 거리: `stop_loss_tick_count = 5`
-- 동적 손절 거리 배수: `stop_loss_tick_multiplier = 1.0`
+- 보조 손절 거리: `stop_loss_tick_count = 0`
+- 동적 손절 거리 배수: `stop_loss_tick_multiplier = 0.0`
 
 운용 흐름은 아래와 같다.
 
@@ -131,15 +131,13 @@ required_expected_return = 0.5
 
 현재 손절 판단은 단일 퍼센트 비교 하나로 끝나지 않는다. 우선순위는 아래와 같다.
 
-1. 진입 또는 복구 매도 주문 생성 시 저장한 `planned_stop_loss_price`
-2. 계좌 스냅샷의 `prft_rt`
-3. 호가 스냅샷의 최우선 매수호가 기준 가격 비교
+현재는 장중 손절을 비활성화하고, 목표가 매도와 `15:00` 강제매도를 기본 청산 흐름으로 사용한다.
 
 손절 주문은 시장가가 아니라, 체결 가능성을 우선한 상단 매수호가 근처의 매도 지정가로 제출한다.
 
 ## 9. 시간대 해석
 
-현재 매수 가능 시간은 `09:30 ~ 14:00`이다.
+현재 매수 가능 시간은 `09:30 ~ 11:30`이다.
 
 최근 리플레이에서는 `11:30`, `13:00`보다 `14:00`까지 열어둔 쪽이 더 나은 결과를 보였다.  
 다만 시간대별 손익을 보면 `11시대`가 상대적으로 약했고, `13시대`가 오히려 강하게 나오는 구간도 있었다.

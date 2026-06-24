@@ -77,6 +77,39 @@ def test_final_filter_excludes_candidates_that_rose_fifteen_percent_or_more_prev
     assert [candidate.ticker for candidate in result] == ["005930"]
 
 
+def test_final_filter_keeps_only_candidates_that_dropped_two_percent_or_more_previous_day():
+    candidates = [
+        Candidate(
+            ticker="AAA",
+            price=10_000,
+            expect_price=10_100,
+            expect_revenue_percent=0.7,
+            spread_percent=0.2,
+            prev_day_change_percent=-2.0,
+            trend_ok=True,
+        ),
+        Candidate(
+            ticker="BBB",
+            price=10_000,
+            expect_price=10_100,
+            expect_revenue_percent=0.7,
+            spread_percent=0.2,
+            prev_day_change_percent=-1.99,
+            trend_ok=True,
+        ),
+    ]
+
+    result = final_filter(
+        candidates,
+        min_expected_return_percent=0.6,
+        sell_tick_offset=1,
+        max_spread_percent=0.7,
+        min_prev_day_change_percent=-2.0,
+    )
+
+    assert [candidate.ticker for candidate in result] == ["AAA"]
+
+
 def test_min_expected_return_with_spread_raises_threshold_for_wider_spread():
     assert min_expected_return_with_spread(0.3, 0.5, 1.2) == 0.6
     assert min_expected_return_with_spread(0.3, 0.2, 1.2) == 0.3

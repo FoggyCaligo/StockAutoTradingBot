@@ -70,6 +70,34 @@ def test_scan_and_rank_skips_ticker_when_hoga_fetch_fails(monkeypatch):
     assert recorder.signals == ["005930"]
 
 
+def test_scan_and_rank_uses_recorded_prev_close_prices(monkeypatch):
+    candidates = {
+        "005930": Candidate(ticker="005930", price=10_000, prev_close_price=0),
+    }
+    recorder = _RecorderStub(snapshots=[], signals=[], traces=[])
+    cfg = {
+        "universe": {
+            "min_market_cap_krw": 1,
+            "min_trading_value_krw": 1,
+        },
+        "trend_filter": {"enabled": False},
+        "api": {"quote_rate_limit_per_second": 1000},
+        "strategy": {"sell_tick_offset": 1},
+    }
+
+    monkeypatch.setattr(main, "get_candidates", lambda *_args, **_kwargs: candidates)
+
+    ranked = main.scan_and_rank(
+        _ClientStub(),
+        recorder,
+        cfg,
+        prev_close_prices={"005930": 9_800},
+    )
+
+    assert ranked[0].prev_close_price == 9_800
+    assert ranked[0].prev_day_change_percent > 0
+
+
 def test_trace_active_positions_records_remaining_positions_when_one_hoga_fetch_fails():
     recorder = _RecorderStub(snapshots=[], signals=[], traces=[])
     positions = [

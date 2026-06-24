@@ -196,8 +196,28 @@ def resolve_empty_slots(max_position_count: int, active_count: int, candidate_co
     return max(0, max_position_count - active_count)
 
 
+def should_wait_for_full_batch_exit(active_count: int) -> bool:
+    return active_count > 0
+
+
 def warm_universe(cfg: dict) -> None:
     get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
+
+
+def record_session_prev_close_prices(recorder: Recorder, cfg: dict) -> dict[str, int]:
+    candidates = get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
+    recorder.save_daily_reference_prices(candidates, source="universe_startup")
+    return recorder.get_daily_reference_prices()
+
+
+def apply_recorded_prev_close_prices(candidates: dict[str, Candidate], prev_close_prices: dict[str, int]) -> dict[str, Candidate]:
+    if not prev_close_prices:
+        return candidates
+    for candidate in candidates.values():
+        prev_close_price = int(prev_close_prices.get(_ticker_key(candidate.ticker), 0) or 0)
+        if prev_close_price > 0:
+            candidate.prev_close_price = prev_close_price
+    return candidates
 
 
 def resolve_kospi_change_percent() -> float | None:
@@ -208,8 +228,15 @@ def resolve_kospi_change_percent() -> float | None:
         return None
 
 
-def scan_and_rank(client, recorder: Recorder, cfg: dict, kospi_change_percent: float | None = None) -> list[Candidate]:
+def scan_and_rank(
+    client,
+    recorder: Recorder,
+    cfg: dict,
+    kospi_change_percent: float | None = None,
+    prev_close_prices: dict[str, int] | None = None,
+) -> list[Candidate]:
     candidates = get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
+    candidates = apply_recorded_prev_close_prices(candidates, prev_close_prices or {})
     limiter = RateLimiter(cfg["api"]["quote_rate_limit_per_second"])
     calculated: list[Candidate] = []
     scan_cycle_at = datetime.now()
@@ -1200,6 +1227,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     warmed_session = False
     watchlist: dict[str, Candidate] = {}
     previous_scan_prices: dict[str, int] = {}
+    prev_close_prices: dict[str, int] = {}
     session_started_at = datetime.now()
     initial_account_value = estimate_account_value(client)
     session_capital_basis = 0
@@ -1254,6 +1282,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
         if is_between_now(cfg["market"].get("prewarm_start_time", cfg["market"]["start_buy_time"]), cfg["market"]["start_buy_time"]) and not warmed_session:
             try:
                 warm_universe(cfg)
+                prev_close_prices = record_session_prev_close_prices(recorder, cfg)
                 session_capital_basis = resolve_session_capital_basis(client)
                 session_slot_count = resolve_total_slot_count(cfg, session_capital_basis)
                 session_slot_budget_per_stock = resolve_target_budget_per_stock(cfg, session_capital_basis)
@@ -1261,6 +1290,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 warmed_session = True
                 print(
                     "Universe warm-up completed. "
+                    f"prev_close_count={len(prev_close_prices)} "
                     f"session_capital_basis={session_capital_basis} "
                     f"session_slot_count={session_slot_count} "
                     f"slot_budget_per_stock={session_slot_budget_per_stock} "
@@ -1274,6 +1304,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             continue
 
         if not warmed_session:
+            prev_close_prices = record_session_prev_close_prices(recorder, cfg)
             session_capital_basis = resolve_session_capital_basis(client)
             session_slot_count = resolve_total_slot_count(cfg, session_capital_basis)
             session_slot_budget_per_stock = resolve_target_budget_per_stock(cfg, session_capital_basis)
@@ -1281,6 +1312,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             warmed_session = True
             print(
                 "Session slot plan initialized without prewarm. "
+                f"prev_close_count={len(prev_close_prices)} "
                 f"session_capital_basis={session_capital_basis} "
                 f"session_slot_count={session_slot_count} "
                 f"slot_budget_per_stock={session_slot_budget_per_stock} "
@@ -1346,10 +1378,20 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             time.sleep(active_poll_seconds if active_tickers else 5)
             continue
 
+        if should_wait_for_full_batch_exit(len(active_tickers)):
+            time.sleep(active_poll_seconds if active_tickers else 5)
+            continue
+
         state = BotState.SCANNING
         try:
             kospi_change_percent = resolve_kospi_change_percent()
-            calculated = scan_and_rank(client, recorder, cfg, kospi_change_percent=kospi_change_percent)
+            calculated = scan_and_rank(
+                client,
+                recorder,
+                cfg,
+                kospi_change_percent=kospi_change_percent,
+                prev_close_prices=prev_close_prices,
+            )
         except Exception as exc:
             print(f"Scan cycle failed: {exc}")
             time.sleep(cfg["strategy"]["scan_interval_seconds"])
@@ -1360,6 +1402,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             cfg["strategy"]["min_expected_return_percent"],
             cfg["strategy"]["sell_tick_offset"],
             cfg["strategy"].get("max_spread_percent", 0.7),
+            cfg["strategy"].get("min_prev_day_change_percent", 0.0),
             cfg["strategy"].get("max_prev_day_change_percent", 15.0),
             cfg["strategy"].get("spread_expected_return_multiplier", 0.0),
         )

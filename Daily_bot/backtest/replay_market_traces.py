@@ -4,11 +4,18 @@ import argparse
 import csv
 import math
 import sqlite3
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import mean
 
+ROOT = Path(__file__).resolve().parent
+WORKSPACE_ROOT = ROOT.parent.parent
+if str(WORKSPACE_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORKSPACE_ROOT))
+
+from Daily_bot.backtest.replay_db_builder import resolve_replay_db_path
 from Daily_bot.models import Candidate, Fill
 from Daily_bot.risk.guards import calc_order_quantity, passes_orderbook_ask_depth_ratio
 from Daily_bot.storage.audit_csv import (
@@ -442,6 +449,7 @@ def _pick_candidates_for_timestamp(
     max_spread_percent: float,
     top_ratio: float,
     spread_expected_return_multiplier: float,
+    min_prev_day_change_percent: float,
     max_prev_day_change_percent: float,
     active_tickers: set[str],
     allowed_tickers: set[str] | None,
@@ -455,6 +463,8 @@ def _pick_candidates_for_timestamp(
         if allowed_tickers is not None and row.ticker not in allowed_tickers:
             continue
         if row.current_price <= 0:
+            continue
+        if min_prev_day_change_percent < 0 and _resolve_prev_day_change_percent(row) > min_prev_day_change_percent:
             continue
         if max_prev_day_change_percent > 0 and _resolve_prev_day_change_percent(row) >= max_prev_day_change_percent:
             continue
@@ -544,6 +554,7 @@ def pick_entries(
     min_expected_return_percent: float,
     max_spread_percent: float,
     top_n_per_day: int,
+    min_prev_day_change_percent: float = 0.0,
     max_prev_day_change_percent: float = 0.0,
     spread_expected_return_multiplier: float = 0.0,
     selected_signals: list[SelectedSignal] | None = None,
@@ -564,6 +575,8 @@ def pick_entries(
     for trace_rows in grouped.values():
         first = trace_rows[0]
         if first.current_price <= 0:
+            continue
+        if min_prev_day_change_percent < 0 and _resolve_prev_day_change_percent(first) > min_prev_day_change_percent:
             continue
         if max_prev_day_change_percent > 0 and _resolve_prev_day_change_percent(first) >= max_prev_day_change_percent:
             continue
@@ -637,6 +650,7 @@ def run_backtest(
     max_spread_percent: float,
     top_n_per_day: int,
     stop_loss_percent: float,
+    min_prev_day_change_percent: float = 0.0,
     max_prev_day_change_percent: float = 0.0,
     stop_loss_tick_count: int = 0,
     stop_loss_tick_multiplier: float = 2.0,
@@ -764,6 +778,11 @@ def run_backtest(
             if not _is_within_buy_window(created_at, start_buy_time, stop_buy_time):
                 continue
 
+            # Match the live bot's set-based rebuy flow: once any position is open,
+            # wait for the whole set to clear before opening the next batch.
+            if open_positions:
+                continue
+
             # Match the live bot's behavior by default: candidate ranking is trimmed by
             # top_ratio, while the actual buy count is bounded by session position limits,
             # empty slots, and cash. top_n_per_day remains as an optional extra cap only
@@ -787,6 +806,7 @@ def run_backtest(
                 max_spread_percent=max_spread_percent,
                 top_ratio=top_ratio,
                 spread_expected_return_multiplier=spread_expected_return_multiplier,
+                min_prev_day_change_percent=min_prev_day_change_percent,
                 max_prev_day_change_percent=max_prev_day_change_percent,
                 active_tickers=set(open_positions) | exited_tickers_at_time,
                 allowed_tickers=allowed_tickers,
@@ -1107,8 +1127,10 @@ def write_backtest_reports(
 def parse_args():
     parser = argparse.ArgumentParser(description="Replay Daily_bot market_traces from bot.sqlite3.")
     parser.add_argument("--db", default="bot.sqlite3")
+    parser.add_argument("--logs-dir", default="")
     parser.add_argument("--min-expected-return", type=float, default=0.25)
     parser.add_argument("--max-spread", type=float, default=0.7)
+    parser.add_argument("--min-prev-day-change", type=float, default=0.0)
     parser.add_argument("--max-prev-day-change", type=float, default=0.0)
     parser.add_argument("--top-n", type=int, default=0)
     parser.add_argument("--top-ratio", type=float, default=1.0)
@@ -1137,11 +1159,18 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    session_capital_by_day = load_session_capital_bases(Path(args.db))
+    resolved_db_path = resolve_replay_db_path(
+        Path(args.db),
+        Path(args.logs_dir) if args.logs_dir else None,
+    )
+    if resolved_db_path != Path(args.db):
+        print(f"Rebuilt replay DB from logs: {resolved_db_path}")
+    session_capital_by_day = load_session_capital_bases(resolved_db_path)
     result = run_backtest(
-        db_path=Path(args.db),
+        db_path=resolved_db_path,
         min_expected_return_percent=args.min_expected_return,
         max_spread_percent=args.max_spread,
+        min_prev_day_change_percent=args.min_prev_day_change,
         top_n_per_day=args.top_n,
         max_prev_day_change_percent=args.max_prev_day_change,
         stop_loss_percent=args.stop_loss,
@@ -1181,7 +1210,7 @@ if __name__ == "__main__":
     print_summary(result)
     coverage = summarize_ask_depth_coverage(
         result,
-        load_traces(Path(args.db)),
+        load_traces(resolved_db_path),
         max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
         missing_ask_depth_policy=args.missing_ask_depth_policy,
     )
