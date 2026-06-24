@@ -30,11 +30,13 @@ class TraceRow:
     phase: str
     selected: int
     price: int
+    prev_close_price: int
     current_price: int
     expect_price: int
     expect_revenue_percent: float
     spread_percent: float
     ask_depth_5_amount_krw: int
+    prev_day_change_percent: float
 
 
 @dataclass
@@ -136,6 +138,8 @@ def load_traces(db_path: Path) -> list[TraceRow]:
         row["name"] for row in conn.execute("PRAGMA table_info(market_traces)").fetchall()
     }
     ask_depth_select = "ask_depth_5_amount_krw" if "ask_depth_5_amount_krw" in columns else "0 AS ask_depth_5_amount_krw"
+    prev_close_select = "prev_close_price" if "prev_close_price" in columns else "0 AS prev_close_price"
+    prev_day_change_select = "prev_day_change_percent" if "prev_day_change_percent" in columns else "0 AS prev_day_change_percent"
     rows = conn.execute(
         f"""
         SELECT
@@ -145,11 +149,13 @@ def load_traces(db_path: Path) -> list[TraceRow]:
             phase,
             selected,
             price,
+            {prev_close_select},
             current_price,
             expect_price,
             expect_revenue_percent,
             spread_percent,
-            {ask_depth_select}
+            {ask_depth_select},
+            {prev_day_change_select}
         FROM market_traces
         ORDER BY session_date, created_at, ticker
         """
@@ -166,14 +172,22 @@ def load_traces(db_path: Path) -> list[TraceRow]:
                 phase=row["phase"],
                 selected=_to_int(row["selected"]),
                 price=_to_int(row["price"]),
+                prev_close_price=_to_int(row["prev_close_price"]),
                 current_price=_to_int(row["current_price"]),
                 expect_price=_to_int(row["expect_price"]),
                 expect_revenue_percent=_to_float(row["expect_revenue_percent"]),
                 spread_percent=_to_float(row["spread_percent"]),
                 ask_depth_5_amount_krw=_to_int(row["ask_depth_5_amount_krw"]),
+                prev_day_change_percent=_to_float(row["prev_day_change_percent"]),
             )
         )
     return traces
+
+
+def _resolve_prev_day_change_percent(row: TraceRow) -> float:
+    if row.prev_close_price > 0 and row.current_price > 0:
+        return ((row.current_price - row.prev_close_price) / row.prev_close_price) * 100
+    return row.prev_day_change_percent
 
 
 def load_selected_signals(db_path: Path) -> list[SelectedSignal]:
@@ -428,6 +442,7 @@ def _pick_candidates_for_timestamp(
     max_spread_percent: float,
     top_ratio: float,
     spread_expected_return_multiplier: float,
+    max_prev_day_change_percent: float,
     active_tickers: set[str],
     allowed_tickers: set[str] | None,
 ) -> list[TraceRow]:
@@ -440,6 +455,8 @@ def _pick_candidates_for_timestamp(
         if allowed_tickers is not None and row.ticker not in allowed_tickers:
             continue
         if row.current_price <= 0:
+            continue
+        if max_prev_day_change_percent > 0 and _resolve_prev_day_change_percent(row) >= max_prev_day_change_percent:
             continue
         if max_spread_percent > 0 and row.spread_percent > max_spread_percent:
             continue
@@ -527,6 +544,7 @@ def pick_entries(
     min_expected_return_percent: float,
     max_spread_percent: float,
     top_n_per_day: int,
+    max_prev_day_change_percent: float = 0.0,
     spread_expected_return_multiplier: float = 0.0,
     selected_signals: list[SelectedSignal] | None = None,
 ) -> dict[str, list[TraceRow]]:
@@ -546,6 +564,8 @@ def pick_entries(
     for trace_rows in grouped.values():
         first = trace_rows[0]
         if first.current_price <= 0:
+            continue
+        if max_prev_day_change_percent > 0 and _resolve_prev_day_change_percent(first) >= max_prev_day_change_percent:
             continue
         if max_spread_percent > 0 and first.spread_percent > max_spread_percent:
             continue
@@ -617,6 +637,7 @@ def run_backtest(
     max_spread_percent: float,
     top_n_per_day: int,
     stop_loss_percent: float,
+    max_prev_day_change_percent: float = 0.0,
     stop_loss_tick_count: int = 0,
     stop_loss_tick_multiplier: float = 2.0,
     use_selected_signals: bool = True,
@@ -766,6 +787,7 @@ def run_backtest(
                 max_spread_percent=max_spread_percent,
                 top_ratio=top_ratio,
                 spread_expected_return_multiplier=spread_expected_return_multiplier,
+                max_prev_day_change_percent=max_prev_day_change_percent,
                 active_tickers=set(open_positions) | exited_tickers_at_time,
                 allowed_tickers=allowed_tickers,
             )
@@ -1087,6 +1109,7 @@ def parse_args():
     parser.add_argument("--db", default="bot.sqlite3")
     parser.add_argument("--min-expected-return", type=float, default=0.25)
     parser.add_argument("--max-spread", type=float, default=0.7)
+    parser.add_argument("--max-prev-day-change", type=float, default=0.0)
     parser.add_argument("--top-n", type=int, default=0)
     parser.add_argument("--top-ratio", type=float, default=1.0)
     parser.add_argument("--take-profit", type=float, default=0.25)
@@ -1120,6 +1143,7 @@ if __name__ == "__main__":
         min_expected_return_percent=args.min_expected_return,
         max_spread_percent=args.max_spread,
         top_n_per_day=args.top_n,
+        max_prev_day_change_percent=args.max_prev_day_change,
         stop_loss_percent=args.stop_loss,
         stop_loss_tick_count=args.stop_loss_tick_count,
         stop_loss_tick_multiplier=args.stop_loss_tick_multiplier,

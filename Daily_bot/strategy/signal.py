@@ -9,6 +9,8 @@ def calc_expected_return(candidate: Candidate, snapshot: HogaSnapshot, sell_tick
     target_sell_price = calc_target_sell_price(expect_price, sell_tick_offset)
     price = snapshot.current_price or candidate.price
     candidate.price = price
+    if candidate.prev_close_price > 0 and price > 0:
+        candidate.prev_day_change_percent = ((price - candidate.prev_close_price) / candidate.prev_close_price) * 100
     candidate.expect_price = expect_price
     candidate.expect_revenue_percent = ((target_sell_price - price) / price * 100) if price > 0 else 0.0
     candidate.spread_percent = calc_spread_percent(snapshot)
