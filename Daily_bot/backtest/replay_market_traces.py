@@ -259,6 +259,34 @@ def load_session_capital_bases(db_path: Path) -> dict[str, int]:
     return bases
 
 
+def _is_truthy(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def load_trend_ok_tickers_by_day(logs_dir: Path) -> tuple[dict[str, set[str]], set[str]]:
+    trend_ok_by_day: dict[str, set[str]] = {}
+    covered_days: set[str] = set()
+    if not logs_dir.exists():
+        return trend_ok_by_day, covered_days
+
+    for path in sorted(logs_dir.glob("daily_reference_prices_*.csv")):
+        with path.open("r", encoding="utf-8-sig", newline="") as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                session_date = str(row.get("session_date") or "").strip()
+                ticker = str(row.get("ticker") or "").strip()
+                if not session_date or not ticker:
+                    continue
+                covered_days.add(session_date)
+                if _is_truthy(row.get("trend_ok")):
+                    trend_ok_by_day.setdefault(session_date, set()).add(ticker)
+    return trend_ok_by_day, covered_days
+
+
 def group_by_session_and_ticker(rows: list[TraceRow]) -> dict[tuple[str, str], list[TraceRow]]:
     grouped: dict[tuple[str, str], list[TraceRow]] = {}
     for row in rows:
@@ -453,6 +481,7 @@ def _pick_candidates_for_timestamp(
     max_prev_day_change_percent: float,
     active_tickers: set[str],
     allowed_tickers: set[str] | None,
+    trend_allowed_tickers: set[str] | None,
 ) -> list[TraceRow]:
     latest_by_ticker: dict[str, TraceRow] = {}
     for row in rows:
@@ -461,6 +490,8 @@ def _pick_candidates_for_timestamp(
         if row.ticker in active_tickers:
             continue
         if allowed_tickers is not None and row.ticker not in allowed_tickers:
+            continue
+        if trend_allowed_tickers is not None and row.ticker not in trend_allowed_tickers:
             continue
         if row.current_price <= 0:
             continue
@@ -558,10 +589,16 @@ def pick_entries(
     max_prev_day_change_percent: float = 0.0,
     spread_expected_return_multiplier: float = 0.0,
     selected_signals: list[SelectedSignal] | None = None,
+    trend_ok_tickers_by_day: dict[str, set[str]] | None = None,
+    trend_filter_days: set[str] | None = None,
 ) -> dict[str, list[TraceRow]]:
     if selected_signals:
         per_day: dict[str, list[TraceRow]] = {}
         for signal in selected_signals:
+            if trend_filter_days and signal.session_date in trend_filter_days:
+                trend_allowed_tickers = (trend_ok_tickers_by_day or {}).get(signal.session_date, set())
+                if signal.ticker not in trend_allowed_tickers:
+                    continue
             trace_rows = grouped.get((signal.session_date, signal.ticker))
             if not trace_rows:
                 continue
@@ -574,6 +611,10 @@ def pick_entries(
     first_rows: list[TraceRow] = []
     for trace_rows in grouped.values():
         first = trace_rows[0]
+        if trend_filter_days and first.session_date in trend_filter_days:
+            trend_allowed_tickers = (trend_ok_tickers_by_day or {}).get(first.session_date, set())
+            if first.ticker not in trend_allowed_tickers:
+                continue
         if first.current_price <= 0:
             continue
         if min_prev_day_change_percent < 0 and _resolve_prev_day_change_percent(first) > min_prev_day_change_percent:
@@ -673,6 +714,9 @@ def run_backtest(
     spread_expected_return_multiplier: float = 0.0,
     max_orderbook_ask_depth_ratio: float = 0.0,
     missing_ask_depth_policy: str = "ignore",
+    trend_filter_enabled: bool = False,
+    trend_ok_tickers_by_day: dict[str, set[str]] | None = None,
+    trend_filter_days: set[str] | None = None,
 ) -> list[BacktestTrade]:
     traces = load_traces(db_path)
     selected_signals = load_selected_signals(db_path) if use_selected_signals else []
@@ -702,6 +746,11 @@ def run_backtest(
 
         open_positions: dict[str, ReplayPosition] = {}
         allowed_tickers = selected_tickers.get(session_date) if use_selected_signals and session_date in selected_tickers else None
+        trend_allowed_tickers = None
+        if trend_filter_enabled and trend_filter_days and session_date in trend_filter_days:
+            trend_allowed_tickers = (trend_ok_tickers_by_day or {}).get(session_date, set())
+            if allowed_tickers is not None:
+                trend_allowed_tickers = trend_allowed_tickers & allowed_tickers
         available_cash = session_plan.session_capital_basis
 
         for created_at in sorted(rows_by_time):
@@ -833,6 +882,7 @@ def run_backtest(
                 max_prev_day_change_percent=max_prev_day_change_percent,
                 active_tickers=set(open_positions) | exited_tickers_at_time,
                 allowed_tickers=allowed_tickers,
+                trend_allowed_tickers=trend_allowed_tickers,
             )
 
             for candidate in candidates[:planned_buy_count]:
@@ -1153,7 +1203,7 @@ def parse_args():
     parser.add_argument("--logs-dir", default="")
     parser.add_argument("--min-expected-return", type=float, default=0.7)
     parser.add_argument("--max-spread", type=float, default=0.0)
-    parser.add_argument("--min-prev-day-change", type=float, default=-0.1)
+    parser.add_argument("--min-prev-day-change", type=float, default=0.0)
     parser.add_argument("--max-prev-day-change", type=float, default=0.0)
     parser.add_argument("--top-n", type=int, default=0)
     parser.add_argument("--top-ratio", type=float, default=1.0)
@@ -1169,6 +1219,7 @@ def parse_args():
     parser.add_argument("--spread-expected-return-multiplier", type=float, default=0.0)
     parser.add_argument("--max-orderbook-ask-depth-ratio", type=float, default=0.0)
     parser.add_argument("--missing-ask-depth-policy", choices=["ignore", "skip"], default="ignore")
+    parser.add_argument("--trend-filter-enabled", action="store_true")
     parser.add_argument("--starting-capital-krw", type=int, default=1_000_000)
     parser.add_argument("--min-slot-count", type=int, default=1)
     parser.add_argument("--max-slot-count", type=int, default=0)
@@ -1183,13 +1234,15 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    logs_dir = Path(args.logs_dir) if args.logs_dir else None
     resolved_db_path = resolve_replay_db_path(
         Path(args.db),
-        Path(args.logs_dir) if args.logs_dir else None,
+        logs_dir,
     )
     if resolved_db_path != Path(args.db):
         print(f"Rebuilt replay DB from logs: {resolved_db_path}")
     session_capital_by_day = load_session_capital_bases(resolved_db_path)
+    trend_ok_tickers_by_day, trend_filter_days = load_trend_ok_tickers_by_day(logs_dir) if args.trend_filter_enabled and logs_dir else ({}, set())
     result = run_backtest(
         db_path=resolved_db_path,
         min_expected_return_percent=args.min_expected_return,
@@ -1219,6 +1272,9 @@ if __name__ == "__main__":
         spread_expected_return_multiplier=args.spread_expected_return_multiplier,
         max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
         missing_ask_depth_policy=args.missing_ask_depth_policy,
+        trend_filter_enabled=args.trend_filter_enabled,
+        trend_ok_tickers_by_day=trend_ok_tickers_by_day,
+        trend_filter_days=trend_filter_days,
     )
     report_paths = write_backtest_reports(
         out_path=Path(args.out),

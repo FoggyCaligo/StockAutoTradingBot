@@ -79,3 +79,8 @@
 - 이 변경의 핵심 의도는 "필터를 느슨하게 해서 매수를 늘리기"가 아니라, 희소한 신호가 장중 서로 다른 시점에 발생할 때 기존 보유 종목의 매도 체결을 기다리느라 다음 기회를 구조적으로 버리지 않게 만드는 것이다.
 - 슬롯 운용 철학은 `3슬롯을 먼저 다 채우고, 각 슬롯은 동일한 기준과 동일한 비중으로 취급한다` 쪽으로 정리했다. 시점에 따라 성공률이 달라진다고 보지 않으므로 첫 종목에 더 싣고 후속 종목에 덜 싣는 방식은 채택하지 않았다.
 - 재기동 직후 최신 스캔 사이클에서는 `selected=1` 후보가 `0개`였다. 즉 추가 매수가 바로 붙지 않은 이유는 슬롯 부족이 아니라, 현재 필터를 실제로 통과한 종목이 없었기 때문이다. 이 결과는 현재 의도와도 맞는다. 평소에는 거의 비어 있고, 가끔만 통과하는 신호를 잡는 구조로 보는 편이 정확하다.
+2026-06-26 +09:00
+- Today only replay was unusually volatile, so I did not want to lock the live bot to `min_expected_return = 0.9` just because the day rewarded the stricter filter shape.
+- I set the live config and replay default to `min_expected_return_percent = 0.8` as the more conservative compromise between frequency and quality.
+- The intent of `0.8` is to keep weak candidates out more aggressively than `0.7`, while avoiding the "signal drought" risk that can happen when `0.9` is used on calmer sessions.
+- Operational note: if live scans become too sparse and selected signals dry up too often, lower `min_expected_return_percent` from `0.8` back to `0.7`.

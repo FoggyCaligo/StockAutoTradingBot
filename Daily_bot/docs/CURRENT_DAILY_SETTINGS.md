@@ -8,7 +8,7 @@ As of 2026-06-26, the live bot and replay backtest defaults are aligned to the s
 - `strategy.min_expected_return_percent = 0.7`
 - `strategy.max_spread_percent = 0.0`
 - `strategy.spread_expected_return_multiplier = 0.0`
-- `strategy.min_prev_day_change_percent = -0.1`
+- `strategy.min_prev_day_change_percent = 0.0`
 - `strategy.max_prev_day_change_percent = 0.0`
 - `strategy.max_intraday_jump_from_prev_scan_percent = 0.0`
 

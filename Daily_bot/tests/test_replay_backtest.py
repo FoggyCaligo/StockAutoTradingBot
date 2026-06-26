@@ -3,6 +3,7 @@ from pathlib import Path
 
 from Daily_bot.backtest import replay_db_builder
 from Daily_bot.backtest.replay_market_traces import (
+    load_trend_ok_tickers_by_day,
     load_selected_signals,
     pick_entries,
     _resolve_stop_loss_price,
@@ -84,6 +85,26 @@ def test_load_selected_signals_reads_selected_rows(tmp_path):
     assert rows[0].ticker == "AAA"
 
 
+def test_load_trend_ok_tickers_by_day_reads_daily_reference_logs(tmp_path):
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    (logs_dir / "daily_reference_prices_20260602.csv").write_text(
+        "\n".join(
+            [
+                "session_date,ticker,name,prev_close_price,market_cap,trading_value,trend_ok,source",
+                "2026-06-02,AAA,Alpha,100,100000000000,1000000000,True,test",
+                "2026-06-02,BBB,Beta,100,100000000000,1000000000,False,test",
+            ]
+        ),
+        encoding="utf-8-sig",
+    )
+
+    trend_ok_by_day, covered_days = load_trend_ok_tickers_by_day(logs_dir)
+
+    assert covered_days == {"2026-06-02"}
+    assert trend_ok_by_day == {"2026-06-02": {"AAA"}}
+
+
 def test_pick_entries_prefers_selected_signals_when_available(tmp_path):
     db_path = tmp_path / "bot.sqlite3"
     _create_db(db_path)
@@ -122,6 +143,33 @@ def test_run_backtest_can_ignore_selected_signals_and_fall_back_to_top_ranked(tm
     assert len(trades) == 2
     assert trades[0].ticker == "BBB"
     assert trades[1].ticker == "AAA"
+
+
+def test_run_backtest_applies_trend_filter_from_daily_reference_membership(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    _create_db(db_path)
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=1,
+        stop_loss_percent=6.0,
+        use_selected_signals=False,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=1,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+        trend_filter_enabled=True,
+        trend_ok_tickers_by_day={"2026-06-02": {"AAA"}},
+        trend_filter_days={"2026-06-02"},
+    )
+
+    assert len(trades) == 1
+    assert trades[0].ticker == "AAA"
 
 
 def test_run_backtest_can_filter_candidates_by_prev_close_based_jump(tmp_path):
@@ -523,6 +571,80 @@ def test_run_backtest_uses_force_sell_time_before_last_trace(tmp_path):
     assert trades[0].exit_reason == "force_exit_time"
     assert trades[0].exit_time == "2026-06-02 15:00:00"
     assert trades[0].exit_price == 99
+
+
+def test_run_backtest_exits_position_after_hold_timeout_when_target_never_fills(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 100, 103, 2.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 99, 98, 99, 103, 2.0, 0.2, "{}", "2026-06-02 09:30:10"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 98, 97, 98, 103, 2.0, 0.2, "{}", "2026-06-02 09:30:21"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=5,
+        stop_loss_percent=10.0,
+        use_selected_signals=False,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=5,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+        max_hold_seconds_before_exit=20,
+    )
+
+    assert len(trades) == 1
+    assert trades[0].exit_reason == "time_stop_loss"
+    assert trades[0].exit_time == "2026-06-02 09:30:21"
+    assert trades[0].exit_price == 98
 
 
 def test_run_backtest_applies_spread_weighted_expected_return_filter(tmp_path):
