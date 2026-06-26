@@ -45,6 +45,10 @@ class _RecorderStub:
     def rebuild_session_fill_exports(self, session_date: str) -> None:
         self.rebuilt_session_date = session_date
 
+    def purge_superseded_sell_reconciliation_fills(self, session_date: str | None = None) -> int:
+        self.purged_session_date = session_date
+        return 0
+
     def has_recorded_sell_fill_after(
         self,
         ticker: str,
@@ -492,7 +496,11 @@ def test_reconcile_broker_fills_replaces_existing_fill_and_rebuilds_exports():
 
     summary = reconcile_broker_fills(client, recorder, session_date="2026-06-10")
 
-    assert summary == {"broker_fill_count": 1, "inserted_or_updated": 1}
+    assert summary == {
+        "broker_fill_count": 1,
+        "inserted_or_updated": 1,
+        "purged_sell_reconciliation": 0,
+    }
     assert recorder.fills is not None
     saved_fill, side, source = recorder.fills[0]
     assert saved_fill.order_id == "SELL-1"
@@ -500,7 +508,36 @@ def test_reconcile_broker_fills_replaces_existing_fill_and_rebuilds_exports():
     assert saved_fill.filled_at == datetime.fromisoformat("2026-06-10T09:42:49")
     assert side == "SELL"
     assert source == "eod_reconciliation"
+    assert recorder.purged_session_date == "2026-06-10"
     assert recorder.rebuilt_session_date == "2026-06-10"
+
+
+def test_reconcile_broker_fills_purges_superseded_sell_reconciliation_rows():
+    fill = Fill(
+        order_id="SELL-1",
+        ticker="008770",
+        quantity=3,
+        price=53900,
+        filled_at=datetime.fromisoformat("2026-06-10T09:42:49"),
+    )
+    client = type(
+        "ClientStub",
+        (),
+        {
+            "get_grouped_fills": lambda self: [(fill, "SELL")],
+        },
+    )()
+    recorder = _RecorderStub(orders=[], fills=[])
+    recorder.get_fill_index = lambda session_date: {}
+    recorder.purge_superseded_sell_reconciliation_fills = lambda session_date=None: 2
+
+    summary = reconcile_broker_fills(client, recorder, session_date="2026-06-10")
+
+    assert summary == {
+        "broker_fill_count": 1,
+        "inserted_or_updated": 1,
+        "purged_sell_reconciliation": 2,
+    }
 
 
 def test_estimate_account_value_includes_open_buy_orders():
@@ -728,7 +765,7 @@ def test_resolve_empty_slots_treats_zero_position_limit_as_unlimited():
     assert resolve_empty_slots(max_position_count=5, active_count=3, candidate_count=12) == 2
 
 
-def test_should_wait_for_full_batch_exit_blocks_rebuy_until_all_positions_close():
+def test_should_wait_for_full_batch_exit_keeps_scanning_with_open_positions():
     assert should_wait_for_full_batch_exit(0) is False
-    assert should_wait_for_full_batch_exit(1) is True
-    assert should_wait_for_full_batch_exit(3) is True
+    assert should_wait_for_full_batch_exit(1) is False
+    assert should_wait_for_full_batch_exit(3) is False

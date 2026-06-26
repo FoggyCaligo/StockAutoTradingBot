@@ -669,6 +669,7 @@ def run_backtest(
     start_buy_time: str = "09:30",
     stop_buy_time: str = "13:00",
     force_sell_time: str = "15:00",
+    max_hold_seconds_before_exit: int = 0,
     spread_expected_return_multiplier: float = 0.0,
     max_orderbook_ask_depth_ratio: float = 0.0,
     missing_ask_depth_policy: str = "ignore",
@@ -735,6 +736,28 @@ def run_backtest(
                     del open_positions[ticker]
                     exited_tickers_at_time.add(ticker)
                     continue
+                if max_hold_seconds_before_exit > 0:
+                    held_seconds = (_parse_timestamp(current_row.created_at) - _parse_timestamp(position.entry.created_at)).total_seconds()
+                    if held_seconds > max_hold_seconds_before_exit:
+                        trades.append(
+                            BacktestTrade(
+                                session_date=session_date,
+                                ticker=ticker,
+                                entry_time=position.entry.created_at,
+                                exit_time=current_row.created_at,
+                                quantity=position.quantity,
+                                entry_price=position.entry_price,
+                                exit_price=current_price,
+                                buy_amount_krw=position.invested_amount,
+                                sell_amount_krw=position.quantity * current_price,
+                                exit_reason="time_stop_loss",
+                                pnl_percent=(current_price - position.entry_price) / position.entry_price * 100,
+                            )
+                        )
+                        available_cash += position.quantity * current_price
+                        del open_positions[ticker]
+                        exited_tickers_at_time.add(ticker)
+                        continue
                 if current_price <= position.stop_loss_price:
                     trades.append(
                         BacktestTrade(
@@ -1128,20 +1151,21 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Replay Daily_bot market_traces from bot.sqlite3.")
     parser.add_argument("--db", default="bot.sqlite3")
     parser.add_argument("--logs-dir", default="")
-    parser.add_argument("--min-expected-return", type=float, default=0.25)
-    parser.add_argument("--max-spread", type=float, default=0.7)
-    parser.add_argument("--min-prev-day-change", type=float, default=0.0)
+    parser.add_argument("--min-expected-return", type=float, default=0.7)
+    parser.add_argument("--max-spread", type=float, default=0.0)
+    parser.add_argument("--min-prev-day-change", type=float, default=-0.1)
     parser.add_argument("--max-prev-day-change", type=float, default=0.0)
     parser.add_argument("--top-n", type=int, default=0)
     parser.add_argument("--top-ratio", type=float, default=1.0)
-    parser.add_argument("--take-profit", type=float, default=0.25)
-    parser.add_argument("--stop-loss", type=float, default=6.0)
+    parser.add_argument("--take-profit", type=float, default=0.4)
+    parser.add_argument("--stop-loss", type=float, default=4.5)
     parser.add_argument("--stop-loss-tick-count", type=int, default=0)
-    parser.add_argument("--stop-loss-tick-multiplier", type=float, default=2.0)
+    parser.add_argument("--stop-loss-tick-multiplier", type=float, default=0.0)
     parser.add_argument("--sell-tick-offset", type=int, default=1)
     parser.add_argument("--start-buy-time", default="09:30")
-    parser.add_argument("--stop-buy-time", default="13:00")
+    parser.add_argument("--stop-buy-time", default="11:30")
     parser.add_argument("--force-sell-time", default="15:00")
+    parser.add_argument("--max-hold-seconds-before-exit", type=int, default=0)
     parser.add_argument("--spread-expected-return-multiplier", type=float, default=0.0)
     parser.add_argument("--max-orderbook-ask-depth-ratio", type=float, default=0.0)
     parser.add_argument("--missing-ask-depth-policy", choices=["ignore", "skip"], default="ignore")
@@ -1191,6 +1215,7 @@ if __name__ == "__main__":
         start_buy_time=args.start_buy_time,
         stop_buy_time=args.stop_buy_time,
         force_sell_time=args.force_sell_time,
+        max_hold_seconds_before_exit=args.max_hold_seconds_before_exit,
         spread_expected_return_multiplier=args.spread_expected_return_multiplier,
         max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
         missing_ask_depth_policy=args.missing_ask_depth_policy,

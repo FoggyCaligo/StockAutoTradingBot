@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import sqlite3
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from Daily_bot.storage.db import SCHEMA
@@ -80,6 +81,69 @@ def _parse_account_trace_created_at(row: dict[str, str], session_date: str, sequ
     return f"{session_date} 08:{(sequence // 60) % 60:02d}:{sequence % 60:02d}"
 
 
+def _safe_session_date(value: str) -> date | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text).date()
+    except ValueError:
+        return None
+
+
+def _resolve_prev_close_price_overrides(market_files: list[Path]) -> dict[tuple[str, str], int]:
+    requirements: dict[str, set[str]] = {}
+    for path in market_files:
+        session_suffix = path.stem.split("_")[-1]
+        default_session_date = _normalize_session_date(session_suffix)
+        with path.open("r", encoding="utf-8-sig", newline="") as fp:
+            reader = csv.DictReader(fp)
+            for row in reader:
+                session_date = _normalize_session_date(row.get("session_date") or default_session_date)
+                ticker = str(row.get("ticker") or "").strip()
+                current_price = _to_int(row.get("current_price"))
+                prev_close_price = _to_int(row.get("prev_close_price"))
+                if not ticker or current_price <= 0 or prev_close_price > 0:
+                    continue
+                requirements.setdefault(ticker, set()).add(session_date)
+
+    if not requirements:
+        return {}
+
+    try:
+        import FinanceDataReader as fdr  # type: ignore[import]
+        import pandas as pd  # type: ignore[import]
+    except Exception:
+        return {}
+
+    overrides: dict[tuple[str, str], int] = {}
+    for ticker, session_dates in sorted(requirements.items()):
+        parsed_dates = sorted(filter(None, (_safe_session_date(session_date) for session_date in session_dates)))
+        if not parsed_dates:
+            continue
+        start = parsed_dates[0] - timedelta(days=14)
+        end = parsed_dates[-1] + timedelta(days=1)
+        try:
+            df = fdr.DataReader(ticker, start=start, end=end)
+        except Exception:
+            continue
+        if "Close" not in df.columns:
+            continue
+        close_series = pd.to_numeric(df["Close"], errors="coerce").dropna()
+        if close_series.empty:
+            continue
+        close_series.index = pd.to_datetime(close_series.index).tz_localize(None)
+        for session_date in sorted(session_dates):
+            session_day = _safe_session_date(session_date)
+            if session_day is None:
+                continue
+            prior = close_series[close_series.index.date < session_day]
+            if prior.empty:
+                continue
+            overrides[(session_date, ticker)] = _to_int(prior.iloc[-1])
+    return overrides
+
+
 def build_replay_db_from_logs(logs_dir: Path, out_db_path: Path) -> Path:
     market_files = sorted(logs_dir.glob("market_traces_*.csv"))
     if not market_files:
@@ -91,6 +155,7 @@ def build_replay_db_from_logs(logs_dir: Path, out_db_path: Path) -> Path:
 
     conn = sqlite3.connect(out_db_path)
     conn.executescript(SCHEMA)
+    prev_close_overrides = _resolve_prev_close_price_overrides(market_files)
 
     for path in market_files:
         session_suffix = path.stem.split("_")[-1]
@@ -99,6 +164,14 @@ def build_replay_db_from_logs(logs_dir: Path, out_db_path: Path) -> Path:
             reader = csv.DictReader(fp)
             for sequence, row in enumerate(reader):
                 session_date = _normalize_session_date(row.get("session_date") or default_session_date)
+                ticker = str(row.get("ticker") or "").strip()
+                prev_close_price = _to_int(row.get("prev_close_price"))
+                if prev_close_price <= 0:
+                    prev_close_price = _to_int(prev_close_overrides.get((session_date, ticker)))
+                current_price = _to_int(row.get("current_price"))
+                prev_day_change_percent = _to_float(row.get("prev_day_change_percent"))
+                if prev_close_price > 0 and current_price > 0:
+                    prev_day_change_percent = ((current_price - prev_close_price) / prev_close_price) * 100
                 conn.execute(
                     """
                     INSERT INTO market_traces (
@@ -124,19 +197,19 @@ def build_replay_db_from_logs(logs_dir: Path, out_db_path: Path) -> Path:
                     (
                         session_date,
                         row.get("phase") or "",
-                        row.get("ticker") or "",
+                        ticker,
                         _to_int(row.get("selected")),
                         row.get("reason") or "",
                         _to_int(row.get("price")),
-                        _to_int(row.get("prev_close_price")),
-                        _to_int(row.get("current_price")),
+                        prev_close_price,
+                        current_price,
                         _to_int(row.get("best_bid")),
                         _to_int(row.get("best_ask")),
                         _to_int(row.get("expect_price")),
                         _to_float(row.get("expect_revenue_percent")),
                         _to_float(row.get("spread_percent")),
                         _to_int(row.get("ask_depth_5_amount_krw")),
-                        _to_float(row.get("prev_day_change_percent")),
+                        prev_day_change_percent,
                         row.get("raw_json") or "{}",
                         _parse_market_trace_created_at(row, session_date, sequence),
                     ),

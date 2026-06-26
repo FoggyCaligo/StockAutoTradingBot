@@ -197,7 +197,8 @@ def resolve_empty_slots(max_position_count: int, active_count: int, candidate_co
 
 
 def should_wait_for_full_batch_exit(active_count: int) -> bool:
-    return active_count > 0
+    # Keep scanning until the configured position/slot limits are actually full.
+    return False
 
 
 def warm_universe(cfg: dict) -> None:
@@ -235,6 +236,9 @@ def scan_and_rank(
     kospi_change_percent: float | None = None,
     prev_close_prices: dict[str, int] | None = None,
 ) -> list[Candidate]:
+    # This loop is the single quote pass for the whole filtered universe.
+    # Every scanned candidate is persisted here, so adding a second
+    # "universe recording" pass would only duplicate API traffic.
     candidates = get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
     candidates = apply_recorded_prev_close_prices(candidates, prev_close_prices or {})
     limiter = RateLimiter(cfg["api"]["quote_rate_limit_per_second"])
@@ -655,7 +659,11 @@ def reconcile_broker_fills(
 ) -> dict[str, int]:
     session = _normalize_session_date(session_date)
     if not hasattr(client, "get_grouped_fills"):
-        return {"broker_fill_count": 0, "inserted_or_updated": 0}
+        return {
+            "broker_fill_count": 0,
+            "inserted_or_updated": 0,
+            "purged_sell_reconciliation": 0,
+        }
 
     broker_entries = [
         (fill, side)
@@ -680,10 +688,14 @@ def reconcile_broker_fills(
         recorder.replace_fill(fill, side=side, source="eod_reconciliation")
         updated += 1
 
+    purged = 0
+    if hasattr(recorder, "purge_superseded_sell_reconciliation_fills"):
+        purged = int(recorder.purge_superseded_sell_reconciliation_fills(session) or 0)
     recorder.rebuild_session_fill_exports(session)
     return {
         "broker_fill_count": len(broker_entries),
         "inserted_or_updated": updated,
+        "purged_sell_reconciliation": purged,
     }
 
 

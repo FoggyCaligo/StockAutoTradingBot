@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 
+from Daily_bot.backtest import replay_db_builder
 from Daily_bot.backtest.replay_market_traces import (
     load_selected_signals,
     pick_entries,
@@ -814,6 +815,45 @@ def test_resolve_replay_db_path_rebuilds_from_csv_logs_when_db_is_empty(tmp_path
 
     assert len(trades) == 1
     assert trades[0].ticker == "AAA"
+
+
+def test_resolve_replay_db_path_backfills_prev_close_and_prev_day_change_from_overrides(tmp_path, monkeypatch):
+    db_path = tmp_path / "bot.sqlite3"
+    db_path.write_bytes(b"")
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+
+    (logs_dir / "market_traces_20260610.csv").write_text(
+        "\n".join(
+            [
+                "session_date,phase,ticker,selected,reason,price,current_price,best_bid,best_ask,expect_price,expect_revenue_percent,spread_percent,raw_json",
+                '2026-06-10,scan_candidate,AAA,0,main_scan,100,100,99,101,101,1.0,0.2,"{""bid_req_base_tm"": ""093000""}"',
+            ]
+        ),
+        encoding="utf-8-sig",
+    )
+
+    monkeypatch.setattr(
+        replay_db_builder,
+        "_resolve_prev_close_price_overrides",
+        lambda market_files: {("2026-06-10", "AAA"): 80},
+    )
+
+    resolved_db_path = resolve_replay_db_path(db_path, logs_dir)
+
+    conn = sqlite3.connect(resolved_db_path)
+    row = conn.execute(
+        """
+        SELECT prev_close_price, prev_day_change_percent
+        FROM market_traces
+        WHERE session_date = '2026-06-10' AND ticker = 'AAA'
+        """
+    ).fetchone()
+    conn.close()
+
+    assert row is not None
+    assert row[0] == 80
+    assert row[1] == 25.0
 
 
 def test_run_backtest_waits_for_full_batch_exit_before_rebuying(tmp_path):

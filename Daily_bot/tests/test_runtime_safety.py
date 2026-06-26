@@ -68,6 +68,7 @@ def test_scan_and_rank_skips_ticker_when_hoga_fetch_fails(monkeypatch):
     assert [candidate.ticker for candidate in ranked] == ["005930"]
     assert recorder.snapshots == ["005930"]
     assert recorder.signals == ["005930"]
+    assert recorder.traces == [("005930", "scan_candidate", "main_scan")]
 
 
 def test_scan_and_rank_uses_recorded_prev_close_prices(monkeypatch):

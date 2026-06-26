@@ -1,203 +1,146 @@
 # Daily Bot
 
-Daily Bot은 KOSPI200 종목을 대상으로 장중 초단기 기회를 추적하는 자동매매 봇이다.  
-현재 기준 운용 방향은 "후보는 넓게 보되, 진입은 짧고 빠르게, 손절은 타이트하게, 기록은 나중에 복기 가능하도록 최대한 남긴다"에 가깝다.
+Daily Bot은 KOSPI200 종목을 대상으로 장중 단기 매매 기회를 스캔하고, 조건을 통과한 종목만 제한적으로 진입하는 실거래 봇이다.
 
-## 현재 운용 시간
+현재 기준 운영 설정은 [config/settings.yaml](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/config/settings.yaml)을 단일 진실원천으로 본다. 문서와 코드가 다르면 설정 파일이 우선이다.
+
+## 현재 운영 시간
 
 ```yaml
 market:
   prewarm_start_time: "08:55"
-  start_buy_time: "09:30"
+  start_buy_time: "09:10"
   stop_buy_time: "11:30"
   force_sell_time: "15:00"
   reconcile_time: "15:15"
   end_time: "15:20"
 ```
 
-- `08:55 ~ 09:30`: 유니버스 준비, 후보 계산 준비, 세션 자본 계획 고정
-- `09:30 ~ 11:30`: 신규 매수 가능
-- `11:30 ~ 15:00`: 신규 매수 중단, 기존 포지션과 주문만 관리
-- `15:00`: 남은 포지션 강제 청산 시작
-- `15:15`: 브로커 체결 내역과 로컬 기록을 대조하는 EOD reconciliation 수행
+- `08:55 ~ 09:10`: 유니버스 준비, 기준가 저장, 세션 자본 계획 고정
+- `09:10 ~ 11:30`: 신규 매수 가능
+- `11:30 ~ 15:00`: 신규 매수 중단, 보유 포지션과 주문만 관리
+- `15:00`: 강제 청산 시작
+- `15:15`: 브로커 체결과 로컬 기록 대조
 - `15:20`: 세션 종료
 
 ## 현재 핵심 설정
 
 ```yaml
 universe:
+  source: "KOSPI200"
   min_market_cap_krw: 250000000000
   min_trading_value_krw: 3000000000
 
 trend_filter:
-  enabled: true
+  enabled: false
 
 strategy:
-  top_ratio: 0.15
-  min_expected_return_percent: 0.50
-  max_spread_percent: 0.7
+  top_ratio: 1.0
+  max_buy_count: 3
+  min_expected_return_percent: 0.3
+  max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
-  max_prev_day_change_percent: 10.0
+  min_prev_day_change_percent: -1.0
+  max_prev_day_change_percent: 0.0
   max_intraday_jump_from_prev_scan_percent: 0.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
 risk:
+  max_position_count: 10
   min_slot_count: 3
   slot_budget_unit_krw: 5000000
   max_slot_count: 10
+  target_budget_ratio_per_stock: 0.50
+  max_budget_per_cycle_krw: 0
   max_budget_per_stock_krw: 0
   max_orderbook_ask_depth_ratio: 0.0
   stop_loss_tick_count: 0
   stop_loss_tick_multiplier: 0.0
-  stop_loss_percent: 0.0
+  stop_loss_percent: 4.5
   daily_loss_limit_percent: 10.0
 ```
 
-## 전략 요약
+## 현재 진입 로직
 
-1. 장 시작 전 KOSPI200 유니버스를 준비한다.
-2. 장중에는 20호가 스냅샷으로 예상가와 기대수익률을 계산한다.
-3. 전체 후보 중 `top_ratio=0.15` 범위만 다음 필터로 넘긴다.
-4. 최종 필터를 통과한 후보만 빈 슬롯 범위 안에서 매수한다.
-5. 매수 직후 목표가 매도 주문을 걸고, 손절 또는 장 마감 청산으로 정리한다.
+1. `KOSPI200` 전체를 불러온다.
+2. 시가총액과 거래대금 하한만 적용한다.
+3. 20호가 기반으로 기대가격과 기대수익률을 계산한다.
+4. 아래 조건을 모두 통과한 종목만 최종 후보로 본다.
 
-## 현재 필터 구조
+- 기대수익률 `>= 0.3%`
+- 전일 등락률 `<= 0.0%`
+- 전일 등락률 `<= -1.0%`도 만족해야 함
+- 목표 매도가가 현재가보다 높아야 함
 
-- 유니버스: KOSPI200
-- 시가총액 하한: `2500억`
-- 거래대금 하한: `30억`
-- 추세 필터: 현재 비활성화
-- 전일 급등 제외: `+7.0%` 이상 제외
-- 당일 급등 제외: 현재 비활성화 (`max_intraday_jump_from_prev_scan_percent = 0.0`)
-- 스프레드 상한: `0.7%`
-- 기대수익률 하한: `0.5%`
-- 상위 후보 비율: `top_ratio = 0.15`
+현재 `max_spread_percent = 0.0`, `max_intraday_jump_from_prev_scan_percent = 0.0`, `max_orderbook_ask_depth_ratio = 0.0`이므로 이 세 필터는 사실상 꺼져 있다.
 
-즉 현재는 기대수익률 하한을 고정 `0.5%`로 두고, 직전 스캔 대비 점프 필터와 스프레드 배수 기반 추가 요구수익률은 끈 상태다.
+## 자본 배분
 
-## 자본 배분과 리스크
+- 세션 시작 시점의 거래가능현금을 기준으로 슬롯 계획을 고정한다.
+- 기본 슬롯 단위는 `500만원`이다.
+- 최소 슬롯 수는 `3`, 최대 슬롯 수는 `10`이다.
+- `max_buy_count = 3`이므로 한 번의 진입 사이클에서 동시에 새로 사는 종목 수는 최대 3개다.
 
-- 최소 슬롯 수: `3`
-- 최대 슬롯 수: `10`
-- 슬롯 기준 금액: `500만원`
-- 종목당 최대 예산: 현재 별도 상한 없음 (`0`)
-- 현재 장중 손절: 비활성화 (`0.0`)
-- 일일 손실 제한: `10.0%`
+## 청산 로직
 
-현재 자본 계획은 세션 시작 시점의 거래가능현금을 기준으로 잡고, 그 범위 안에서 슬롯 수와 종목당 예산을 고정한다.
+- 매수 체결 직후 목표가 지정가 매도 주문을 건다.
+- 장중 손절 설정값은 남아 있지만 현재는 `stop_loss_tick_count = 0`, `stop_loss_tick_multiplier = 0.0` 상태라 동적 손절은 사실상 꺼져 있다.
+- `15:00` 이후에는 신규 진입 없이 강제 청산 흐름으로 넘어간다.
+- `15:15`에 브로커 체결을 다시 읽어 `fills`와 CSV를 보정한다.
+- EOD 대조 시 `sell_reconciliation` 추정 매도 체결은 실제 브로커 체결로 대체되면 정리된다.
 
-실제 신규 매수 대상은 단순히 상위 후보를 그대로 사는 방식이 아니다. `top_ratio`와 최종 필터를 통과한 후보 중에서 다시 아래 조건을 동시에 만족하는 조합만 고른다.
+## 로그와 산출물
 
-- 빈 슬롯 수
-- 현재 거래가능현금
-- 슬롯 기반 균등 예산
-- 종목당 최대 예산
-- `top-5 ask depth` 대비 주문금액 비율
+운영 로그:
 
-또한 `daily_loss_limit_percent`는 손실이 일정 수준을 넘었을 때 포지션을 강제 청산하는 스위치가 아니라, 그날의 신규 매수만 막는 가드다. 이 계산은 세션 중 외부 입출금(`accounting.cash_flows`)을 보정한 뒤 수행한다.
+- `Daily_bot/logs/orders_YYYYMMDD.csv`
+- `Daily_bot/logs/fills_YYYYMMDD.csv`
+- `Daily_bot/logs/market_traces_YYYYMMDD.csv`
+- `Daily_bot/logs/account_traces_YYYYMMDD.csv`
+- `Daily_bot/logs/trade_fills_audit.csv`
+- `Daily_bot/logs/trade_fills_audit_daily.csv`
+- `Daily_bot/logs/daily_rev.csv`
 
-현재 `max_intraday_jump_from_prev_scan_percent`는 `0.0`이라 비활성화 상태다. 코드상 `0 이하`는 필터를 적용하지 않고 후보를 그대로 통과시킨다.
+백테스트 결과:
 
-## 호가잔량 필터
-
-현재 실거래 로직에는 주문금액 대비 호가잔량 필터가 들어가 있다.
-
-- 기준: `planned order amount <= top-5 ask depth amount * 0.30`
-- 목적: 내 주문이 얇은 매도호가를 과도하게 먹는 상황 방지
-
-주의:
-
-- 이제 새로 쌓이는 `market_traces`에는 `ask_depth_5_amount_krw`가 함께 저장된다.
-- 다만 과거 구간에는 이 값이 비어 있는 시점이 남아 있을 수 있으므로, 예전 백테스트는 여전히 완전 재현이 아니라 부분 재현으로 봐야 한다.
-- 리플레이 엔진은 `--max-orderbook-ask-depth-ratio`와 `--missing-ask-depth-policy`를 통해 이 필터를 적용할 수 있고, 실행 시 ask-depth coverage를 함께 출력한다.
-- 따라서 최근 리플레이 성과는 실제 실거래 로직보다 약간 낙관적으로 보일 여지가 있다.
-
-## 매도 처리
-
-- 일반 매도는 `예상가 - 1틱` 기준 목표가 주문을 사용한다.
-- `15:00` 강제 청산은 지정가가 아니라 시장가 기준으로 정리한다.
-- 부분체결 뒤 추가 매수 체결이 확인되면 남은 수량도 이어서 매도 주문에 반영되도록 보정되어 있다.
-- 손절은 시장가가 아니라 최우선 매수호가 근처의 실행 가능한 매도 지정가로 나간다.
-
-손절 판단 우선순위는 아래와 같다.
-
-현재는 장중 손절을 사용하지 않는다. 포지션 정리는 목표가 매도와 `15:00` 강제매도 흐름이 중심이다.
-
-## 기록 체계
-
-실거래 로그는 `Daily_bot/logs`에 저장한다.
-
-- `fills_YYYYMMDD.csv`
-- `orders_YYYYMMDD.csv`
-- `market_traces_YYYYMMDD.csv`
-- `account_traces_YYYYMMDD.csv`
-- `trade_fills_audit.csv`
-- `daily_rev.csv`
-
-백테스트 결과 CSV는 `Daily_bot/backtest/results`에 별도로 저장한다.
-
-`daily_rev.csv`에는 아래 값이 일자별 1행으로 누적된다.
-
-- `starting_capital_krw`
-- `total_profit_krw`
-- `total_fee_krw`
-- `total_tax_krw`
-- `total_buy_amount_krw`
-- `total_sell_amount_krw`
-- `total_return_percent`
-- `total_return_percent_on_starting_capital`
-- `traded_tickers`
-
-## market_traces에 남기는 정보
-
-현재 `market_traces`에는 아래 문맥이 함께 저장된다.
-
-- `market_cap`
-- `trading_value`
-- `kospi_change_percent`
-- `scan_cycle_at`
-- 보유 추적용 `phase=active_position`
-
-이 기록을 기반으로 후보군 축소 원인, 손절 직전 흔들림, 특정 날짜의 과도한 쏠림을 나중에 복기할 수 있다.
-
-## 최근 복기 요약
-
-- `11:30`, `13:00`보다 `14:00`까지 매수 가능 시간을 열어둔 쪽이 최근 `unselected` 리플레이에서 더 좋았다.
-- 다만 최근 리플레이 수치는 실험 시점과 포함 필터에 따라 달라질 수 있으므로, 고정 성과 숫자 자체보다 "어떤 필터 조합으로 나온 결과인지"를 함께 봐야 한다.
-- 특히 `호가잔량 비율 필터`는 과거 기록 부족으로 옛 구간 리플레이에 완전 반영되지 못했으므로, coverage 리포트와 함께 해석하는 편이 맞다.
-- 특정 날짜 손익은 소수 종목 기여에 크게 좌우될 수 있으므로, 총합뿐 아니라 종목 쏠림도 같이 복기해야 한다.
-
-## 백테스트 해석 원칙
-
-- 최근 구조에서는 `selected`보다 `unselected` 리플레이를 더 중요한 기준으로 본다.
-- 이유는 필터와 자본 배분 구조가 많이 바뀌었기 때문에, 과거 `selected` 결과만으로 현재 전략을 평가하기 어렵기 때문이다.
-- 최근 결과는 미래 수익을 보장하는 값이 아니라, 현재 설정이 어느 구간에서 어떤 식으로 작동했는지 보여주는 참고 기록이다.
+- `Daily_bot/backtest/results/*.csv`
 
 ## 실행
 
-실거래:
+실운영:
 
-```bash
+```powershell
 python .\Daily_bot\main.py --real
 ```
 
-시뮬레이션:
+드라이런:
 
-```bash
+```powershell
 python .\Daily_bot\main.py --dry-run
 ```
 
-백테스트:
+실운영 스크립트:
 
-```bash
-.\.venv\Scripts\python.exe .\Daily_bot\backtest\replay_market_traces.py --db Daily_bot\bot.sqlite3 --ignore-selected-signals
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Daily_bot\scripts\run_real.ps1
 ```
-
-`Daily_bot\bot.sqlite3`가 비어 있거나 `market_traces`가 없으면, 백테스트는 `Daily_bot\logs\market_traces_*.csv`와 `account_traces_*.csv`를 읽어 리플레이용 DB를 자동으로 재구성한다.
 
 테스트:
 
-```bash
-.\.venv\Scripts\python.exe -m pytest Daily_bot\tests
+```powershell
+.\.venv\Scripts\python.exe -m pytest .\Daily_bot\tests
 ```
+
+리플레이 백테스트:
+
+```powershell
+.\.venv\Scripts\python.exe .\Daily_bot\backtest\replay_market_traces.py --db Daily_bot\bot.sqlite3 --ignore-selected-signals
+```
+
+## 리플레이 해석 주의
+
+- `bot.sqlite3`는 현재 세션 데이터만 남아 있을 수 있다.
+- 멀티데이 리플레이는 `Daily_bot/logs/market_traces_*.csv`를 사용해 재구성해야 한다.
+- 오래된 로그에는 `prev_day_change_percent`가 없어서, 현재의 전일등락률 필터를 그대로 적용하면 과거 날짜가 전부 탈락할 수 있다.
+- 따라서 현재 설정을 과거 로그에 그대로 대입한 리플레이 결과는 “완전 동일 재현”이 아니라 “현재 필터를 과거 로그에 투영한 근사 결과”로 봐야 한다.
