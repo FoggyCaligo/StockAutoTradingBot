@@ -1,0 +1,22 @@
+﻿Initial account value estimate: 1318270
+Session slot plan initialized without prewarm. prev_close_count=248 session_capital_basis=726370 session_slot_count=3 slot_budget_per_stock=242123 position_limit=3
+FILL BUY 005387 qty=1 price=219500 filled_at=2026-06-25T11:41:27 source=wait_buy_filled order_id=0302342
+Submitting limit sell for 005387: target_price=220500 stop_loss_price=0 decision_fill_price=219500 raw_fill={'rows': [{'ord_no': '0302342', 'stk_nm': '현대차2우B', 'io_tp_nm': '+매수', 'ord_pric': '219500', 'ord_qty': '1', 'cntr_pric': '219500', 'cntr_qty': '1', 'oso_qty': '0', 'tdy_trde_cmsn': '30', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '114127', 'stk_cd': '005387', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0302342', 'stk_nm': '현대차2우B', 'io_tp_nm': '+매수', 'ord_pric': '219500', 'ord_qty': '1', 'cntr_pric': '219500', 'cntr_qty': '1', 'oso_qty': '0', 'tdy_trde_cmsn': '30', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '114127', 'stk_cd': '005387', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL SELL 005387 qty=1 price=220500 filled_at=2026-06-25T11:41:28 source=poll order_id=0302346
+Submitting market force sell for 096770: quantity=3
+FILL SELL 096770 qty=3 price=95400 filled_at=2026-06-25T15:00:13 source=force_sell order_id=0456446
+Submitting market force sell for 204320: quantity=6
+FILL SELL 204320 qty=6 price=48800 filled_at=2026-06-25T15:00:13 source=force_sell order_id=0456460
+Force sell completed. Waiting for end-of-day reconciliation.
+FILL SELL 006340 qty=19 price=10660 filled_at=2026-06-25T09:49:48 source=eod_reconciliation order_id=0205326
+FILL BUY 000500 qty=1 price=301000 filled_at=2026-06-25T10:42:06 source=eod_reconciliation order_id=0258333
+FILL SELL 000500 qty=1 price=302000 filled_at=2026-06-25T10:42:08 source=eod_reconciliation order_id=0258367
+FILL BUY 096770 qty=3 price=98800 filled_at=2026-06-25T10:53:04 source=eod_reconciliation order_id=0267651
+FILL BUY 204320 qty=6 price=49750 filled_at=2026-06-25T11:24:24 source=eod_reconciliation order_id=0292152
+FILL BUY 489790 qty=5 price=57300 filled_at=2026-06-25T11:25:13 source=eod_reconciliation order_id=0292574
+FILL SELL 489790 qty=5 price=57500 filled_at=2026-06-25T11:25:13 source=eod_reconciliation order_id=0292577
+FILL BUY 005387 qty=1 price=219500 filled_at=2026-06-25T11:41:27 source=eod_reconciliation order_id=0302342
+FILL SELL 005387 qty=1 price=220500 filled_at=2026-06-25T11:41:28 source=eod_reconciliation order_id=0302346
+FILL SELL 096770 qty=3 price=95400 filled_at=2026-06-25T15:00:13 source=eod_reconciliation order_id=0456446
+FILL SELL 204320 qty=6 price=48800 filled_at=2026-06-25T15:00:13 source=eod_reconciliation order_id=0456460
+End-of-day reconciliation completed: broker_fills=11 updated=11
