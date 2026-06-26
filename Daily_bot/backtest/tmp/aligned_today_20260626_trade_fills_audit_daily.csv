@@ -1,0 +1,7 @@
+﻿trade_date,filled_at,broker_order_id,ticker,side,quantity,price,amount,estimated_fee,estimated_tax,estimated_total_cost,source,cash,account_value,adjusted_account_value,adjusted_pnl,loss_percent,kospi_change_percent,cum_buy_quantity,cum_buy_amount,avg_buy_price,cum_sell_quantity,cum_sell_amount,realized_pnl_before_costs,estimated_net_realized_pnl,realized_return_percent_before_costs,estimated_net_realized_return_percent,position_status
+2026-06-26,2026-06-26T09:30:42,BUY-2026-06-26-081660-20260626T093042,081660,BUY,11,38300,421300,63.195,0.0,63.195,backtest_replay,,,,,,,11,421300,38300.0,0,0,,,,,OPEN
+2026-06-26,2026-06-26T09:54:10,BUY-2026-06-26-011170-20260626T095410,011170,BUY,6,64000,384000,57.6,0.0,57.6,backtest_replay,,,,,,,6,384000,64000.0,0,0,,,,,OPEN
+2026-06-26,2026-06-26T09:54:10,SELL-2026-06-26-081660-20260626T095410,081660,SELL,11,38900,427900,64.185,770.22,834.405,backtest_replay,,,,,,,11,421300,38300.0,11,427900,6600.0,5702.4,1.5666,1.3535,CLOSED
+2026-06-26,2026-06-26T10:01:39,SELL-2026-06-26-011170-20260626T100139,011170,SELL,6,64500,387000,58.05,696.6,754.65,backtest_replay,,,,,,,6,384000,64000.0,6,387000,3000.0,2187.75,0.7812,0.5697,CLOSED
+2026-06-26,2026-06-26T10:02:15,BUY-2026-06-26-007070-20260626T100215,007070,BUY,19,22050,418950,62.8425,0.0,62.8425,backtest_replay,,,,,,,19,418950,22050.0,0,0,,,,,OPEN
+2026-06-26,2026-06-26T11:09:09,SELL-2026-06-26-007070-20260626T110909,007070,SELL,19,22050,418950,62.8425,754.11,816.9525,backtest_replay,,,,,,,19,418950,22050.0,19,418950,0.0,-879.795,0.0000,-0.2100,CLOSED

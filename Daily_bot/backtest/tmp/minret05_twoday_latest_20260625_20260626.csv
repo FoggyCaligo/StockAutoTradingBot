@@ -1,0 +1,3 @@
+﻿session_date,ticker,entry_time,exit_time,quantity,entry_price,exit_price,buy_amount_krw,sell_amount_krw,exit_reason,pnl_percent
+2026-06-26,006260,2026-06-26 09:30:22,2026-06-26 10:17:11,1,342000,344500,342000,344500,take_profit,0.731
+2026-06-26,011170,2026-06-26 10:17:12,2026-06-26 11:57:00,6,64200,61300,385200,367800,stop_loss,-4.5171
