@@ -197,8 +197,8 @@ def resolve_empty_slots(max_position_count: int, active_count: int, candidate_co
 
 
 def should_wait_for_full_batch_exit(active_count: int) -> bool:
-    # Keep scanning until the configured position/slot limits are actually full.
-    return False
+    # Once any slot is occupied, block new entries until the whole batch is flat.
+    return active_count > 0
 
 
 def warm_universe(cfg: dict) -> None:

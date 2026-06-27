@@ -850,8 +850,8 @@ def run_backtest(
             if not _is_within_buy_window(created_at, start_buy_time, stop_buy_time):
                 continue
 
-            # Match the live bot's set-based rebuy flow: once any position is open,
-            # wait for the whole set to clear before opening the next batch.
+            # Match the live bot's batch flow: once any slot is occupied,
+            # block new entries until the whole set is flat again.
             if open_positions:
                 continue
 

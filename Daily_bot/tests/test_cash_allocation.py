@@ -765,7 +765,7 @@ def test_resolve_empty_slots_treats_zero_position_limit_as_unlimited():
     assert resolve_empty_slots(max_position_count=5, active_count=3, candidate_count=12) == 2
 
 
-def test_should_wait_for_full_batch_exit_keeps_scanning_with_open_positions():
+def test_should_wait_for_full_batch_exit_blocks_new_entries_until_all_positions_exit():
     assert should_wait_for_full_batch_exit(0) is False
-    assert should_wait_for_full_batch_exit(1) is False
-    assert should_wait_for_full_batch_exit(3) is False
+    assert should_wait_for_full_batch_exit(1) is True
+    assert should_wait_for_full_batch_exit(3) is True
