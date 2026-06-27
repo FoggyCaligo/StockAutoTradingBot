@@ -1,0 +1,2 @@
+Daily_bot/backtest/*.sqlite3 filter=lfs diff=lfs merge=lfs -text
+Daily_bot/backtest/**/*.sqlite3 filter=lfs diff=lfs merge=lfs -text
