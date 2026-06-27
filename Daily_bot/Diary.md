@@ -84,3 +84,45 @@
 - I set the live config and replay default to `min_expected_return_percent = 0.8` as the more conservative compromise between frequency and quality.
 - The intent of `0.8` is to keep weak candidates out more aggressively than `0.7`, while avoiding the "signal drought" risk that can happen when `0.9` is used on calmer sessions.
 - Operational note: if live scans become too sparse and selected signals dry up too often, lower `min_expected_return_percent` from `0.8` back to `0.7`.
+2026-06-27 +09:00
+
+## TODO: 호가 기반 예상가 모델 검증
+
+### 핵심 가설
+
+데일리 봇의 현재 예상가 계산 로직은 다음 가정에서 출발한다.
+
+> 가격은 수요와 공급에 의해 결정된다.  
+> 호가창은 각 가격대별 수요와 공급을 실시간으로 보여주는 가장 상세한 데이터다.  
+> 따라서 현재 호가창의 수요·공급 불균형을 분석하면, 그 불균형이 해소되었을 때 도달할 단기 균형가격을 역산할 수 있다.
+
+즉, 현재의 `expect_price`는 단순한 기술적 지표가 아니라 **현재 시점의 호가 불균형이 안정되었을 때 도달할 가능성이 있는 단기 균형가격**으로 본다.
+
+### 현재 한계
+
+현재 모델은 매수 판단 시점의 **단일 호가 스냅샷**만 사용한다.
+
+따라서 이후에 새로 들어오는 주문, 취소되는 주문, 갑작스러운 시장가 주문, 참여자 심리 변화는 계산할 수 없다.  
+이 정보들은 매수 시점에는 원천적으로 알 수 없는 미래 정보다.
+
+그러므로 일부 손실 거래는 현재 모델의 오류라기보다, 미래 주문 흐름을 알 수 없기 때문에 발생하는 불가피한 결과로 본다.
+
+### 향후 검증 항목
+
+충분한 실거래 데이터가 쌓인 뒤, 기존 DB와 로그만 이용해서 아래 항목을 검증한다.
+
+- 예상수익률과 실제 실현수익률의 상관관계
+- 예상가와 실제 도달 최고가의 일치도
+- 예상수익률 구간별 목표가 도달 확률
+- 예상수익률 구간별 평균 실현수익률
+- 예상가 또는 목표가까지 도달하는 데 걸린 평균 시간
+- 호가 불균형이 클수록 도달 시간이 길어지는지 여부
+- `0.6%`, `0.7%`, `0.8%`, `0.9%` 기준별 손익비와 거래 수 차이
+
+### 운영 원칙
+
+당장은 기록 구조를 추가로 복잡하게 만들지 않는다.
+
+현재처럼 `market_traces`, `signals`, `orders`, `fills`, `account_traces`를 충실히 남기고, 분석은 이후 별도 백테스트/리포트 스크립트에서 수행한다.
+
+현재 단계의 목표는 로직을 더 복잡하게 만드는 것이 아니라, **호가 기반 예상가 모델이 실제 예측력을 가지는지 충분한 표본으로 검증하는 것**이다.
