@@ -1201,7 +1201,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Replay Daily_bot market_traces from bot.sqlite3.")
     parser.add_argument("--db", default="bot.sqlite3")
     parser.add_argument("--logs-dir", default="")
-    parser.add_argument("--min-expected-return", type=float, default=0.7)
+    parser.add_argument("--min-expected-return", type=float, default=0.71)
     parser.add_argument("--max-spread", type=float, default=0.0)
     parser.add_argument("--min-prev-day-change", type=float, default=0.0)
     parser.add_argument("--max-prev-day-change", type=float, default=0.0)
