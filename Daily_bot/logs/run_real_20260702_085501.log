@@ -1,0 +1,22 @@
+﻿Initial account value estimate: 999715
+Universe warm-up completed. prev_close_count=235 session_capital_basis=999715 session_slot_count=3 slot_budget_per_stock=333238 position_limit=3
+FILL BUY 071970 qty=5 price=65400 filled_at=2026-07-02T09:31:18 source=wait_buy_filled order_id=0167597
+Submitting limit sell for 071970: target_price=66400 stop_loss_price=0 decision_fill_price=65400 raw_fill={'rows': [{'ord_no': '0167597', 'stk_nm': 'HD현대마린엔진', 'io_tp_nm': '+매수', 'ord_pric': '65400', 'ord_qty': '5', 'cntr_pric': '65400', 'cntr_qty': '5', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093118', 'stk_cd': '071970', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0167597', 'stk_nm': 'HD현대마린엔진', 'io_tp_nm': '+매수', 'ord_pric': '65400', 'ord_qty': '5', 'cntr_pric': '65400', 'cntr_qty': '5', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093118', 'stk_cd': '071970', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL BUY 014680 qty=1 price=278500 filled_at=2026-07-02T09:31:29 source=wait_buy_filled order_id=0167930
+Submitting limit sell for 014680: target_price=283000 stop_loss_price=0 decision_fill_price=278500 raw_fill={'rows': [{'ord_no': '0167930', 'stk_nm': '한솔케미칼', 'io_tp_nm': '+매수', 'ord_pric': '279000', 'ord_qty': '1', 'cntr_pric': '278500', 'cntr_qty': '1', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093129', 'stk_cd': '014680', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0167930', 'stk_nm': '한솔케미칼', 'io_tp_nm': '+매수', 'ord_pric': '279000', 'ord_qty': '1', 'cntr_pric': '278500', 'cntr_qty': '1', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093129', 'stk_cd': '014680', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL SELL 071970 qty=5 price=66400 filled_at=2026-07-02T09:31:18 source=poll order_id=0167608
+FILL SELL 014680 qty=1 price=283000 filled_at=2026-07-02T09:31:30 source=poll order_id=0167942
+Planned 1 affordable targets out of desired 3 due to cash constraints.
+FILL BUY 483650 qty=1 price=241500 filled_at=2026-07-02T10:26:16 source=wait_buy_filled order_id=0253919
+Submitting limit sell for 483650: target_price=244000 stop_loss_price=0 decision_fill_price=241500 raw_fill={'rows': [{'ord_no': '0253919', 'stk_nm': '달바글로벌', 'io_tp_nm': '+매수', 'ord_pric': '242000', 'ord_qty': '1', 'cntr_pric': '241500', 'cntr_qty': '1', 'oso_qty': '0', 'tdy_trde_cmsn': '30', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '102616', 'stk_cd': '483650', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0253919', 'stk_nm': '달바글로벌', 'io_tp_nm': '+매수', 'ord_pric': '242000', 'ord_qty': '1', 'cntr_pric': '241500', 'cntr_qty': '1', 'oso_qty': '0', 'tdy_trde_cmsn': '30', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '102616', 'stk_cd': '483650', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL SELL 483650 qty=1 price=244000 filled_at=2026-07-02T10:26:16 source=poll order_id=0253936
+Force sell completed. Waiting for end-of-day reconciliation.
+FILL BUY 071970 qty=5 price=65400 filled_at=2026-07-02T09:31:18 source=eod_reconciliation order_id=0167597
+FILL SELL 071970 qty=5 price=66400 filled_at=2026-07-02T09:31:18 source=eod_reconciliation order_id=0167608
+FILL BUY 014680 qty=1 price=278500 filled_at=2026-07-02T09:31:29 source=eod_reconciliation order_id=0167930
+FILL SELL 014680 qty=1 price=283000 filled_at=2026-07-02T09:31:30 source=eod_reconciliation order_id=0167942
+FILL BUY 483650 qty=1 price=241500 filled_at=2026-07-02T10:26:16 source=eod_reconciliation order_id=0253919
+FILL SELL 483650 qty=1 price=244000 filled_at=2026-07-02T10:26:16 source=eod_reconciliation order_id=0253936
+End-of-day reconciliation completed: broker_fills=6 updated=6
+C:\Users\bigla\OneDrive\Documents\GIT\StockAutoTradingBot\Daily_bot\strategy\universe.py:142: UserWarning: Daily universe refresh failed; falling back to local CSV/cache. reason=FinanceDataReader failed to load source=KOSPI200
+  warnings.warn(
