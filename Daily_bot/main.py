@@ -291,7 +291,7 @@ def _min_sell_price_above_buy(buy_price: int) -> int:
 
 
 def _safe_target_sell_price(candidate: Candidate, tick_offset: int, buy_reference_price: int) -> int:
-    target_price = calc_target_sell_price(candidate.expect_price, tick_offset)
+    target_price = int(calc_target_sell_price(candidate.expect_price, tick_offset))
     min_sell_price = _min_sell_price_above_buy(buy_reference_price)
     if min_sell_price > 0 and target_price < min_sell_price:
         print(

@@ -26,7 +26,7 @@ from Daily_bot.storage.audit_csv import (
 from Daily_bot.storage.db import DAILY_REV_FIELDNAMES
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import min_expected_return_with_spread
-from Daily_bot.utils import ceil_tick_count, count_ticks_between_prices, get_tick_size, move_price_by_ticks, round_to_tick
+from Daily_bot.utils import ceil_tick_count, count_ticks_between_prices, get_tick_size, load_yaml, move_price_by_ticks, round_to_tick
 
 
 @dataclass
@@ -1197,39 +1197,76 @@ def write_backtest_reports(
     }
 
 
+def _load_backtest_default_config(config_path: str | Path) -> dict:
+    cfg = load_yaml(config_path)
+    return cfg if isinstance(cfg, dict) else {}
+
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Replay Daily_bot market_traces from bot.sqlite3.")
+    config_parser = argparse.ArgumentParser(add_help=False)
+    config_parser.add_argument("--config", default=str(ROOT.parent / "config/settings.yaml"))
+    config_args, remaining_argv = config_parser.parse_known_args()
+    cfg = _load_backtest_default_config(config_args.config)
+    market_cfg = cfg.get("market", {})
+    strategy_cfg = cfg.get("strategy", {})
+    risk_cfg = cfg.get("risk", {})
+    trend_cfg = cfg.get("trend_filter", {})
+
+    parser = argparse.ArgumentParser(
+        description="Replay Daily_bot market_traces from bot.sqlite3.",
+        parents=[config_parser],
+    )
     parser.add_argument("--db", default="bot.sqlite3")
     parser.add_argument("--logs-dir", default="")
-    parser.add_argument("--min-expected-return", type=float, default=0.71)
-    parser.add_argument("--max-spread", type=float, default=0.0)
-    parser.add_argument("--min-prev-day-change", type=float, default=0.0)
-    parser.add_argument("--max-prev-day-change", type=float, default=0.0)
+    parser.add_argument("--min-expected-return", type=float, default=float(strategy_cfg.get("min_expected_return_percent", 0.71) or 0.71))
+    parser.add_argument("--max-spread", type=float, default=float(strategy_cfg.get("max_spread_percent", 0.0) or 0.0))
+    parser.add_argument("--min-prev-day-change", type=float, default=float(strategy_cfg.get("min_prev_day_change_percent", 0.0) or 0.0))
+    parser.add_argument("--max-prev-day-change", type=float, default=float(strategy_cfg.get("max_prev_day_change_percent", 0.0) or 0.0))
     parser.add_argument("--top-n", type=int, default=0)
-    parser.add_argument("--top-ratio", type=float, default=1.0)
+    parser.add_argument("--top-ratio", type=float, default=float(strategy_cfg.get("top_ratio", 1.0) or 1.0))
     parser.add_argument("--take-profit", type=float, default=0.4)
-    parser.add_argument("--stop-loss", type=float, default=4.5)
-    parser.add_argument("--stop-loss-tick-count", type=int, default=0)
-    parser.add_argument("--stop-loss-tick-multiplier", type=float, default=0.0)
-    parser.add_argument("--sell-tick-offset", type=int, default=1)
-    parser.add_argument("--start-buy-time", default="09:30")
-    parser.add_argument("--stop-buy-time", default="11:30")
-    parser.add_argument("--force-sell-time", default="15:00")
+    parser.add_argument("--stop-loss", type=float, default=float(risk_cfg.get("stop_loss_percent", 4.5) or 4.5))
+    parser.add_argument("--stop-loss-tick-count", type=int, default=int(risk_cfg.get("stop_loss_tick_count", 0) or 0))
+    parser.add_argument("--stop-loss-tick-multiplier", type=float, default=float(risk_cfg.get("stop_loss_tick_multiplier", 0.0) or 0.0))
+    parser.add_argument("--sell-tick-offset", type=int, default=int(strategy_cfg.get("sell_tick_offset", 1) or 1))
+    parser.add_argument("--start-buy-time", default=str(market_cfg.get("start_buy_time", "09:30") or "09:30"))
+    parser.add_argument("--stop-buy-time", default=str(market_cfg.get("stop_buy_time", "11:30") or "11:30"))
+    parser.add_argument("--force-sell-time", default=str(market_cfg.get("force_sell_time", "15:00") or "15:00"))
     parser.add_argument("--max-hold-seconds-before-exit", type=int, default=0)
-    parser.add_argument("--spread-expected-return-multiplier", type=float, default=0.0)
-    parser.add_argument("--max-orderbook-ask-depth-ratio", type=float, default=0.0)
+    parser.add_argument(
+        "--spread-expected-return-multiplier",
+        type=float,
+        default=float(strategy_cfg.get("spread_expected_return_multiplier", 0.0) or 0.0),
+    )
+    parser.add_argument(
+        "--max-orderbook-ask-depth-ratio",
+        type=float,
+        default=float(risk_cfg.get("max_orderbook_ask_depth_ratio", 0.0) or 0.0),
+    )
     parser.add_argument("--missing-ask-depth-policy", choices=["ignore", "skip"], default="ignore")
-    parser.add_argument("--trend-filter-enabled", action="store_true")
+    parser.add_argument("--trend-filter-enabled", dest="trend_filter_enabled", action="store_true")
+    parser.add_argument("--trend-filter-disabled", dest="trend_filter_enabled", action="store_false")
+    parser.set_defaults(trend_filter_enabled=bool(trend_cfg.get("enabled", False)))
     parser.add_argument("--starting-capital-krw", type=int, default=1_000_000)
-    parser.add_argument("--min-slot-count", type=int, default=1)
-    parser.add_argument("--max-slot-count", type=int, default=0)
-    parser.add_argument("--slot-budget-unit-krw", type=int, default=0)
-    parser.add_argument("--max-budget-per-stock-krw", type=int, default=0)
-    parser.add_argument("--max-position-count", type=int, default=0)
-    parser.add_argument("--target-budget-ratio-per-stock", type=float, default=0.0)
+    parser.add_argument("--min-slot-count", type=int, default=int(risk_cfg.get("min_slot_count", 1) or 1))
+    parser.add_argument("--max-slot-count", type=int, default=int(risk_cfg.get("max_slot_count", 0) or 0))
+    parser.add_argument("--slot-budget-unit-krw", type=int, default=int(risk_cfg.get("slot_budget_unit_krw", 0) or 0))
+    parser.add_argument("--max-budget-per-stock-krw", type=int, default=int(risk_cfg.get("max_budget_per_stock_krw", 0) or 0))
+    parser.add_argument(
+        "--max-position-count",
+        type=int,
+        default=int(risk_cfg.get("max_position_count", strategy_cfg.get("max_buy_count", 0)) or 0),
+    )
+    parser.add_argument(
+        "--target-budget-ratio-per-stock",
+        type=float,
+        default=float(risk_cfg.get("target_budget_ratio_per_stock", 0.0) or 0.0),
+    )
     parser.add_argument("--out", default="Daily_bot/backtest/results/backtest_replay.csv")
-    parser.add_argument("--ignore-selected-signals", action="store_true")
-    return parser.parse_args()
+    parser.add_argument("--use-selected-signals", dest="use_selected_signals", action="store_true")
+    parser.add_argument("--ignore-selected-signals", dest="use_selected_signals", action="store_false")
+    parser.set_defaults(use_selected_signals=False)
+    return parser.parse_args(remaining_argv)
 
 
 if __name__ == "__main__":
@@ -1253,7 +1290,7 @@ if __name__ == "__main__":
         stop_loss_percent=args.stop_loss,
         stop_loss_tick_count=args.stop_loss_tick_count,
         stop_loss_tick_multiplier=args.stop_loss_tick_multiplier,
-        use_selected_signals=not args.ignore_selected_signals,
+        use_selected_signals=args.use_selected_signals,
         take_profit_percent=args.take_profit,
         top_ratio=args.top_ratio,
         sell_tick_offset=args.sell_tick_offset,

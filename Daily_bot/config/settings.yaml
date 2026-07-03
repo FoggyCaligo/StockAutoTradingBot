@@ -20,7 +20,7 @@ trend_filter:
 strategy:
   top_ratio: 1.0
   max_buy_count: 3
-  min_expected_return_percent: 0.71
+  min_expected_return_percent: 0.7
   max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
   min_prev_day_change_percent: 0.0

@@ -5,6 +5,7 @@ from Daily_bot.backtest import replay_db_builder
 from Daily_bot.backtest.replay_market_traces import (
     load_trend_ok_tickers_by_day,
     load_selected_signals,
+    parse_args,
     pick_entries,
     _resolve_stop_loss_price,
     run_backtest,
@@ -83,6 +84,70 @@ def test_load_selected_signals_reads_selected_rows(tmp_path):
 
     assert len(rows) == 1
     assert rows[0].ticker == "AAA"
+
+
+def test_parse_args_defaults_to_live_config_values(tmp_path, monkeypatch):
+    config_path = tmp_path / "settings.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "market:",
+                '  start_buy_time: "09:31"',
+                '  stop_buy_time: "11:29"',
+                '  force_sell_time: "14:59"',
+                "trend_filter:",
+                "  enabled: true",
+                "strategy:",
+                "  top_ratio: 0.5",
+                "  max_buy_count: 7",
+                "  min_expected_return_percent: 0.9",
+                "  max_spread_percent: 0.4",
+                "  spread_expected_return_multiplier: 1.2",
+                "  min_prev_day_change_percent: -1.5",
+                "  max_prev_day_change_percent: 12.5",
+                "  sell_tick_offset: 2",
+                "risk:",
+                "  max_position_count: 6",
+                "  min_slot_count: 4",
+                "  slot_budget_unit_krw: 7000000",
+                "  max_slot_count: 8",
+                "  target_budget_ratio_per_stock: 0.3",
+                "  max_budget_per_stock_krw: 9000000",
+                "  max_orderbook_ask_depth_ratio: 0.25",
+                "  stop_loss_tick_count: 3",
+                "  stop_loss_tick_multiplier: 1.5",
+                "  stop_loss_percent: 3.7",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("sys.argv", ["replay_market_traces.py", "--config", str(config_path)])
+
+    args = parse_args()
+
+    assert args.min_expected_return == 0.9
+    assert args.max_spread == 0.4
+    assert args.min_prev_day_change == -1.5
+    assert args.max_prev_day_change == 12.5
+    assert args.top_ratio == 0.5
+    assert args.stop_loss == 3.7
+    assert args.stop_loss_tick_count == 3
+    assert args.stop_loss_tick_multiplier == 1.5
+    assert args.sell_tick_offset == 2
+    assert args.start_buy_time == "09:31"
+    assert args.stop_buy_time == "11:29"
+    assert args.force_sell_time == "14:59"
+    assert args.max_orderbook_ask_depth_ratio == 0.25
+    assert args.trend_filter_enabled is True
+    assert args.min_slot_count == 4
+    assert args.max_slot_count == 8
+    assert args.slot_budget_unit_krw == 7_000_000
+    assert args.max_budget_per_stock_krw == 9_000_000
+    assert args.max_position_count == 6
+    assert args.target_budget_ratio_per_stock == 0.3
+    assert args.use_selected_signals is False
 
 
 def test_load_trend_ok_tickers_by_day_reads_daily_reference_logs(tmp_path):
