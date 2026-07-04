@@ -21,6 +21,7 @@ strategy:
   top_ratio: 1.0
   max_buy_count: 3
   min_expected_return_percent: 0.7
+  min_expected_return_fallback_percent: 0.4
   max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
   min_prev_day_change_percent: 0.0

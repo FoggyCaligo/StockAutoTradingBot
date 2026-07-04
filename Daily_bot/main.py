@@ -266,6 +266,54 @@ def scan_and_rank(
     return calculated
 
 
+def filter_candidates_for_entry(
+    calculated: list[Candidate],
+    cfg: dict,
+    previous_scan_prices: dict[str, int] | None = None,
+    active_tickers: set[str] | None = None,
+) -> tuple[list[Candidate], float]:
+    active_ticker_keys = active_tickers or set()
+    prev_scan_prices = previous_scan_prices or {}
+    strategy_cfg = cfg["strategy"]
+    primary_threshold = float(strategy_cfg["min_expected_return_percent"])
+    fallback_threshold = float(strategy_cfg.get("min_expected_return_fallback_percent", 0.0) or 0.0)
+
+    top = get_candidates_top(calculated, strategy_cfg["top_ratio"])
+
+    def _apply_threshold(min_expected_return_percent: float) -> list[Candidate]:
+        filtered_candidates = final_filter(
+            top,
+            min_expected_return_percent,
+            strategy_cfg["sell_tick_offset"],
+            strategy_cfg.get("max_spread_percent", 0.7),
+            strategy_cfg.get("min_prev_day_change_percent", 0.0),
+            strategy_cfg.get("max_prev_day_change_percent", 15.0),
+            strategy_cfg.get("spread_expected_return_multiplier", 0.0),
+        )
+        filtered_candidates = filter_candidates_by_prev_scan_jump(
+            filtered_candidates,
+            prev_scan_prices,
+            strategy_cfg.get("max_intraday_jump_from_prev_scan_percent", 1.0),
+        )
+        return [candidate for candidate in filtered_candidates if _ticker_key(candidate.ticker) not in active_ticker_keys]
+
+    filtered = _apply_threshold(primary_threshold)
+    used_threshold = primary_threshold
+
+    if not filtered and not active_ticker_keys and 0 < fallback_threshold < primary_threshold:
+        fallback_filtered = _apply_threshold(fallback_threshold)
+        if fallback_filtered:
+            print(
+                "No entry candidates at primary expected-return threshold. "
+                f"Retrying with fallback threshold {fallback_threshold:.2f} "
+                f"instead of {primary_threshold:.2f} produced {len(fallback_filtered)} candidates."
+            )
+            filtered = fallback_filtered
+            used_threshold = fallback_threshold
+
+    return filtered, used_threshold
+
+
 def cancel_unfilled_buy(client, buy_order, candidate: Candidate, qty: int, recorder: Recorder) -> None:
     if not buy_order.order_id:
         return
@@ -1408,27 +1456,22 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             print(f"Scan cycle failed: {exc}")
             time.sleep(cfg["strategy"]["scan_interval_seconds"])
             continue
-        top = get_candidates_top(calculated, cfg["strategy"]["top_ratio"])
-        filtered = final_filter(
-            top,
-            cfg["strategy"]["min_expected_return_percent"],
-            cfg["strategy"]["sell_tick_offset"],
-            cfg["strategy"].get("max_spread_percent", 0.7),
-            cfg["strategy"].get("min_prev_day_change_percent", 0.0),
-            cfg["strategy"].get("max_prev_day_change_percent", 15.0),
-            cfg["strategy"].get("spread_expected_return_multiplier", 0.0),
-        )
-        filtered = filter_candidates_by_prev_scan_jump(
-            filtered,
-            previous_scan_prices,
-            cfg["strategy"].get("max_intraday_jump_from_prev_scan_percent", 1.0),
+        filtered, used_expected_return_threshold = filter_candidates_for_entry(
+            calculated,
+            cfg,
+            previous_scan_prices=previous_scan_prices,
+            active_tickers=active_tickers,
         )
         previous_scan_prices = {
             _ticker_key(candidate.ticker): int(candidate.price)
             for candidate in calculated
             if int(candidate.price or 0) > 0
         }
-        filtered = [candidate for candidate in filtered if _ticker_key(candidate.ticker) not in active_tickers]
+        if filtered and used_expected_return_threshold != float(cfg["strategy"]["min_expected_return_percent"]):
+            print(
+                "Using fallback expected-return threshold after prev-scan jump filter: "
+                f"{used_expected_return_threshold:.2f} candidates={len(filtered)}"
+            )
         for candidate in filtered:
             watchlist[_ticker_key(candidate.ticker)] = candidate
         empty_slots = resolve_empty_slots(session_position_limit, len(active_tickers), len(filtered))

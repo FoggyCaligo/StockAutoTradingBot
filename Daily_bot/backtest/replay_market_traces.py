@@ -524,6 +524,52 @@ def _pick_candidates_for_timestamp(
     return candidates
 
 
+def _pick_candidates_for_entry_with_fallback(
+    rows: list[TraceRow],
+    min_expected_return_percent: float,
+    fallback_min_expected_return_percent: float,
+    max_spread_percent: float,
+    top_ratio: float,
+    spread_expected_return_multiplier: float,
+    min_prev_day_change_percent: float,
+    max_prev_day_change_percent: float,
+    active_tickers: set[str],
+    allowed_tickers: set[str] | None,
+    trend_allowed_tickers: set[str] | None,
+) -> tuple[list[TraceRow], float]:
+    candidates = _pick_candidates_for_timestamp(
+        rows=rows,
+        min_expected_return_percent=min_expected_return_percent,
+        max_spread_percent=max_spread_percent,
+        top_ratio=top_ratio,
+        spread_expected_return_multiplier=spread_expected_return_multiplier,
+        min_prev_day_change_percent=min_prev_day_change_percent,
+        max_prev_day_change_percent=max_prev_day_change_percent,
+        active_tickers=active_tickers,
+        allowed_tickers=allowed_tickers,
+        trend_allowed_tickers=trend_allowed_tickers,
+    )
+    if candidates:
+        return candidates, min_expected_return_percent
+    if active_tickers or fallback_min_expected_return_percent <= 0 or fallback_min_expected_return_percent >= min_expected_return_percent:
+        return candidates, min_expected_return_percent
+    fallback_candidates = _pick_candidates_for_timestamp(
+        rows=rows,
+        min_expected_return_percent=fallback_min_expected_return_percent,
+        max_spread_percent=max_spread_percent,
+        top_ratio=top_ratio,
+        spread_expected_return_multiplier=spread_expected_return_multiplier,
+        min_prev_day_change_percent=min_prev_day_change_percent,
+        max_prev_day_change_percent=max_prev_day_change_percent,
+        active_tickers=active_tickers,
+        allowed_tickers=allowed_tickers,
+        trend_allowed_tickers=trend_allowed_tickers,
+    )
+    return fallback_candidates, (
+        fallback_min_expected_return_percent if fallback_candidates else min_expected_return_percent
+    )
+
+
 def summarize_ask_depth_coverage(
     trades: list[BacktestTrade],
     traces: list[TraceRow],
@@ -712,6 +758,7 @@ def run_backtest(
     force_sell_time: str = "15:00",
     max_hold_seconds_before_exit: int = 0,
     spread_expected_return_multiplier: float = 0.0,
+    fallback_min_expected_return_percent: float = 0.0,
     max_orderbook_ask_depth_ratio: float = 0.0,
     missing_ask_depth_policy: str = "ignore",
     trend_filter_enabled: bool = False,
@@ -872,9 +919,10 @@ def run_backtest(
             if planned_buy_count <= 0:
                 continue
 
-            candidates = _pick_candidates_for_timestamp(
+            candidates, used_threshold = _pick_candidates_for_entry_with_fallback(
                 rows_at_time,
                 min_expected_return_percent=min_expected_return_percent,
+                fallback_min_expected_return_percent=fallback_min_expected_return_percent,
                 max_spread_percent=max_spread_percent,
                 top_ratio=top_ratio,
                 spread_expected_return_multiplier=spread_expected_return_multiplier,
@@ -884,6 +932,12 @@ def run_backtest(
                 allowed_tickers=allowed_tickers,
                 trend_allowed_tickers=trend_allowed_tickers,
             )
+            if candidates and used_threshold != min_expected_return_percent:
+                print(
+                    f"Replay fallback threshold used for {session_date} {created_at}: "
+                    f"{used_threshold:.2f} instead of {min_expected_return_percent:.2f}; "
+                    f"candidates={len(candidates)}"
+                )
 
             for candidate in candidates[:planned_buy_count]:
                 entry_price = candidate.current_price or candidate.price
@@ -1219,6 +1273,11 @@ def parse_args():
     parser.add_argument("--db", default="bot.sqlite3")
     parser.add_argument("--logs-dir", default="")
     parser.add_argument("--min-expected-return", type=float, default=float(strategy_cfg.get("min_expected_return_percent", 0.71) or 0.71))
+    parser.add_argument(
+        "--fallback-min-expected-return",
+        type=float,
+        default=float(strategy_cfg.get("min_expected_return_fallback_percent", 0.0) or 0.0),
+    )
     parser.add_argument("--max-spread", type=float, default=float(strategy_cfg.get("max_spread_percent", 0.0) or 0.0))
     parser.add_argument("--min-prev-day-change", type=float, default=float(strategy_cfg.get("min_prev_day_change_percent", 0.0) or 0.0))
     parser.add_argument("--max-prev-day-change", type=float, default=float(strategy_cfg.get("max_prev_day_change_percent", 0.0) or 0.0))
@@ -1307,6 +1366,7 @@ if __name__ == "__main__":
         force_sell_time=args.force_sell_time,
         max_hold_seconds_before_exit=args.max_hold_seconds_before_exit,
         spread_expected_return_multiplier=args.spread_expected_return_multiplier,
+        fallback_min_expected_return_percent=args.fallback_min_expected_return,
         max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
         missing_ask_depth_policy=args.missing_ask_depth_policy,
         trend_filter_enabled=args.trend_filter_enabled,

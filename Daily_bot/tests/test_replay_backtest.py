@@ -101,6 +101,7 @@ def test_parse_args_defaults_to_live_config_values(tmp_path, monkeypatch):
                 "  top_ratio: 0.5",
                 "  max_buy_count: 7",
                 "  min_expected_return_percent: 0.9",
+                "  min_expected_return_fallback_percent: 0.4",
                 "  max_spread_percent: 0.4",
                 "  spread_expected_return_multiplier: 1.2",
                 "  min_prev_day_change_percent: -1.5",
@@ -128,6 +129,7 @@ def test_parse_args_defaults_to_live_config_values(tmp_path, monkeypatch):
     args = parse_args()
 
     assert args.min_expected_return == 0.9
+    assert args.fallback_min_expected_return == 0.4
     assert args.max_spread == 0.4
     assert args.min_prev_day_change == -1.5
     assert args.max_prev_day_change == 12.5
@@ -208,6 +210,77 @@ def test_run_backtest_can_ignore_selected_signals_and_fall_back_to_top_ranked(tm
     assert len(trades) == 2
     assert trades[0].ticker == "BBB"
     assert trades[1].ticker == "AAA"
+
+
+def test_run_backtest_uses_fallback_expected_return_when_flat_batch_has_no_primary_candidates(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 0.5, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 101, 0.5, 0.2, "{}", "2026-06-02 09:31:00"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.6,
+        max_spread_percent=0.7,
+        top_n_per_day=1,
+        stop_loss_percent=6.0,
+        use_selected_signals=False,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=1,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+        fallback_min_expected_return_percent=0.4,
+    )
+
+    assert len(trades) == 1
+    assert trades[0].ticker == "AAA"
 
 
 def test_run_backtest_applies_trend_filter_from_daily_reference_membership(tmp_path):
