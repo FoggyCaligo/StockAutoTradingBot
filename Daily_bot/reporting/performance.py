@@ -419,3 +419,60 @@ def summarize_daily_revenue(
         total_return_percent_on_starting_capital=total_return_percent_on_starting_capital,
         traded_tickers=traded_tickers,
     )
+
+
+def summarize_overall_performance(db_path: str) -> dict[str, Any]:
+    """
+    Summarize overall performance across all trading sessions.
+    """
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    
+    # Get all distinct session dates
+    session_dates = cur.execute(
+        "SELECT DISTINCT substr(filled_at, 1, 10) as session_date FROM fills ORDER BY session_date"
+    ).fetchall()
+    
+    total_trades = []
+    total_gross_pnl = 0
+    total_net_pnl = 0
+    total_win_count = 0
+    total_loss_count = 0
+    total_breakeven_count = 0
+    
+    for date_row in session_dates:
+        session_date = date_row["session_date"]
+        summary = summarize_realized_performance(db_path, session_date=session_date)
+        
+        total_trades.extend(summary.trades)
+        total_gross_pnl += summary.gross_pnl_krw
+        total_net_pnl += sum(trade.net_pnl_krw for trade in summary.trades)
+        total_win_count += summary.wins
+        total_loss_count += summary.losses
+        total_breakeven_count += summary.breakeven
+    
+    # Calculate overall metrics
+    total_trades_count = len(total_trades)
+    win_rate = (total_win_count / total_trades_count * 100) if total_trades_count > 0 else 0.0
+    avg_return_per_trade = (total_net_pnl / total_trades_count) if total_trades_count > 0 else 0.0
+    
+    # Get the most traded tickers
+    ticker_counts = defaultdict(int)
+    for trade in total_trades:
+        ticker_counts[trade.ticker] += 1
+    
+    most_traded_tickers = sorted(ticker_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    return {
+        "total_trades": total_trades_count,
+        "total_gross_pnl_krw": total_gross_pnl,
+        "total_net_pnl_krw": total_net_pnl,
+        "win_rate_percent": win_rate,
+        "avg_return_per_trade_krw": avg_return_per_trade,
+        "win_count": total_win_count,
+        "loss_count": total_loss_count,
+        "breakeven_count": total_breakeven_count,
+        "most_traded_tickers": most_traded_tickers,
+        "session_dates": [date_row["session_date"] for date_row in session_dates]
+    }
