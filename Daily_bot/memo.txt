@@ -18,6 +18,10 @@
 
 
 
+cd /mnt/c/Users/bigla/git/stockautotradingbot/daily_bot
+source .aider-venv/bin/activate
+aider --model ollama_chat/qwen3-coder:30b --map-tokens 1024
+
 
 
 

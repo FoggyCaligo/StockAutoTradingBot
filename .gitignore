@@ -5,3 +5,4 @@ bot.sqlite3
 Daily_bot/bot.sqlite3
 logs/*.tmp
 Daily_bot/logs/*.tmp
+.aider*
