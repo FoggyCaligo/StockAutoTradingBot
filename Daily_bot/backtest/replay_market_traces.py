@@ -1051,6 +1051,7 @@ def run_backtest(
     slot_budget_unit_krw: int = 0,
     max_budget_per_stock_krw: int = 0,
     max_position_count: int = 0,
+    max_buy_count: int = 0,
     target_budget_ratio_per_stock: float = 0.0,
     start_buy_time: str = "09:30",
     stop_buy_time: str = "13:00",
@@ -1284,6 +1285,8 @@ def run_backtest(
                 continue
             affordable_slots = available_cash // session_plan.slot_budget_per_stock if session_plan.slot_budget_per_stock > 0 else 0
             planned_buy_count = min(available_slots, affordable_slots)
+            if max_buy_count > 0:
+                planned_buy_count = min(planned_buy_count, max_buy_count)
             if planned_buy_count <= 0:
                 previous_scan_prices = {
                     _ticker_key(row.ticker): int((row.current_price or row.price) or 0)
@@ -1735,6 +1738,7 @@ def parse_args():
         type=int,
         default=int(risk_cfg.get("max_position_count", strategy_cfg.get("max_buy_count", 0)) or 0),
     )
+    parser.add_argument("--max-buy-count", type=int, default=int(strategy_cfg.get("max_buy_count", 0) or 0))
     parser.add_argument(
         "--target-budget-ratio-per-stock",
         type=float,
@@ -1825,6 +1829,7 @@ if __name__ == "__main__":
         slot_budget_unit_krw=args.slot_budget_unit_krw,
         max_budget_per_stock_krw=args.max_budget_per_stock_krw,
         max_position_count=args.max_position_count,
+        max_buy_count=args.max_buy_count,
         target_budget_ratio_per_stock=args.target_budget_ratio_per_stock,
         start_buy_time=args.start_buy_time,
         stop_buy_time=args.stop_buy_time,

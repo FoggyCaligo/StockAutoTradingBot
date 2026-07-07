@@ -233,6 +233,7 @@ def test_parse_args_defaults_to_live_config_values(tmp_path, monkeypatch):
     assert args.slot_budget_unit_krw == 7_000_000
     assert args.max_budget_per_stock_krw == 9_000_000
     assert args.max_position_count == 6
+    assert args.max_buy_count == 7
     assert args.target_budget_ratio_per_stock == 0.3
     assert args.use_selected_signals is False
     assert args.use_actual_fill_exits is False
@@ -686,6 +687,85 @@ def test_run_backtest_replays_dynamic_reentry_with_slot_limit(tmp_path):
 
     assert len(trades) == 2
     assert [trade.ticker for trade in trades] == ["BBB", "CCC"]
+    assert all(trade.exit_reason == "take_profit" for trade in trades)
+
+
+def test_run_backtest_limits_each_scan_batch_to_configured_max_buy_count(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "scan_candidate", "BBB", 0, "", 100, 100, 99, 101, 102, 2.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "scan_candidate", "CCC", 0, "", 100, 100, 99, 101, 103, 3.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "scan_candidate", "DDD", 0, "", 100, 100, 99, 101, 104, 4.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "BBB", 0, "", 100, 102, 101, 103, 102, 2.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "watchlist", "CCC", 0, "", 100, 103, 102, 104, 103, 3.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "watchlist", "DDD", 0, "", 100, 104, 103, 105, 104, 4.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=0,
+        stop_loss_percent=1.0,
+        use_selected_signals=False,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=4,
+        max_slot_count=4,
+        slot_budget_unit_krw=250_000,
+        max_budget_per_stock_krw=250_000,
+        max_position_count=4,
+        max_buy_count=3,
+    )
+
+    assert len(trades) == 3
+    assert [trade.ticker for trade in trades] == ["DDD", "CCC", "BBB"]
     assert all(trade.exit_reason == "take_profit" for trade in trades)
 
 
