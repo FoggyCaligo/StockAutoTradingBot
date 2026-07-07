@@ -218,8 +218,10 @@ def resolve_empty_slots(max_position_count: int, active_count: int, candidate_co
     return max(0, max_position_count - active_count)
 
 
-def should_wait_for_full_batch_exit(active_count: int) -> bool:
-    # Once any slot is occupied, block new entries until the whole batch is flat.
+def should_wait_for_full_batch_exit(active_count: int, allow_refill_empty_slots: bool = True) -> bool:
+    # When refill is disabled, block new entries until the whole batch is flat.
+    if allow_refill_empty_slots:
+        return False
     return active_count > 0
 
 
@@ -1463,7 +1465,10 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             time.sleep(active_poll_seconds if active_tickers else 5)
             continue
 
-        if should_wait_for_full_batch_exit(len(active_tickers)):
+        if should_wait_for_full_batch_exit(
+            len(active_tickers),
+            allow_refill_empty_slots=bool(cfg["strategy"].get("allow_refill_empty_slots", True)),
+        ):
             time.sleep(active_poll_seconds if active_tickers else 5)
             continue
 

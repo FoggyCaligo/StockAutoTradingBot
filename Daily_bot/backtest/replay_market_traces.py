@@ -110,6 +110,18 @@ class ReplayPosition:
     entry_price: int
     target_price: int
     stop_loss_price: float
+    actual_exit_override: "ActualExitOverride | None" = None
+
+
+@dataclass
+class ActualExitOverride:
+    session_date: str
+    ticker: str
+    buy_filled_at: str
+    entry_price: int
+    quantity: int
+    final_exit_time: str
+    weighted_exit_price: int
 
 
 @dataclass
@@ -284,6 +296,210 @@ def load_selected_signals(db_path: Path) -> list[SelectedSignal]:
             )
         )
     return signals
+
+
+def _load_buy_fill_rows(logs_dir: Path | None) -> list[dict[str, str]]:
+    if logs_dir is None or not logs_dir.exists():
+        return []
+
+    fill_rows: list[dict[str, str]] = []
+    fill_paths = sorted(logs_dir.glob("fills_*.csv"))
+    for fill_path in fill_paths:
+        with fill_path.open("r", newline="", encoding="utf-8-sig") as fp:
+            reader = csv.DictReader(fp)
+            for row in reader:
+                side = str(row.get("side") or "").strip().upper()
+                ticker = str(row.get("ticker") or "").strip()
+                filled_at = str(row.get("filled_at") or "").strip().replace("T", " ")
+                if side != "BUY" or not ticker or not filled_at:
+                    continue
+                fill_rows.append(
+                    {
+                        "side": side,
+                        "ticker": ticker,
+                        "filled_at": filled_at,
+                        "trade_date": filled_at[:10],
+                    }
+                )
+
+    if fill_rows:
+        return fill_rows
+
+    audit_path = logs_dir / "trade_fills_audit_daily.csv"
+    if not audit_path.exists():
+        return []
+
+    with audit_path.open("r", newline="", encoding="utf-8-sig") as fp:
+        reader = csv.DictReader(fp)
+        for row in reader:
+            side = str(row.get("side") or "").strip().upper()
+            ticker = str(row.get("ticker") or "").strip()
+            filled_at = str(row.get("filled_at") or "").strip().replace("T", " ")
+            trade_date = str(row.get("trade_date") or "").strip()
+            if side != "BUY" or not ticker or not filled_at or not trade_date:
+                continue
+            fill_rows.append(
+                {
+                    "side": side,
+                    "ticker": ticker,
+                    "filled_at": filled_at,
+                    "trade_date": trade_date,
+                }
+            )
+    return fill_rows
+
+
+def load_actual_exit_overrides_from_fills(
+    logs_dir: Path | None,
+) -> dict[tuple[str, str], list[ActualExitOverride]]:
+    if logs_dir is None or not logs_dir.exists():
+        return {}
+
+    fill_events: list[dict[str, str | int]] = []
+    for fill_path in sorted(logs_dir.glob("fills_*.csv")):
+        with fill_path.open("r", newline="", encoding="utf-8-sig") as fp:
+            reader = csv.DictReader(fp)
+            for row in reader:
+                ticker = str(row.get("ticker") or "").strip()
+                side = str(row.get("side") or "").strip().upper()
+                filled_at = str(row.get("filled_at") or "").strip().replace("T", " ")
+                price = _to_int(row.get("price"))
+                quantity = _to_int(row.get("quantity"))
+                if not ticker or side not in {"BUY", "SELL"} or not filled_at or price <= 0 or quantity <= 0:
+                    continue
+                fill_events.append(
+                    {
+                        "session_date": filled_at[:10],
+                        "ticker": ticker,
+                        "side": side,
+                        "filled_at": filled_at,
+                        "price": price,
+                        "quantity": quantity,
+                    }
+                )
+
+    fill_events.sort(key=lambda item: (str(item["filled_at"]), str(item["ticker"]), str(item["side"])))
+
+    open_positions: dict[tuple[str, str], list[dict[str, object]]] = {}
+    overrides: dict[tuple[str, str], list[ActualExitOverride]] = {}
+    for event in fill_events:
+        session_date = str(event["session_date"])
+        ticker = str(event["ticker"])
+        key = (session_date, ticker)
+        if event["side"] == "BUY":
+            open_positions.setdefault(key, []).append(
+                {
+                    "buy_filled_at": str(event["filled_at"]),
+                    "entry_price": int(event["price"]),
+                    "quantity": int(event["quantity"]),
+                    "remaining_quantity": int(event["quantity"]),
+                    "sell_fills": [],
+                }
+            )
+            continue
+
+        pending_positions = open_positions.get(key, [])
+        sell_quantity_remaining = int(event["quantity"])
+        while sell_quantity_remaining > 0 and pending_positions:
+            pending = pending_positions[0]
+            remaining_quantity = int(pending["remaining_quantity"])
+            matched_quantity = min(remaining_quantity, sell_quantity_remaining)
+            pending["sell_fills"].append(
+                {
+                    "filled_at": str(event["filled_at"]),
+                    "price": int(event["price"]),
+                    "quantity": matched_quantity,
+                }
+            )
+            remaining_quantity -= matched_quantity
+            sell_quantity_remaining -= matched_quantity
+            pending["remaining_quantity"] = remaining_quantity
+            if remaining_quantity > 0:
+                break
+
+            sell_fills = list(pending["sell_fills"])
+            total_sold_quantity = sum(int(fill["quantity"]) for fill in sell_fills)
+            weighted_exit_value = sum(int(fill["price"]) * int(fill["quantity"]) for fill in sell_fills)
+            overrides.setdefault(key, []).append(
+                ActualExitOverride(
+                    session_date=session_date,
+                    ticker=ticker,
+                    buy_filled_at=str(pending["buy_filled_at"]),
+                    entry_price=int(pending["entry_price"]),
+                    quantity=int(pending["quantity"]),
+                    final_exit_time=str(sell_fills[-1]["filled_at"]),
+                    weighted_exit_price=int(round(weighted_exit_value / total_sold_quantity)),
+                )
+            )
+            pending_positions.pop(0)
+
+    for key in overrides:
+        overrides[key].sort(key=lambda item: item.buy_filled_at)
+    return overrides
+
+
+def infer_selected_signals_from_fill_audit(
+    db_path: Path,
+    logs_dir: Path | None,
+    max_fill_lag_seconds: int = 180,
+) -> list[SelectedSignal]:
+    fill_rows = _load_buy_fill_rows(logs_dir)
+    if not fill_rows:
+        return []
+
+    traces = load_traces(db_path)
+    scan_rows_by_day_and_ticker: dict[tuple[str, str], list[TraceRow]] = {}
+    for row in traces:
+        if row.phase != "scan_candidate":
+            continue
+        scan_rows_by_day_and_ticker.setdefault((row.session_date, row.ticker), []).append(row)
+
+    for rows in scan_rows_by_day_and_ticker.values():
+        rows.sort(key=lambda item: item.created_at)
+
+    inferred: list[SelectedSignal] = []
+    seen_keys: set[tuple[str, str, str]] = set()
+    for row in fill_rows:
+        ticker = row["ticker"]
+        filled_at = row["filled_at"]
+        trade_date = row["trade_date"]
+        trace_rows = scan_rows_by_day_and_ticker.get((trade_date, ticker))
+        if not trace_rows:
+            continue
+        try:
+            filled_dt = _parse_timestamp(filled_at)
+        except ValueError:
+            continue
+
+        matched_row: TraceRow | None = None
+        for trace_row in trace_rows:
+            try:
+                trace_dt = _parse_timestamp(trace_row.created_at)
+            except ValueError:
+                continue
+            lag_seconds = (filled_dt - trace_dt).total_seconds()
+            if lag_seconds < 0 or lag_seconds > max_fill_lag_seconds:
+                continue
+            matched_row = trace_row
+
+        if matched_row is None:
+            continue
+        signal_key = (matched_row.session_date, matched_row.ticker, matched_row.created_at)
+        if signal_key in seen_keys:
+            continue
+        seen_keys.add(signal_key)
+        inferred.append(
+            SelectedSignal(
+                session_date=matched_row.session_date,
+                ticker=matched_row.ticker,
+                created_at=matched_row.created_at,
+                price=matched_row.current_price or matched_row.price,
+                expect_price=matched_row.expect_price,
+                expect_revenue_percent=matched_row.expect_revenue_percent,
+                spread_percent=matched_row.spread_percent,
+            )
+        )
+    return sorted(inferred, key=lambda item: (item.created_at, item.ticker))
 
 
 def load_session_capital_bases(db_path: Path) -> dict[str, int]:
@@ -528,6 +744,13 @@ def _selected_tickers_by_day(selected_signals: list[SelectedSignal]) -> dict[str
     for signal in selected_signals:
         by_day.setdefault(signal.session_date, set()).add(signal.ticker)
     return by_day
+
+
+def _selected_tickers_by_timestamp(selected_signals: list[SelectedSignal]) -> dict[tuple[str, str], set[str]]:
+    by_timestamp: dict[tuple[str, str], set[str]] = {}
+    for signal in selected_signals:
+        by_timestamp.setdefault((signal.session_date, signal.created_at), set()).add(signal.ticker)
+    return by_timestamp
 
 
 def _pick_candidates_for_timestamp(
@@ -842,10 +1065,17 @@ def run_backtest(
     trend_filter_enabled: bool = False,
     trend_ok_tickers_by_day: dict[str, set[str]] | None = None,
     trend_filter_days: set[str] | None = None,
+    selected_signals_override: list[SelectedSignal] | None = None,
+    actual_exit_overrides_by_ticker: dict[tuple[str, str], list[ActualExitOverride]] | None = None,
 ) -> list[BacktestTrade]:
     traces = load_traces(db_path)
-    selected_signals = load_selected_signals(db_path) if use_selected_signals else []
+    selected_signals = (
+        list(selected_signals_override)
+        if selected_signals_override is not None
+        else (load_selected_signals(db_path) if use_selected_signals else [])
+    )
     selected_tickers = _selected_tickers_by_day(selected_signals)
+    selected_tickers_by_timestamp = _selected_tickers_by_timestamp(selected_signals)
     grouped_by_session = group_by_session(traces)
     trades: list[BacktestTrade] = []
 
@@ -868,23 +1098,52 @@ def run_backtest(
         for row in day_rows:
             rows_by_time.setdefault(row.created_at, []).append(row)
             last_row_by_ticker[row.ticker] = row
+        actual_exit_queues: dict[tuple[str, str], list[ActualExitOverride]] = {}
+        session_override_times: set[str] = set()
+        if actual_exit_overrides_by_ticker:
+            for key, overrides in actual_exit_overrides_by_ticker.items():
+                if key[0] != session_date or not overrides:
+                    continue
+                actual_exit_queues[key] = list(overrides)
+                session_override_times.update(item.final_exit_time for item in overrides)
 
         open_positions: dict[str, ReplayPosition] = {}
         previous_scan_prices: dict[str, int] = {}
-        allowed_tickers = selected_tickers.get(session_date) if use_selected_signals and session_date in selected_tickers else None
         trend_allowed_tickers = None
         if trend_filter_enabled and trend_filter_days and session_date in trend_filter_days:
             trend_allowed_tickers = (trend_ok_tickers_by_day or {}).get(session_date, set())
-            if allowed_tickers is not None:
-                trend_allowed_tickers = trend_allowed_tickers & allowed_tickers
         available_cash = session_plan.session_capital_basis
 
-        for created_at in sorted(rows_by_time):
-            rows_at_time = rows_by_time[created_at]
+        for created_at in sorted(set(rows_by_time) | session_override_times):
+            rows_at_time = rows_by_time.get(created_at, [])
             rows_by_ticker = {row.ticker: row for row in rows_at_time}
             exited_tickers_at_time: set[str] = set()
 
             for ticker, position in list(open_positions.items()):
+                actual_exit_override = position.actual_exit_override
+                if actual_exit_override is not None and actual_exit_override.final_exit_time <= created_at:
+                    exit_price = actual_exit_override.weighted_exit_price
+                    trades.append(
+                        BacktestTrade(
+                            session_date=session_date,
+                            ticker=ticker,
+                            entry_time=position.entry.created_at,
+                            exit_time=actual_exit_override.final_exit_time,
+                            quantity=position.quantity,
+                            entry_price=position.entry_price,
+                            exit_price=exit_price,
+                            buy_amount_krw=position.invested_amount,
+                            sell_amount_krw=position.quantity * exit_price,
+                            exit_reason="actual_fill_exit",
+                            pnl_percent=_realized_pnl_percent(position.entry_price, exit_price),
+                        )
+                    )
+                    available_cash += position.quantity * exit_price
+                    del open_positions[ticker]
+                    exited_tickers_at_time.add(ticker)
+                    continue
+                if actual_exit_override is not None:
+                    continue
                 current_row = rows_by_ticker.get(ticker)
                 if current_row is None:
                     continue
@@ -987,6 +1246,19 @@ def run_backtest(
             scan_rows = [row for row in rows_at_time if row.phase == "scan_candidate"]
             if not scan_rows:
                 continue
+            allowed_tickers = None
+            if use_selected_signals:
+                allowed_tickers = selected_tickers_by_timestamp.get((session_date, created_at))
+                if allowed_tickers is None:
+                    previous_scan_prices = {
+                        _ticker_key(row.ticker): int((row.current_price or row.price) or 0)
+                        for row in scan_rows
+                        if int((row.current_price or row.price) or 0) > 0
+                    }
+                    continue
+            effective_trend_allowed_tickers = trend_allowed_tickers
+            if effective_trend_allowed_tickers is not None and allowed_tickers is not None:
+                effective_trend_allowed_tickers = effective_trend_allowed_tickers & allowed_tickers
 
             # Match the live bot's batch flow: once any slot is occupied,
             # block new entries until the whole set is flat again.
@@ -1031,7 +1303,7 @@ def run_backtest(
                 max_prev_day_change_percent=max_prev_day_change_percent,
                 active_tickers=set(open_positions) | exited_tickers_at_time,
                 allowed_tickers=allowed_tickers,
-                trend_allowed_tickers=trend_allowed_tickers,
+                trend_allowed_tickers=effective_trend_allowed_tickers,
                 previous_scan_prices=previous_scan_prices,
                 max_intraday_jump_from_prev_scan_percent=max_intraday_jump_from_prev_scan_percent,
             )
@@ -1109,6 +1381,11 @@ def run_backtest(
                         stop_loss_percent=stop_loss_percent,
                         stop_loss_tick_count=stop_loss_tick_count,
                         stop_loss_tick_multiplier=stop_loss_tick_multiplier,
+                    ),
+                    actual_exit_override=(
+                        actual_exit_queues.get((session_date, candidate.ticker), []).pop(0)
+                        if actual_exit_queues.get((session_date, candidate.ticker))
+                        else None
                     ),
                 )
                 available_cash -= estimated_cost
@@ -1467,6 +1744,9 @@ def parse_args():
     parser.add_argument("--use-selected-signals", dest="use_selected_signals", action="store_true")
     parser.add_argument("--ignore-selected-signals", dest="use_selected_signals", action="store_false")
     parser.set_defaults(use_selected_signals=False)
+    parser.add_argument("--use-actual-fill-exits", dest="use_actual_fill_exits", action="store_true")
+    parser.add_argument("--ignore-actual-fill-exits", dest="use_actual_fill_exits", action="store_false")
+    parser.set_defaults(use_actual_fill_exits=False)
     parser.add_argument("--allow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_true")
     parser.add_argument("--disallow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_false")
     parser.set_defaults(allow_refill_empty_slots=False)
@@ -1503,6 +1783,27 @@ if __name__ == "__main__":
         print(f"Rebuilt replay DB from logs: {resolved_db_path}")
     session_capital_by_day = load_session_capital_bases(resolved_db_path)
     trend_ok_tickers_by_day, trend_filter_days = load_trend_ok_tickers_by_day(logs_dir) if args.trend_filter_enabled and logs_dir else ({}, set())
+    selected_signals_override = None
+    actual_exit_overrides_by_ticker = (
+        load_actual_exit_overrides_from_fills(logs_dir)
+        if args.use_actual_fill_exits
+        else None
+    )
+    if args.use_selected_signals:
+        loaded_selected_signals = load_selected_signals(resolved_db_path)
+        if loaded_selected_signals:
+            selected_signals_override = loaded_selected_signals
+        else:
+            inferred_selected_signals = infer_selected_signals_from_fill_audit(
+                db_path=resolved_db_path,
+                logs_dir=logs_dir,
+            )
+            if inferred_selected_signals:
+                selected_signals_override = inferred_selected_signals
+                print(
+                    "Inferred selected signals from fill logs "
+                    f"because signals table was empty: {len(inferred_selected_signals)} rows"
+                )
     result = run_backtest(
         db_path=resolved_db_path,
         min_expected_return_percent=args.min_expected_return,
@@ -1538,6 +1839,8 @@ if __name__ == "__main__":
         trend_filter_enabled=args.trend_filter_enabled,
         trend_ok_tickers_by_day=trend_ok_tickers_by_day,
         trend_filter_days=trend_filter_days,
+        selected_signals_override=selected_signals_override,
+        actual_exit_overrides_by_ticker=actual_exit_overrides_by_ticker,
     )
     report_paths = write_backtest_reports(
         out_path=Path(args.out),

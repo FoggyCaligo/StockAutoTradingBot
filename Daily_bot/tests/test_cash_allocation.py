@@ -766,6 +766,12 @@ def test_resolve_empty_slots_treats_zero_position_limit_as_unlimited():
 
 
 def test_should_wait_for_full_batch_exit_blocks_new_entries_until_all_positions_exit():
-    assert should_wait_for_full_batch_exit(0) is False
-    assert should_wait_for_full_batch_exit(1) is True
-    assert should_wait_for_full_batch_exit(3) is True
+    assert should_wait_for_full_batch_exit(0, allow_refill_empty_slots=False) is False
+    assert should_wait_for_full_batch_exit(1, allow_refill_empty_slots=False) is True
+    assert should_wait_for_full_batch_exit(3, allow_refill_empty_slots=False) is True
+
+
+def test_should_wait_for_full_batch_exit_allows_refill_when_enabled():
+    assert should_wait_for_full_batch_exit(0, allow_refill_empty_slots=True) is False
+    assert should_wait_for_full_batch_exit(1, allow_refill_empty_slots=True) is False
+    assert should_wait_for_full_batch_exit(3, allow_refill_empty_slots=True) is False

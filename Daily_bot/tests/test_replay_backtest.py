@@ -3,6 +3,9 @@ from pathlib import Path
 
 from Daily_bot.backtest import replay_db_builder
 from Daily_bot.backtest.replay_market_traces import (
+    ActualExitOverride,
+    infer_selected_signals_from_fill_audit,
+    load_actual_exit_overrides_from_fills,
     load_trend_ok_tickers_by_day,
     load_selected_signals,
     parse_args,
@@ -86,6 +89,86 @@ def test_load_selected_signals_reads_selected_rows(tmp_path):
     assert rows[0].ticker == "AAA"
 
 
+def test_infer_selected_signals_from_fill_audit_prefers_raw_fill_logs_when_signals_table_is_empty(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, scan_cycle_at, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "AAA", "2026-06-02 09:30:00", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "scan_candidate", "BBB", "2026-06-02 09:30:00", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    (logs_dir / "fills_20260602.csv").write_text(
+        "\n".join(
+            [
+                "ticker,side,filled_at,price,quantity,order_id,signal_time,position_id",
+                "AAA,BUY,2026-06-02T09:30:20,100,1,,,",
+            ]
+        ),
+        encoding="utf-8-sig",
+    )
+    (logs_dir / "trade_fills_audit_daily.csv").write_text(
+        "\n".join(
+            [
+                "trade_date,filled_at,broker_order_id,ticker,side,quantity,price,amount,estimated_fee,estimated_tax,estimated_total_cost,source,cash,account_value,adjusted_account_value,adjusted_pnl,loss_percent,kospi_change_percent,cum_buy_quantity,cum_buy_amount,avg_buy_price,cum_sell_quantity,cum_sell_amount,realized_pnl_before_costs,estimated_net_realized_pnl,realized_return_percent_before_costs,estimated_net_realized_return_percent,position_status",
+                "2026-06-02,2026-06-02T09:30:20,BUY-1,BBB,BUY,1,100,100,0,0,0,broker,1000000,1000000,1000000,0,0,0,1,100,100,0,0,,,,OPEN",
+            ]
+        ),
+        encoding="utf-8-sig",
+    )
+
+    rows = infer_selected_signals_from_fill_audit(db_path, logs_dir)
+
+    assert len(rows) == 1
+    assert rows[0].ticker == "AAA"
+    assert rows[0].created_at == "2026-06-02 09:30:00"
+
+
 def test_parse_args_defaults_to_live_config_values(tmp_path, monkeypatch):
     config_path = tmp_path / "settings.yaml"
     config_path.write_text(
@@ -151,6 +234,7 @@ def test_parse_args_defaults_to_live_config_values(tmp_path, monkeypatch):
     assert args.max_position_count == 6
     assert args.target_budget_ratio_per_stock == 0.3
     assert args.use_selected_signals is False
+    assert args.use_actual_fill_exits is False
 
 
 def test_load_trend_ok_tickers_by_day_reads_daily_reference_logs(tmp_path):
@@ -210,6 +294,121 @@ def test_run_backtest_can_ignore_selected_signals_and_fall_back_to_top_ranked(tm
 
     assert len(trades) == 1
     assert trades[0].ticker == "BBB"
+
+
+def test_run_backtest_uses_selected_signals_by_timestamp_not_by_day(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, scan_cycle_at, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "AAA", "2026-06-02 09:30:00", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "AAA", "2026-06-02 09:31:00", 0, "", 100, 120, 119, 120, 120, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "scan_candidate", "AAA", "2026-06-02 10:30:00", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 10:30:00"),
+            ("2026-06-02", "scan_candidate", "BBB", "2026-06-02 10:30:00", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 10:30:00"),
+            ("2026-06-02", "watchlist", "BBB", "2026-06-02 10:31:00", 0, "", 100, 120, 119, 120, 120, 1.0, 0.2, "{}", "2026-06-02 10:31:00"),
+        ],
+    )
+    conn.executemany(
+        """
+        INSERT INTO signals
+        (ticker, created_at, scan_cycle_at, price, expect_price, expect_revenue_percent, spread_percent, selected)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("AAA", "2026-06-02 09:30:00", "2026-06-02 09:30:00", 100, 120, 1.0, 0.2, 1),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=1,
+        stop_loss_percent=6.0,
+        use_selected_signals=True,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=1,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+    )
+
+    assert len(trades) == 1
+    assert trades[0].ticker == "AAA"
+
+
+def test_load_actual_exit_overrides_from_fills_aggregates_partial_sells(tmp_path):
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    (logs_dir / "fills_20260602.csv").write_text(
+        "\n".join(
+            [
+                "ticker,side,filled_at,price,quantity,order_id,signal_time,position_id",
+                "AAA,BUY,2026-06-02T09:30:10,100,10,,,",
+                "AAA,SELL,2026-06-02T09:31:00,101,4,,,",
+                "AAA,SELL,2026-06-02T09:32:00,99,6,,,",
+            ]
+        ),
+        encoding="utf-8-sig",
+    )
+
+    overrides = load_actual_exit_overrides_from_fills(logs_dir)
+
+    rows = overrides[("2026-06-02", "AAA")]
+    assert len(rows) == 1
+    assert rows[0] == ActualExitOverride(
+        session_date="2026-06-02",
+        ticker="AAA",
+        buy_filled_at="2026-06-02 09:30:10",
+        entry_price=100,
+        quantity=10,
+        final_exit_time="2026-06-02 09:32:00",
+        weighted_exit_price=100,
+    )
 
 
 def test_run_backtest_uses_fallback_expected_return_when_flat_batch_has_no_primary_candidates(tmp_path):
