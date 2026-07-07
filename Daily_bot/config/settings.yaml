@@ -1,5 +1,6 @@
 market:
   prewarm_start_time: "08:55"
+  startup_clear_time: "09:10"
   start_buy_time: "09:30"
   stop_buy_time: "11:30"
   force_sell_time: "15:00"
@@ -22,7 +23,7 @@ strategy:
   max_buy_count: 3
   allow_refill_empty_slots: true
   min_expected_return_percent: 0.7
-  min_expected_return_fallback_percents: [0.6, 0.5]
+  min_expected_return_fallback_percents: [0.6]
   max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
   min_prev_day_change_percent: 0.0

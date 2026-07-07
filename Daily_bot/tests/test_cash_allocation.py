@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from Daily_bot.main import (
     _find_existing_open_sell_price,
+    _attempt_startup_carryover_liquidation_safely,
     activate_buy,
     estimate_account_value,
     get_external_cash_flow_since,
@@ -775,3 +776,27 @@ def test_should_wait_for_full_batch_exit_allows_refill_when_enabled():
     assert should_wait_for_full_batch_exit(0, allow_refill_empty_slots=True) is False
     assert should_wait_for_full_batch_exit(1, allow_refill_empty_slots=True) is False
     assert should_wait_for_full_batch_exit(3, allow_refill_empty_slots=True) is False
+
+
+def test_attempt_startup_carryover_liquidation_safely_is_noop_when_account_is_flat():
+    client = _ClientStub(orderable_cash=0)
+    recorder = _RecorderStub(orders=[], fills=[])
+
+    completed, errored = _attempt_startup_carryover_liquidation_safely(client, recorder)
+
+    assert completed is True
+    assert errored is False
+    assert client.market_sell_calls == []
+
+
+def test_attempt_startup_carryover_liquidation_safely_force_sells_carryover_positions():
+    client = _ClientStub(orderable_cash=0)
+    client.positions = [type("Position", (), {"ticker": "005930", "quantity": 3})()]
+    client.sell_fill_sequence = [None]
+    recorder = _RecorderStub(orders=[], fills=[])
+
+    completed, errored = _attempt_startup_carryover_liquidation_safely(client, recorder)
+
+    assert completed is True
+    assert errored is False
+    assert client.market_sell_calls == [("005930", 3)]

@@ -181,10 +181,11 @@ def test_parse_args_defaults_to_live_config_values(tmp_path, monkeypatch):
                 "trend_filter:",
                 "  enabled: true",
                 "strategy:",
+                "  allow_refill_empty_slots: true",
                 "  top_ratio: 0.5",
                 "  max_buy_count: 7",
                 "  min_expected_return_percent: 0.9",
-                "  min_expected_return_fallback_percents: [0.6, 0.5]",
+                "  min_expected_return_fallback_percents: [0.6]",
                 "  max_spread_percent: 0.4",
                 "  spread_expected_return_multiplier: 1.2",
                 "  min_prev_day_change_percent: -1.5",
@@ -212,7 +213,7 @@ def test_parse_args_defaults_to_live_config_values(tmp_path, monkeypatch):
     args = parse_args()
 
     assert args.min_expected_return == 0.9
-    assert args.fallback_min_expected_returns == [0.6, 0.5]
+    assert args.fallback_min_expected_returns == [0.6]
     assert args.fallback_min_expected_return == 0.6
     assert args.max_spread == 0.4
     assert args.min_prev_day_change == -1.5
@@ -235,6 +236,7 @@ def test_parse_args_defaults_to_live_config_values(tmp_path, monkeypatch):
     assert args.target_budget_ratio_per_stock == 0.3
     assert args.use_selected_signals is False
     assert args.use_actual_fill_exits is False
+    assert args.allow_refill_empty_slots is True
 
 
 def test_load_trend_ok_tickers_by_day_reads_daily_reference_logs(tmp_path):

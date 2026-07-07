@@ -225,6 +225,19 @@ def should_wait_for_full_batch_exit(active_count: int, allow_refill_empty_slots:
     return active_count > 0
 
 
+def _attempt_startup_carryover_liquidation_safely(client, recorder: Recorder) -> tuple[bool, bool]:
+    positions = client.get_positions()
+    open_orders = client.get_open_orders()
+    if not has_position(positions) and not has_open_orders(open_orders):
+        return True, False
+    try:
+        force_sell(client, recorder=recorder)
+        return True, False
+    except Exception as exc:
+        print(f"Startup carryover liquidation failed: {exc}")
+        return False, True
+
+
 def warm_universe(cfg: dict) -> None:
     get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
 
@@ -1309,6 +1322,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     client.auth()
     state = BotState.NO_POSITION
     force_sell_done = False
+    startup_carryover_clear_done = False
     eod_reconciliation_done = False
     daily_revenue_written = False
     warmed_session = False
@@ -1385,6 +1399,20 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 )
             except Exception as exc:
                 print(f"Universe warm-up failed: {exc}")
+
+        if not startup_carryover_clear_done:
+            if not is_after_now(cfg["market"].get("startup_clear_time", "09:10")):
+                time.sleep(5)
+                continue
+            state = BotState.FORCE_SELLING
+            startup_carryover_cleared, startup_carryover_error = _attempt_startup_carryover_liquidation_safely(client, recorder)
+            if startup_carryover_cleared:
+                startup_carryover_clear_done = True
+                state = BotState.NO_POSITION
+                print("Startup carryover liquidation completed. Proceeding with normal session flow.")
+            elif startup_carryover_error:
+                time.sleep(5)
+            continue
 
         if not buy_window_started:
             time.sleep(5)

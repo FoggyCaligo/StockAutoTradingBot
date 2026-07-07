@@ -1749,7 +1749,7 @@ def parse_args():
     parser.set_defaults(use_actual_fill_exits=False)
     parser.add_argument("--allow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_true")
     parser.add_argument("--disallow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_false")
-    parser.set_defaults(allow_refill_empty_slots=False)
+    parser.set_defaults(allow_refill_empty_slots=bool(strategy_cfg.get("allow_refill_empty_slots", True)))
     args = parser.parse_args(remaining_argv)
 
     resolved_fallback_thresholds = list(args.fallback_min_expected_returns or [])
