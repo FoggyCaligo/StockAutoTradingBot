@@ -178,6 +178,7 @@ def build_replay_db_from_logs(logs_dir: Path, out_db_path: Path) -> Path:
                         session_date,
                         phase,
                         ticker,
+                        scan_cycle_at,
                         selected,
                         reason,
                         price,
@@ -192,12 +193,13 @@ def build_replay_db_from_logs(logs_dir: Path, out_db_path: Path) -> Path:
                         prev_day_change_percent,
                         raw_json,
                         created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         session_date,
                         row.get("phase") or "",
                         ticker,
+                        row.get("scan_cycle_at") or None,
                         _to_int(row.get("selected")),
                         row.get("reason") or "",
                         _to_int(row.get("price")),

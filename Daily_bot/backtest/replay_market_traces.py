@@ -17,7 +17,7 @@ if str(WORKSPACE_ROOT) not in sys.path:
 
 from Daily_bot.backtest.replay_db_builder import resolve_replay_db_path
 from Daily_bot.models import Candidate, Fill
-from Daily_bot.risk.guards import calc_order_quantity, passes_orderbook_ask_depth_ratio
+from Daily_bot.risk.guards import calc_order_quantity, passes_orderbook_ask_depth_ratio, select_affordable_targets
 from Daily_bot.storage.audit_csv import (
     DEFAULT_FEE_RATE,
     DEFAULT_SELL_TAX_RATE,
@@ -27,6 +27,10 @@ from Daily_bot.storage.db import DAILY_REV_FIELDNAMES
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import min_expected_return_with_spread
 from Daily_bot.utils import ceil_tick_count, count_ticks_between_prices, get_tick_size, load_yaml, move_price_by_ticks, round_to_tick
+
+
+def _ticker_key(ticker: str) -> str:
+    return str(ticker or "").strip().upper().removeprefix("A")
 
 
 def resolve_fallback_expected_return_thresholds(
@@ -173,12 +177,13 @@ def load_traces(db_path: Path) -> list[TraceRow]:
     ask_depth_select = "ask_depth_5_amount_krw" if "ask_depth_5_amount_krw" in columns else "0 AS ask_depth_5_amount_krw"
     prev_close_select = "prev_close_price" if "prev_close_price" in columns else "0 AS prev_close_price"
     prev_day_change_select = "prev_day_change_percent" if "prev_day_change_percent" in columns else "0 AS prev_day_change_percent"
+    effective_time_select = "COALESCE(scan_cycle_at, created_at)" if "scan_cycle_at" in columns else "created_at"
     rows = conn.execute(
         f"""
         SELECT
             session_date,
             ticker,
-            created_at,
+            {effective_time_select} AS created_at,
             phase,
             selected,
             price,
@@ -190,7 +195,7 @@ def load_traces(db_path: Path) -> list[TraceRow]:
             {ask_depth_select},
             {prev_day_change_select}
         FROM market_traces
-        ORDER BY session_date, created_at, ticker
+        ORDER BY session_date, {effective_time_select}, ticker
         """
     ).fetchall()
     conn.close()
@@ -223,21 +228,43 @@ def _resolve_prev_day_change_percent(row: TraceRow) -> float:
     return row.prev_day_change_percent
 
 
+def _passes_prev_scan_jump_filter(
+    row: TraceRow,
+    previous_scan_prices: dict[str, int],
+    max_intraday_jump_from_prev_scan_percent: float,
+) -> bool:
+    threshold_percent = float(max_intraday_jump_from_prev_scan_percent or 0.0)
+    if threshold_percent <= 0:
+        return True
+    current_price = row.current_price or row.price
+    if current_price <= 0:
+        return False
+    previous_price = int(previous_scan_prices.get(_ticker_key(row.ticker), 0) or 0)
+    if previous_price <= 0:
+        return True
+    jump_percent = ((current_price - previous_price) / previous_price) * 100
+    return jump_percent < threshold_percent
+
+
 def load_selected_signals(db_path: Path) -> list[SelectedSignal]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(signals)").fetchall()
+    }
+    effective_time_select = "COALESCE(scan_cycle_at, created_at)" if "scan_cycle_at" in columns else "created_at"
     rows = conn.execute(
-        """
+        f"""
         SELECT
             ticker,
-            created_at,
+            {effective_time_select} AS created_at,
             price,
             expect_price,
             expect_revenue_percent,
             spread_percent
         FROM signals
         WHERE selected = 1
-        ORDER BY created_at, ticker
+        ORDER BY {effective_time_select}, ticker
         """
     ).fetchall()
     conn.close()
@@ -458,6 +485,12 @@ def _resolve_stop_loss_price(
     return 0.0
 
 
+def _realized_pnl_percent(entry_price: int, exit_price: int) -> float:
+    if entry_price <= 0:
+        return 0.0
+    return (exit_price - entry_price) / entry_price * 100
+
+
 def _is_within_buy_window(created_at: str, start_buy_time: str, stop_buy_time: str) -> bool:
     return _is_within_time_window(created_at, start_buy_time, stop_buy_time)
 
@@ -508,10 +541,12 @@ def _pick_candidates_for_timestamp(
     active_tickers: set[str],
     allowed_tickers: set[str] | None,
     trend_allowed_tickers: set[str] | None,
+    previous_scan_prices: dict[str, int],
+    max_intraday_jump_from_prev_scan_percent: float,
 ) -> list[TraceRow]:
     latest_by_ticker: dict[str, TraceRow] = {}
     for row in rows:
-        if row.phase not in {"scan_candidate", "watchlist"}:
+        if row.phase != "scan_candidate":
             continue
         if row.ticker in active_tickers:
             continue
@@ -533,6 +568,12 @@ def _pick_candidates_for_timestamp(
             spread_expected_return_multiplier=spread_expected_return_multiplier,
         )
         if row.expect_revenue_percent < required_expected_return:
+            continue
+        if not _passes_prev_scan_jump_filter(
+            row,
+            previous_scan_prices=previous_scan_prices,
+            max_intraday_jump_from_prev_scan_percent=max_intraday_jump_from_prev_scan_percent,
+        ):
             continue
         existing = latest_by_ticker.get(row.ticker)
         if existing is None or row.expect_revenue_percent > existing.expect_revenue_percent:
@@ -562,6 +603,8 @@ def _pick_candidates_for_entry_with_fallback(
     active_tickers: set[str],
     allowed_tickers: set[str] | None,
     trend_allowed_tickers: set[str] | None,
+    previous_scan_prices: dict[str, int],
+    max_intraday_jump_from_prev_scan_percent: float,
 ) -> tuple[list[TraceRow], float]:
     candidates = _pick_candidates_for_timestamp(
         rows=rows,
@@ -574,6 +617,8 @@ def _pick_candidates_for_entry_with_fallback(
         active_tickers=active_tickers,
         allowed_tickers=allowed_tickers,
         trend_allowed_tickers=trend_allowed_tickers,
+        previous_scan_prices=previous_scan_prices,
+        max_intraday_jump_from_prev_scan_percent=max_intraday_jump_from_prev_scan_percent,
     )
     if candidates:
         return candidates, min_expected_return_percent
@@ -593,6 +638,8 @@ def _pick_candidates_for_entry_with_fallback(
             active_tickers=active_tickers,
             allowed_tickers=allowed_tickers,
             trend_allowed_tickers=trend_allowed_tickers,
+            previous_scan_prices=previous_scan_prices,
+            max_intraday_jump_from_prev_scan_percent=max_intraday_jump_from_prev_scan_percent,
         )
         if fallback_candidates:
             return fallback_candidates, fallback_threshold
@@ -787,6 +834,7 @@ def run_backtest(
     force_sell_time: str = "15:00",
     max_hold_seconds_before_exit: int = 0,
     spread_expected_return_multiplier: float = 0.0,
+    max_intraday_jump_from_prev_scan_percent: float = 0.0,
     fallback_min_expected_return_percents: list[float] | tuple[float, ...] | None = None,
     max_orderbook_ask_depth_ratio: float = 0.0,
     missing_ask_depth_policy: str = "ignore",
@@ -822,6 +870,7 @@ def run_backtest(
             last_row_by_ticker[row.ticker] = row
 
         open_positions: dict[str, ReplayPosition] = {}
+        previous_scan_prices: dict[str, int] = {}
         allowed_tickers = selected_tickers.get(session_date) if use_selected_signals and session_date in selected_tickers else None
         trend_allowed_tickers = None
         if trend_filter_enabled and trend_filter_days and session_date in trend_filter_days:
@@ -905,6 +954,7 @@ def run_backtest(
                     exited_tickers_at_time.add(ticker)
                     continue
                 if current_price >= position.target_price:
+                    exit_price = position.target_price
                     trades.append(
                         BacktestTrade(
                             session_date=session_date,
@@ -913,23 +963,39 @@ def run_backtest(
                             exit_time=current_row.created_at,
                             quantity=position.quantity,
                             entry_price=position.entry_price,
-                            exit_price=current_price,
+                            exit_price=exit_price,
                             buy_amount_krw=position.invested_amount,
-                            sell_amount_krw=position.quantity * current_price,
+                            sell_amount_krw=position.quantity * exit_price,
                             exit_reason="take_profit",
-                            pnl_percent=(current_price - position.entry_price) / position.entry_price * 100,
+                            pnl_percent=_realized_pnl_percent(position.entry_price, exit_price),
                         )
                     )
-                    available_cash += position.quantity * current_price
+                    available_cash += position.quantity * exit_price
                     del open_positions[ticker]
                     exited_tickers_at_time.add(ticker)
 
             if not _is_within_buy_window(created_at, start_buy_time, stop_buy_time):
+                scan_rows = [row for row in rows_at_time if row.phase == "scan_candidate"]
+                if scan_rows:
+                    previous_scan_prices = {
+                        _ticker_key(row.ticker): int((row.current_price or row.price) or 0)
+                        for row in scan_rows
+                        if int((row.current_price or row.price) or 0) > 0
+                    }
+                continue
+
+            scan_rows = [row for row in rows_at_time if row.phase == "scan_candidate"]
+            if not scan_rows:
                 continue
 
             # Match the live bot's batch flow: once any slot is occupied,
             # block new entries until the whole set is flat again.
             if not allow_refill_empty_slots and open_positions:
+                previous_scan_prices = {
+                    _ticker_key(row.ticker): int((row.current_price or row.price) or 0)
+                    for row in scan_rows
+                    if int((row.current_price or row.price) or 0) > 0
+                }
                 continue
 
             # Match the live bot's behavior by default: candidate ranking is trimmed by
@@ -947,10 +1013,15 @@ def run_backtest(
             affordable_slots = available_cash // session_plan.slot_budget_per_stock if session_plan.slot_budget_per_stock > 0 else 0
             planned_buy_count = min(available_slots, affordable_slots)
             if planned_buy_count <= 0:
+                previous_scan_prices = {
+                    _ticker_key(row.ticker): int((row.current_price or row.price) or 0)
+                    for row in scan_rows
+                    if int((row.current_price or row.price) or 0) > 0
+                }
                 continue
 
             candidates, used_threshold = _pick_candidates_for_entry_with_fallback(
-                rows_at_time,
+                scan_rows,
                 min_expected_return_percent=min_expected_return_percent,
                 fallback_min_expected_return_percents=fallback_min_expected_return_percents,
                 max_spread_percent=max_spread_percent,
@@ -961,6 +1032,8 @@ def run_backtest(
                 active_tickers=set(open_positions) | exited_tickers_at_time,
                 allowed_tickers=allowed_tickers,
                 trend_allowed_tickers=trend_allowed_tickers,
+                previous_scan_prices=previous_scan_prices,
+                max_intraday_jump_from_prev_scan_percent=max_intraday_jump_from_prev_scan_percent,
             )
             if candidates and used_threshold != min_expected_return_percent:
                 print(
@@ -968,32 +1041,58 @@ def run_backtest(
                     f"{used_threshold:.2f} instead of {min_expected_return_percent:.2f}; "
                     f"candidates={len(candidates)}"
                 )
+            previous_scan_prices = {
+                _ticker_key(row.ticker): int((row.current_price or row.price) or 0)
+                for row in scan_rows
+                if int((row.current_price or row.price) or 0) > 0
+            }
 
-            for candidate in candidates[:planned_buy_count]:
+            candidate_models: list[Candidate] = []
+            candidate_rows_by_ticker: dict[str, TraceRow] = {}
+            for candidate in candidates:
                 entry_price = candidate.current_price or candidate.price
                 if entry_price <= 0:
                     continue
-                candidate_model = Candidate(
-                    ticker=candidate.ticker,
-                    price=entry_price,
-                    expect_price=candidate.expect_price,
-                    expect_revenue_percent=candidate.expect_revenue_percent,
-                    spread_percent=candidate.spread_percent,
-                    ask_depth_5_amount_krw=candidate.ask_depth_5_amount_krw,
+                if max_orderbook_ask_depth_ratio > 0 and candidate.ask_depth_5_amount_krw <= 0 and missing_ask_depth_policy == "skip":
+                    continue
+                candidate_models.append(
+                    Candidate(
+                        ticker=candidate.ticker,
+                        price=entry_price,
+                        expect_price=candidate.expect_price,
+                        expect_revenue_percent=candidate.expect_revenue_percent,
+                        spread_percent=candidate.spread_percent,
+                        ask_depth_5_amount_krw=candidate.ask_depth_5_amount_krw,
+                    )
                 )
+                candidate_rows_by_ticker[candidate.ticker] = candidate
+
+            selected_targets = select_affordable_targets(
+                candidate_models,
+                max_buy_count=planned_buy_count,
+                available_cash_krw=available_cash,
+                budget_per_stock_krw=session_plan.slot_budget_per_stock,
+                sell_tick_offset=sell_tick_offset,
+                max_orderbook_ask_depth_ratio=max_orderbook_ask_depth_ratio,
+            )
+
+            for candidate_model in selected_targets:
+                candidate = candidate_rows_by_ticker.get(candidate_model.ticker)
+                if candidate is None:
+                    continue
+                entry_price = candidate.current_price or candidate.price
                 quantity = calc_order_quantity(candidate_model, session_plan.slot_budget_per_stock)
                 estimated_cost = quantity * entry_price
                 if quantity <= 0 or estimated_cost <= 0 or estimated_cost > available_cash:
+                    setattr(candidate_model, "planned_budget_krw", 0)
                     continue
-                if max_orderbook_ask_depth_ratio > 0:
-                    if candidate.ask_depth_5_amount_krw <= 0:
-                        if missing_ask_depth_policy == "skip":
-                            continue
-                    elif not passes_orderbook_ask_depth_ratio(
+                if max_orderbook_ask_depth_ratio > 0 and candidate.ask_depth_5_amount_krw > 0:
+                    if not passes_orderbook_ask_depth_ratio(
                         candidate_model,
                         estimated_cost_krw=estimated_cost,
                         max_orderbook_ask_depth_ratio=max_orderbook_ask_depth_ratio,
                     ):
+                        setattr(candidate_model, "planned_budget_krw", 0)
                         continue
                 target_price = _resolve_target_price(candidate.expect_price, sell_tick_offset, entry_price)
                 if target_price <= 0:
@@ -1013,6 +1112,7 @@ def run_backtest(
                     ),
                 )
                 available_cash -= estimated_cost
+                setattr(candidate_model, "planned_budget_krw", 0)
 
         for ticker, position in open_positions.items():
             exit_row = last_row_by_ticker.get(ticker, position.entry)
@@ -1318,6 +1418,11 @@ def parse_args():
     parser.add_argument("--max-spread", type=float, default=float(strategy_cfg.get("max_spread_percent", 0.0) or 0.0))
     parser.add_argument("--min-prev-day-change", type=float, default=float(strategy_cfg.get("min_prev_day_change_percent", 0.0) or 0.0))
     parser.add_argument("--max-prev-day-change", type=float, default=float(strategy_cfg.get("max_prev_day_change_percent", 0.0) or 0.0))
+    parser.add_argument(
+        "--max-intraday-jump-from-prev-scan",
+        type=float,
+        default=float(strategy_cfg.get("max_intraday_jump_from_prev_scan_percent", 0.0) or 0.0),
+    )
     parser.add_argument("--top-n", type=int, default=0)
     parser.add_argument("--top-ratio", type=float, default=float(strategy_cfg.get("top_ratio", 1.0) or 1.0))
     parser.add_argument("--take-profit", type=float, default=0.4)
@@ -1425,6 +1530,7 @@ if __name__ == "__main__":
         force_sell_time=args.force_sell_time,
         max_hold_seconds_before_exit=args.max_hold_seconds_before_exit,
         spread_expected_return_multiplier=args.spread_expected_return_multiplier,
+        max_intraday_jump_from_prev_scan_percent=args.max_intraday_jump_from_prev_scan,
         fallback_min_expected_return_percents=args.fallback_min_expected_returns,
         max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
         missing_ask_depth_policy=args.missing_ask_depth_policy,

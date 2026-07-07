@@ -56,8 +56,8 @@ def _create_db(path: Path) -> None:
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
-            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
-            ("2026-06-02", "watchlist", "AAA", 1, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 102, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "AAA", 1, "", 100, 101, 100, 102, 102, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
             ("2026-06-02", "scan_candidate", "BBB", 0, "", 100, 100, 99, 101, 102, 2.0, 0.2, "{}", "2026-06-02 09:30:00"),
             ("2026-06-02", "watchlist", "BBB", 0, "", 100, 102, 101, 103, 102, 2.0, 0.2, "{}", "2026-06-02 09:31:00"),
         ],
@@ -69,7 +69,7 @@ def _create_db(path: Path) -> None:
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         [
-            ("AAA", "2026-06-02 09:30:30", 100, 101, 1.0, 0.2, 1),
+            ("AAA", "2026-06-02 09:30:30", 100, 102, 1.0, 0.2, 1),
         ],
     )
     conn.commit()
@@ -208,9 +208,8 @@ def test_run_backtest_can_ignore_selected_signals_and_fall_back_to_top_ranked(tm
         max_budget_per_stock_krw=1_000_000,
     )
 
-    assert len(trades) == 2
+    assert len(trades) == 1
     assert trades[0].ticker == "BBB"
-    assert trades[1].ticker == "AAA"
 
 
 def test_run_backtest_uses_fallback_expected_return_when_flat_batch_has_no_primary_candidates(tmp_path):
@@ -256,8 +255,8 @@ def test_run_backtest_uses_fallback_expected_return_when_flat_batch_has_no_prima
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
-            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 0.5, 0.2, "{}", "2026-06-02 09:30:00"),
-            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 101, 0.5, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 102, 0.5, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 102, 0.5, 0.2, "{}", "2026-06-02 09:31:00"),
         ],
     )
     conn.commit()
@@ -489,6 +488,233 @@ def test_run_backtest_replays_dynamic_reentry_with_slot_limit(tmp_path):
     assert all(trade.exit_reason == "take_profit" for trade in trades)
 
 
+def test_run_backtest_groups_candidates_by_scan_cycle_time(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, scan_cycle_at, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "BBB", "2026-06-02 09:30:00", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:30:01"),
+            ("2026-06-02", "scan_candidate", "AAA", "2026-06-02 09:30:00", 0, "", 100, 100, 99, 101, 103, 3.0, 0.2, "{}", "2026-06-02 09:30:05"),
+            ("2026-06-02", "watchlist", "AAA", "2026-06-02 09:31:00", 0, "", 100, 103, 102, 104, 103, 3.0, 0.2, "{}", "2026-06-02 09:31:02"),
+            ("2026-06-02", "watchlist", "BBB", "2026-06-02 09:31:00", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:01"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=1,
+        stop_loss_percent=1.0,
+        use_selected_signals=False,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=1,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+    )
+
+    assert len(trades) >= 1
+    assert trades[0].ticker == "AAA"
+    assert trades[0].exit_reason == "take_profit"
+
+
+def test_run_backtest_applies_previous_scan_jump_filter(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, scan_cycle_at, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "AAA", "2026-06-02 09:30:00", 0, "", 100, 100, 99, 101, 100, 0.1, 0.2, "{}", "2026-06-02 09:30:01"),
+            ("2026-06-02", "scan_candidate", "BBB", "2026-06-02 09:30:00", 0, "", 100, 100, 99, 101, 100, 0.1, 0.2, "{}", "2026-06-02 09:30:02"),
+            ("2026-06-02", "scan_candidate", "AAA", "2026-06-02 09:31:00", 0, "", 100, 102, 101, 103, 103, 1.0, 0.2, "{}", "2026-06-02 09:31:01"),
+            ("2026-06-02", "scan_candidate", "BBB", "2026-06-02 09:31:00", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:31:02"),
+            ("2026-06-02", "watchlist", "BBB", "2026-06-02 09:32:00", 0, "", 100, 101, 100, 102, 120, 1.0, 0.2, "{}", "2026-06-02 09:32:01"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=1,
+        stop_loss_percent=1.0,
+        use_selected_signals=False,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=1,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+        max_intraday_jump_from_prev_scan_percent=1.0,
+    )
+
+    assert len(trades) == 1
+    assert trades[0].ticker == "BBB"
+
+
+def test_run_backtest_uses_affordable_target_selection_logic(tmp_path):
+    db_path = tmp_path / "bot.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            ask_depth_5_amount_krw INTEGER,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            scan_cycle_at TEXT,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, scan_cycle_at, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, ask_depth_5_amount_krw, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "HIGH", "2026-06-02 09:30:00", 0, "", 70000, 70000, 69900, 70100, 71000, 1.2, 0.2, 500000, "{}", "2026-06-02 09:30:01"),
+            ("2026-06-02", "scan_candidate", "MID1", "2026-06-02 09:30:00", 0, "", 40000, 40000, 39900, 40100, 41000, 1.1, 0.2, 500000, "{}", "2026-06-02 09:30:02"),
+            ("2026-06-02", "scan_candidate", "MID2", "2026-06-02 09:30:00", 0, "", 40000, 40000, 39900, 40100, 41000, 1.0, 0.2, 500000, "{}", "2026-06-02 09:30:03"),
+            ("2026-06-02", "watchlist", "MID1", "2026-06-02 09:31:00", 0, "", 40000, 41000, 40900, 41100, 41000, 1.1, 0.2, 500000, "{}", "2026-06-02 09:31:01"),
+            ("2026-06-02", "watchlist", "MID2", "2026-06-02 09:31:00", 0, "", 40000, 41000, 40900, 41100, 41000, 1.0, 0.2, 500000, "{}", "2026-06-02 09:31:02"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=2,
+        stop_loss_percent=1.0,
+        use_selected_signals=False,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=100_000,
+        min_slot_count=1,
+        max_slot_count=2,
+        slot_budget_unit_krw=0,
+        max_budget_per_stock_krw=0,
+        target_budget_ratio_per_stock=0.5,
+    )
+
+    assert [trade.ticker for trade in trades] == ["MID1", "MID2"]
+
+
 def test_run_backtest_respects_session_capital_slot_budget(tmp_path):
     db_path = tmp_path / "bot.sqlite3"
     conn = sqlite3.connect(db_path)
@@ -532,10 +758,10 @@ def test_run_backtest_respects_session_capital_slot_budget(tmp_path):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
-            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
-            ("2026-06-02", "scan_candidate", "BBB", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
-            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
-            ("2026-06-02", "watchlist", "BBB", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "scan_candidate", "BBB", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 120, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "watchlist", "BBB", 0, "", 100, 101, 100, 102, 120, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
         ],
     )
     conn.commit()
@@ -557,11 +783,9 @@ def test_run_backtest_respects_session_capital_slot_budget(tmp_path):
         max_budget_per_stock_krw=500,
     )
 
-    assert len(trades) == 2
+    assert len(trades) == 1
     assert trades[0].ticker == "AAA"
     assert trades[0].entry_time == "2026-06-02 09:30:00"
-    assert trades[1].ticker == "BBB"
-    assert trades[1].entry_time == "2026-06-02 09:31:00"
 
 
 def test_run_backtest_respects_configurable_stop_buy_time(tmp_path):
@@ -607,10 +831,10 @@ def test_run_backtest_respects_configurable_stop_buy_time(tmp_path):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
-            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 11:29:00"),
-            ("2026-06-02", "scan_candidate", "BBB", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 11:31:00"),
-            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 15:00:00"),
-            ("2026-06-02", "watchlist", "BBB", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 15:00:00"),
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 11:29:00"),
+            ("2026-06-02", "scan_candidate", "BBB", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 11:31:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 120, 1.0, 0.2, "{}", "2026-06-02 15:00:00"),
+            ("2026-06-02", "watchlist", "BBB", 0, "", 100, 101, 100, 102, 120, 1.0, 0.2, "{}", "2026-06-02 15:00:00"),
         ],
     )
     conn.commit()
@@ -975,10 +1199,10 @@ def test_write_backtest_reports_emits_daily_rev_and_daily_audit_csv(tmp_path):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
-            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
-            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
-            ("2026-06-03", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 99, 1.0, 0.2, "{}", "2026-06-03 09:30:00"),
-            ("2026-06-03", "watchlist", "AAA", 0, "", 100, 99, 98, 100, 99, 1.0, 0.2, "{}", "2026-06-03 09:31:00"),
+                ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+                ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 120, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+                ("2026-06-03", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-03 09:30:00"),
+                ("2026-06-03", "watchlist", "AAA", 0, "", 100, 99, 98, 100, 99, 1.0, 0.2, "{}", "2026-06-03 09:31:00"),
         ],
     )
     conn.commit()
@@ -1037,8 +1261,8 @@ def test_resolve_replay_db_path_rebuilds_from_csv_logs_when_db_is_empty(tmp_path
         "\n".join(
             [
                 "session_date,phase,ticker,selected,reason,price,current_price,best_bid,best_ask,expect_price,expect_revenue_percent,spread_percent,raw_json",
-                '2026-06-10,scan_candidate,AAA,0,main_scan,100,100,99,101,101,1.0,0.2,"{""bid_req_base_tm"": ""093000""}"',
-                '2026-06-10,watchlist,AAA,0,watch,100,101,100,102,101,1.0,0.2,"{""bid_req_base_tm"": ""093100""}"',
+                    '2026-06-10,scan_candidate,AAA,0,main_scan,100,100,99,101,120,1.0,0.2,"{""bid_req_base_tm"": ""093000""}"',
+                    '2026-06-10,watchlist,AAA,0,watch,100,101,100,102,120,1.0,0.2,"{""bid_req_base_tm"": ""093100""}"',
             ]
         ),
         encoding="utf-8-sig",
@@ -1160,13 +1384,13 @@ def test_run_backtest_waits_for_full_batch_exit_before_rebuying(tmp_path):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
-            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
             ("2026-06-02", "scan_candidate", "BBB", 0, "", 100, 100, 99, 101, 120, 20.0, 0.2, "{}", "2026-06-02 09:30:00"),
-            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 120, 119, 120, 120, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
             ("2026-06-02", "watchlist", "BBB", 0, "", 100, 100, 99, 101, 120, 20.0, 0.2, "{}", "2026-06-02 09:31:00"),
-            ("2026-06-02", "scan_candidate", "CCC", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "scan_candidate", "CCC", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
             ("2026-06-02", "watchlist", "BBB", 0, "", 100, 100, 99, 101, 120, 20.0, 0.2, "{}", "2026-06-02 09:32:00"),
-            ("2026-06-02", "watchlist", "CCC", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:32:00"),
+            ("2026-06-02", "watchlist", "CCC", 0, "", 100, 120, 119, 120, 120, 1.0, 0.2, "{}", "2026-06-02 09:32:00"),
         ],
     )
     conn.commit()
@@ -1240,13 +1464,13 @@ def test_run_backtest_can_allow_refill_until_the_whole_batch_is_flat(tmp_path):
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
-            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:30:00"),
             ("2026-06-02", "scan_candidate", "BBB", 0, "", 100, 100, 99, 101, 120, 20.0, 0.2, "{}", "2026-06-02 09:30:00"),
-            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 120, 119, 120, 120, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
             ("2026-06-02", "watchlist", "BBB", 0, "", 100, 100, 99, 101, 120, 20.0, 0.2, "{}", "2026-06-02 09:31:00"),
-            ("2026-06-02", "scan_candidate", "CCC", 0, "", 100, 100, 99, 101, 101, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
+            ("2026-06-02", "scan_candidate", "CCC", 0, "", 100, 100, 99, 101, 120, 1.0, 0.2, "{}", "2026-06-02 09:31:00"),
             ("2026-06-02", "watchlist", "BBB", 0, "", 100, 100, 99, 101, 120, 20.0, 0.2, "{}", "2026-06-02 09:32:00"),
-            ("2026-06-02", "watchlist", "CCC", 0, "", 100, 101, 100, 102, 101, 1.0, 0.2, "{}", "2026-06-02 09:32:00"),
+            ("2026-06-02", "watchlist", "CCC", 0, "", 100, 120, 119, 120, 120, 1.0, 0.2, "{}", "2026-06-02 09:32:00"),
         ],
     )
     conn.commit()
@@ -1276,3 +1500,79 @@ def test_run_backtest_can_allow_refill_until_the_whole_batch_is_flat(tmp_path):
     )
 
     assert [trade.ticker for trade in trades] == ["AAA", "CCC", "BBB"]
+
+
+def test_run_backtest_take_profit_uses_target_price_when_trace_overshoots(tmp_path):
+    db_path = tmp_path / "replay.sqlite3"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE market_traces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_date TEXT NOT NULL,
+            phase TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            selected INTEGER DEFAULT 0,
+            reason TEXT,
+            price INTEGER,
+            current_price INTEGER,
+            best_bid INTEGER,
+            best_ask INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            raw_json TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticker TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            price INTEGER,
+            expect_price INTEGER,
+            expect_revenue_percent REAL,
+            spread_percent REAL,
+            selected INTEGER DEFAULT 0
+        );
+        """
+    )
+    conn.executemany(
+        """
+        INSERT INTO market_traces
+        (session_date, phase, ticker, selected, reason, price, current_price, best_bid, best_ask,
+         expect_price, expect_revenue_percent, spread_percent, raw_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("2026-06-02", "scan_candidate", "AAA", 0, "", 100, 100, 99, 101, 102, 2.0, 0.2, "{}", "2026-06-02 09:30:00"),
+            ("2026-06-02", "watchlist", "AAA", 0, "", 100, 110, 109, 111, 102, 2.0, 0.2, "{}", "2026-06-02 09:31:00"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    trades = run_backtest(
+        db_path=db_path,
+        min_expected_return_percent=0.25,
+        max_spread_percent=0.7,
+        top_n_per_day=1,
+        stop_loss_percent=0.0,
+        use_selected_signals=False,
+        take_profit_percent=0.25,
+        top_ratio=1.0,
+        sell_tick_offset=1,
+        default_starting_capital_krw=1_000_000,
+        min_slot_count=1,
+        max_slot_count=1,
+        slot_budget_unit_krw=1_000_000,
+        max_budget_per_stock_krw=1_000_000,
+        start_buy_time="09:30",
+        stop_buy_time="11:30",
+        force_sell_time="15:00",
+    )
+
+    assert len(trades) == 1
+    assert trades[0].exit_reason == "take_profit"
+    assert trades[0].entry_price == 100
+    assert trades[0].exit_price == 101
