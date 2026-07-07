@@ -6,3 +6,6 @@ Daily_bot/bot.sqlite3
 logs/*.tmp
 Daily_bot/logs/*.tmp
 .aider*
+Daily_bot/logs/*.csv
+Daily_bot/backtest/results/*.csv
+Daily_bot/bot.sqlite3
