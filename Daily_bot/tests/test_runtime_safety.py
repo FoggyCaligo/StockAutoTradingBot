@@ -211,6 +211,20 @@ def test_authenticate_client_safely_recovers_instead_of_raising():
     assert main._authenticate_client_safely(_RiskClient()) is False
 
 
+def test_attempt_startup_carryover_liquidation_safely_recovers_account_lookup_failure():
+    class _RiskClient:
+        def get_positions(self):
+            raise RuntimeError("temporary disconnect")
+
+        def get_open_orders(self):
+            return []
+
+    completed, errored = main._attempt_startup_carryover_liquidation_safely(_RiskClient(), _RecorderStub([], []))
+
+    assert completed is False
+    assert errored is True
+
+
 def test_run_retries_main_loop_after_transient_account_state_failure(monkeypatch):
     class _StopLoop(Exception):
         pass

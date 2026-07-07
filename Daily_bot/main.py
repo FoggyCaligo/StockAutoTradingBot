@@ -226,8 +226,12 @@ def should_wait_for_full_batch_exit(active_count: int, allow_refill_empty_slots:
 
 
 def _attempt_startup_carryover_liquidation_safely(client, recorder: Recorder) -> tuple[bool, bool]:
-    positions = client.get_positions()
-    open_orders = client.get_open_orders()
+    try:
+        positions = client.get_positions()
+        open_orders = client.get_open_orders()
+    except Exception as exc:
+        print(f"Startup carryover account check failed: {exc}")
+        return False, True
     if not has_position(positions) and not has_open_orders(open_orders):
         return True, False
     try:
