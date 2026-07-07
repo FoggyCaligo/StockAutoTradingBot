@@ -312,12 +312,18 @@ def filter_candidates_for_entry(
     cfg: dict,
     previous_scan_prices: dict[str, int] | None = None,
     active_tickers: set[str] | None = None,
+    allow_refill_empty_slots: bool | None = None,
 ) -> tuple[list[Candidate], float]:
     active_ticker_keys = active_tickers or set()
     prev_scan_prices = previous_scan_prices or {}
     strategy_cfg = cfg["strategy"]
     primary_threshold = float(strategy_cfg["min_expected_return_percent"])
     fallback_thresholds = resolve_fallback_expected_return_thresholds(strategy_cfg)
+    refill_enabled = (
+        bool(strategy_cfg.get("allow_refill_empty_slots", True))
+        if allow_refill_empty_slots is None
+        else bool(allow_refill_empty_slots)
+    )
 
     top = get_candidates_top(calculated, strategy_cfg["top_ratio"])
 
@@ -341,7 +347,8 @@ def filter_candidates_for_entry(
     filtered = _apply_threshold(primary_threshold)
     used_threshold = primary_threshold
 
-    if not filtered and not active_ticker_keys:
+    fallback_allowed = refill_enabled or not active_ticker_keys
+    if not filtered and fallback_allowed:
         for fallback_threshold in fallback_thresholds:
             fallback_filtered = _apply_threshold(fallback_threshold)
             if not fallback_filtered:
@@ -1543,6 +1550,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             cfg,
             previous_scan_prices=previous_scan_prices,
             active_tickers=active_tickers,
+            allow_refill_empty_slots=bool(cfg["strategy"].get("allow_refill_empty_slots", True)),
         )
         previous_scan_prices = {
             _ticker_key(candidate.ticker): int(candidate.price)

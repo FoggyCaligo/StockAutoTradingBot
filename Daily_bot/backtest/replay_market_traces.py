@@ -828,6 +828,7 @@ def _pick_candidates_for_entry_with_fallback(
     trend_allowed_tickers: set[str] | None,
     previous_scan_prices: dict[str, int],
     max_intraday_jump_from_prev_scan_percent: float,
+    allow_refill_empty_slots: bool,
 ) -> tuple[list[TraceRow], float]:
     candidates = _pick_candidates_for_timestamp(
         rows=rows,
@@ -845,7 +846,7 @@ def _pick_candidates_for_entry_with_fallback(
     )
     if candidates:
         return candidates, min_expected_return_percent
-    if active_tickers:
+    if active_tickers and not allow_refill_empty_slots:
         return candidates, min_expected_return_percent
     for fallback_threshold in fallback_min_expected_return_percents or []:
         if fallback_threshold <= 0 or fallback_threshold >= min_expected_return_percent:
@@ -1309,6 +1310,7 @@ def run_backtest(
                 trend_allowed_tickers=effective_trend_allowed_tickers,
                 previous_scan_prices=previous_scan_prices,
                 max_intraday_jump_from_prev_scan_percent=max_intraday_jump_from_prev_scan_percent,
+                allow_refill_empty_slots=allow_refill_empty_slots,
             )
             if candidates and used_threshold != min_expected_return_percent:
                 print(

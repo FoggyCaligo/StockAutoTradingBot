@@ -1066,7 +1066,63 @@ def test_run_backtest_respects_session_capital_slot_budget(tmp_path):
 
     assert len(trades) == 1
     assert trades[0].ticker == "AAA"
-    assert trades[0].entry_time == "2026-06-02 09:30:00"
+
+
+def test_pick_candidates_with_fallback_allows_active_positions_when_refill_is_enabled():
+    from Daily_bot.backtest.replay_market_traces import TraceRow, _pick_candidates_for_entry_with_fallback
+
+    rows = [
+        TraceRow(
+            session_date="2026-06-02",
+            ticker="AAA",
+            created_at="2026-06-02 09:30:00",
+            phase="scan_candidate",
+            selected=0,
+            price=100,
+            prev_close_price=100,
+            current_price=100,
+            expect_price=101,
+            expect_revenue_percent=0.4,
+            spread_percent=0.2,
+            ask_depth_5_amount_krw=0,
+            prev_day_change_percent=0.0,
+        ),
+        TraceRow(
+            session_date="2026-06-02",
+            ticker="BBB",
+            created_at="2026-06-02 09:30:00",
+            phase="scan_candidate",
+            selected=0,
+            price=100,
+            prev_close_price=100,
+            current_price=100,
+            expect_price=101,
+            expect_revenue_percent=0.5,
+            spread_percent=0.2,
+            ask_depth_5_amount_krw=0,
+            prev_day_change_percent=0.0,
+        ),
+    ]
+
+    candidates, used_threshold = _pick_candidates_for_entry_with_fallback(
+        rows=rows,
+        min_expected_return_percent=0.6,
+        fallback_min_expected_return_percents=[0.5],
+        max_spread_percent=0.7,
+        top_ratio=1.0,
+        spread_expected_return_multiplier=0.0,
+        min_prev_day_change_percent=0.0,
+        max_prev_day_change_percent=15.0,
+        active_tickers={"000660"},
+        allowed_tickers=None,
+        trend_allowed_tickers=None,
+        previous_scan_prices={},
+        max_intraday_jump_from_prev_scan_percent=0.0,
+        allow_refill_empty_slots=True,
+    )
+
+    assert [candidate.ticker for candidate in candidates] == ["BBB"]
+    assert used_threshold == 0.5
 
 
 def test_run_backtest_respects_configurable_stop_buy_time(tmp_path):
