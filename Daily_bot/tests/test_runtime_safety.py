@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import Daily_bot.main as main
+import pytest
 from Daily_bot.models import Candidate, HogaLevel, HogaSnapshot
 from Daily_bot.risk.stop_loss import _get_ticker
 from Daily_bot.telemetry.trace_helpers import trace_active_positions
@@ -186,6 +187,91 @@ def test_attempt_stop_loss_safely_recovers_instead_of_raising(monkeypatch):
 
     assert triggered is False
     assert errored is True
+
+
+def test_fetch_account_state_safely_recovers_instead_of_raising():
+    class _RiskClient:
+        def get_positions(self):
+            raise RuntimeError("temporary disconnect")
+
+        def get_open_orders(self):
+            return []
+
+    positions, open_orders = main._fetch_account_state_safely(_RiskClient(), "Main loop account state")
+
+    assert positions is None
+    assert open_orders is None
+
+
+def test_authenticate_client_safely_recovers_instead_of_raising():
+    class _RiskClient:
+        def auth(self):
+            raise RuntimeError("auth timeout")
+
+    assert main._authenticate_client_safely(_RiskClient()) is False
+
+
+def test_run_retries_main_loop_after_transient_account_state_failure(monkeypatch):
+    class _StopLoop(Exception):
+        pass
+
+    class _LoopClient:
+        def auth(self):
+            return "token"
+
+    class _RunRecorder:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+    cfg = {
+        "risk": {"dry_run": True},
+        "market": {
+            "prewarm_start_time": "08:50",
+            "startup_clear_time": "09:10",
+            "start_buy_time": "09:30",
+            "stop_buy_time": "15:00",
+            "force_sell_time": "15:10",
+            "reconcile_time": "15:15",
+            "end_time": "15:20",
+        },
+        "strategy": {
+            "scan_interval_seconds": 60,
+            "sell_tick_offset": 1,
+            "allow_refill_empty_slots": True,
+        },
+        "api": {"quote_rate_limit_per_second": 1000},
+    }
+    fetch_attempts = {"count": 0}
+
+    def _fake_is_after_now(value: str) -> bool:
+        return value in {"09:10", "09:30"}
+
+    def _fake_fetch_account_state_safely(_client, _label="Account state"):
+        fetch_attempts["count"] += 1
+        if fetch_attempts["count"] == 1:
+            return None, None
+        raise _StopLoop()
+
+    monkeypatch.setattr(main, "load_yaml", lambda *_args, **_kwargs: cfg)
+    monkeypatch.setattr(main, "build_client", lambda *_args, **_kwargs: _LoopClient())
+    monkeypatch.setattr(main, "Recorder", _RunRecorder)
+    monkeypatch.setattr(main, "estimate_account_value", lambda *_args, **_kwargs: 1_000_000)
+    monkeypatch.setattr(main, "resolve_kospi_change_percent", lambda: 0.0)
+    monkeypatch.setattr(main, "is_between_now", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(main, "is_after_now", _fake_is_after_now)
+    monkeypatch.setattr(main, "_attempt_startup_carryover_liquidation_safely", lambda *_args, **_kwargs: (True, False))
+    monkeypatch.setattr(main, "record_session_prev_close_prices", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(main, "resolve_session_capital_basis", lambda *_args, **_kwargs: 1_000_000)
+    monkeypatch.setattr(main, "resolve_total_slot_count", lambda *_args, **_kwargs: 1)
+    monkeypatch.setattr(main, "resolve_target_budget_per_stock", lambda *_args, **_kwargs: 1_000_000)
+    monkeypatch.setattr(main, "resolve_position_limit", lambda *_args, **_kwargs: 1)
+    monkeypatch.setattr(main, "_fetch_account_state_safely", _fake_fetch_account_state_safely)
+    monkeypatch.setattr(main.time, "sleep", lambda *_args, **_kwargs: None)
+
+    with pytest.raises(_StopLoop):
+        main.run("ignored.yaml", dry_run_override=True)
+
+    assert fetch_attempts["count"] == 2
 
 
 def test_filter_candidates_for_entry_uses_fallback_threshold_when_batch_is_flat():

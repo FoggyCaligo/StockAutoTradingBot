@@ -32,6 +32,8 @@ class KiwoomClient:
     TR_KT00018_POSITIONS = "kt00018"
     TR_KA10075_OPEN_ORDERS = "ka10075"
     TR_KA10076_FILLS = "ka10076"
+    REQUEST_MAX_ATTEMPTS = 4
+    AUTH_MAX_ATTEMPTS = 3
 
     def __init__(self, base_url: str | None = None):
         load_dotenv()
@@ -60,16 +62,32 @@ class KiwoomClient:
         }
         headers = {"Content-Type": "application/json;charset=UTF-8"}
 
-        response = self.session.post(url, json=payload, headers=headers, timeout=20)
-        response.raise_for_status()
-        body = response.json()
+        last_exc: Exception | None = None
+        for attempt in range(1, self.AUTH_MAX_ATTEMPTS + 1):
+            try:
+                response = self.session.post(url, json=payload, headers=headers, timeout=20)
+                response.raise_for_status()
+                body = response.json()
+                token = self._extract_value(body, ["token", "access_token", "accessToken", "ACCESS_TOKEN"])
+                if not token:
+                    raise RuntimeError(f"Failed to obtain Kiwoom access token: {body}")
 
-        token = self._extract_value(body, ["token", "access_token", "accessToken", "ACCESS_TOKEN"])
-        if not token:
-            raise RuntimeError(f"Failed to obtain Kiwoom access token: {body}")
+                self.access_token = token
+                return token
+            except requests.exceptions.RequestException as exc:
+                last_exc = exc
+                if attempt >= self.AUTH_MAX_ATTEMPTS:
+                    raise
+                time.sleep(min(2.0, 0.5 * attempt))
+            except Exception as exc:
+                last_exc = exc
+                if attempt >= self.AUTH_MAX_ATTEMPTS:
+                    raise
+                time.sleep(min(2.0, 0.5 * attempt))
 
-        self.access_token = token
-        return token
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("Unknown Kiwoom authentication failure.")
 
     def _build_url(self, path: str) -> str:
         normalized = path if path.startswith("/") else f"/{path}"
@@ -96,17 +114,15 @@ class KiwoomClient:
         cont_yn: str = "N",
         next_key: str = "",
     ) -> dict[str, Any]:
-        self._limiter.wait()
-        url = self._build_url(path)
-        response = self.session.request(
-            method,
-            url,
-            headers=self._headers(api_id=api_id, cont_yn=cont_yn, next_key=next_key),
+        response = self._request_response(
+            method=method,
+            path=path,
+            api_id=api_id,
             params=params,
             json=json,
-            timeout=30,
+            cont_yn=cont_yn,
+            next_key=next_key,
         )
-        response.raise_for_status()
         return response.json()
 
     def _request_response(
@@ -119,18 +135,46 @@ class KiwoomClient:
         cont_yn: str = "N",
         next_key: str = "",
     ) -> requests.Response:
-        self._limiter.wait()
         url = self._build_url(path)
-        response = self.session.request(
-            method,
-            url,
-            headers=self._headers(api_id=api_id, cont_yn=cont_yn, next_key=next_key),
-            params=params,
-            json=json,
-            timeout=30,
-        )
-        response.raise_for_status()
-        return response
+        last_exc: Exception | None = None
+        for attempt in range(1, self.REQUEST_MAX_ATTEMPTS + 1):
+            self._limiter.wait()
+            try:
+                response = self.session.request(
+                    method,
+                    url,
+                    headers=self._headers(api_id=api_id, cont_yn=cont_yn, next_key=next_key),
+                    params=params,
+                    json=json,
+                    timeout=30,
+                )
+                if response.status_code in {401, 403} and attempt < self.REQUEST_MAX_ATTEMPTS:
+                    self.auth()
+                    time.sleep(min(3.0, 0.5 * attempt))
+                    continue
+                if response.status_code in {429, 500, 502, 503, 504} and attempt < self.REQUEST_MAX_ATTEMPTS:
+                    time.sleep(min(3.0, 0.5 * attempt))
+                    continue
+                response.raise_for_status()
+                return response
+            except requests.exceptions.RequestException as exc:
+                last_exc = exc
+                status_code = getattr(getattr(exc, "response", None), "status_code", None)
+                if status_code in {401, 403} and attempt < self.REQUEST_MAX_ATTEMPTS:
+                    self.auth()
+                    time.sleep(min(3.0, 0.5 * attempt))
+                    continue
+                if attempt >= self.REQUEST_MAX_ATTEMPTS:
+                    raise
+                time.sleep(min(3.0, 0.5 * attempt))
+            except Exception as exc:
+                last_exc = exc
+                if attempt >= self.REQUEST_MAX_ATTEMPTS:
+                    raise
+                time.sleep(min(3.0, 0.5 * attempt))
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError(f"Unknown request failure: {method} {url}")
 
     def get_20hoga(self, ticker: str) -> HogaSnapshot:
         payload = {"stk_cd": ticker}

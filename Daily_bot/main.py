@@ -627,6 +627,23 @@ def _recheck_account_state(client) -> tuple[list, list[dict]] | tuple[None, None
         return None, None
 
 
+def _fetch_account_state_safely(client, label: str = "Account state") -> tuple[list, list[dict]] | tuple[None, None]:
+    try:
+        return client.get_positions(), client.get_open_orders()
+    except Exception as exc:
+        print(f"{label} fetch failed: {exc}")
+        return None, None
+
+
+def _authenticate_client_safely(client) -> bool:
+    try:
+        client.auth()
+        return True
+    except Exception as exc:
+        print(f"Client authentication failed: {exc}")
+        return False
+
+
 def _report_risk_recovery_state(client, label: str) -> tuple[list, list[dict]] | tuple[None, None]:
     positions, open_orders = _recheck_account_state(client)
     if positions is None or open_orders is None:
@@ -1319,7 +1336,8 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     dry_run = cfg["risk"]["dry_run"] if dry_run_override is None else dry_run_override
     client = build_client(dry_run)
     recorder = Recorder(BOT_DB_PATH, log_dir=BOT_LOG_DIR)
-    client.auth()
+    while not _authenticate_client_safely(client):
+        time.sleep(5)
     state = BotState.NO_POSITION
     force_sell_done = False
     startup_carryover_clear_done = False
@@ -1434,8 +1452,10 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 f"position_limit={session_position_limit}"
             )
 
-        positions = client.get_positions()
-        open_orders = client.get_open_orders()
+        positions, open_orders = _fetch_account_state_safely(client, "Main loop account state")
+        if positions is None or open_orders is None:
+            time.sleep(5)
+            continue
         active_tickers = _get_active_tickers(positions, open_orders)
         poll_and_record_new_fills(client, recorder, cfg)
         if watchlist:

@@ -1,5 +1,6 @@
 import Daily_bot.broker.kiwoom_client as kiwoom_module
 from Daily_bot.broker.kiwoom_client import KiwoomClient
+import requests
 
 
 def test_get_orderable_cash_prefers_stock_buying_power(monkeypatch):
@@ -170,3 +171,62 @@ def test_get_order_fill_uses_weighted_average_execution_price(monkeypatch):
     assert fill is not None
     assert fill.quantity == 10
     assert fill.price == 10035
+
+
+class _ResponseStub:
+    def __init__(self, status_code: int, body: dict):
+        self.status_code = status_code
+        self._body = body
+        self.headers = {}
+
+    def json(self):
+        return self._body
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError(response=self)
+
+
+def test_request_retries_after_transient_connection_error(monkeypatch):
+    client = KiwoomClient(base_url="https://example.com")
+    client.access_token = "token"
+    responses = iter(
+        [
+            requests.exceptions.ConnectionError("temporary disconnect"),
+            _ResponseStub(200, {"return_code": 0}),
+        ]
+    )
+
+    def _request_once(*_args, **_kwargs):
+        result = next(responses)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    monkeypatch.setattr(client.session, "request", _request_once)
+    monkeypatch.setattr(kiwoom_module.time, "sleep", lambda *_args, **_kwargs: None)
+
+    body = client._request("POST", "/api/test", api_id="test", json={})
+
+    assert body == {"return_code": 0}
+
+
+def test_request_reauths_after_unauthorized_response(monkeypatch):
+    client = KiwoomClient(base_url="https://example.com")
+    client.access_token = "expired-token"
+    responses = iter(
+        [
+            _ResponseStub(401, {"return_code": 401}),
+            _ResponseStub(200, {"return_code": 0}),
+        ]
+    )
+    auth_calls: list[str] = []
+
+    monkeypatch.setattr(client.session, "request", lambda *_args, **_kwargs: next(responses))
+    monkeypatch.setattr(client, "auth", lambda: auth_calls.append("auth") or "new-token")
+    monkeypatch.setattr(kiwoom_module.time, "sleep", lambda *_args, **_kwargs: None)
+
+    body = client._request("POST", "/api/test", api_id="test", json={})
+
+    assert body == {"return_code": 0}
+    assert auth_calls == ["auth"]
