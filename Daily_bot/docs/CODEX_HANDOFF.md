@@ -15,7 +15,7 @@
 - `strategy.top_ratio = 1.0`
 - `strategy.max_buy_count = 3`
 - `strategy.min_expected_return_percent = 0.7`
-- `strategy.min_expected_return_fallback_percent = 0.4`
+- `strategy.min_expected_return_fallback_percents = [0.6, 0.5]`
 - `strategy.max_spread_percent = 0.0`
 - `strategy.min_prev_day_change_percent = 0.0`
 - `strategy.max_prev_day_change_percent = 0.0`
@@ -59,7 +59,7 @@
 - 백테스트 기본값은 `--config`의 설정 파일을 읽는다.
 - `--starting-capital-krw` 기본값은 `1000000`
 - `--use-selected-signals` 기본값은 `False`
-- `--fallback-min-expected-return` 기본값은 config의 `strategy.min_expected_return_fallback_percent`
+- `--fallback-min-expected-returns` 기본값은 config의 `strategy.min_expected_return_fallback_percents`
 - 따라서 옵션 없이 돌리면 실제 선택 신호를 그대로 재현하지 않고, `market_traces` 기준 후보를 다시 고른다.
 - 리플레이도 라이브와 같은 fallback 규칙을 따라, 배치가 비어 있고 기본 문턱에서 후보가 0개일 때만 fallback 문턱으로 다시 고른다.
 - 실거래 비교용이면 `--use-selected-signals` 여부를 명시하는 편이 좋다.

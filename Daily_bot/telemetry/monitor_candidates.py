@@ -34,7 +34,7 @@ def build_universe_config(cfg: dict) -> UniverseConfig:
         min_trading_value_krw=cfg["universe"]["min_trading_value_krw"],
         csv_path=cfg["universe"].get("csv_path"),
         cache_path=cfg["universe"].get("cache_path"),
-        source=cfg["universe"].get("source", "KOSPI200"),
+        source=cfg["universe"].get("source", "KOSPI"),
         refresh_daily=cfg["universe"].get("refresh_daily", True),
     )
 

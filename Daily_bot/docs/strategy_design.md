@@ -45,7 +45,7 @@ expect_revenue_percent = (target_sell_price - current_price) / current_price * 1
 현재 최종 필터는 사실상 기대수익률 중심이다.
 
 - 기본은 `min_expected_return_percent >= 0.7`
-- 단, 배치가 완전히 비어 있고 기본 문턱에서 후보가 0개면 `min_expected_return_fallback_percent = 0.4`로 같은 스캔을 한 번 더 재평가한다.
+- 단, 배치가 완전히 비어 있고 기본 문턱에서 후보가 0개면 `min_expected_return_fallback_percents = [0.6, 0.5]` 순서로 같은 스캔을 재평가한다.
 - `max_spread_percent = 0.0` 이므로 스프레드 상한 필터는 꺼져 있다.
 - `min_prev_day_change_percent = 0.0`
 - `max_prev_day_change_percent = 0.0`

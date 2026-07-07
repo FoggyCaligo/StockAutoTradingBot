@@ -51,9 +51,31 @@ def build_universe_config(cfg: dict) -> UniverseConfig:
         min_trading_value_krw=cfg["universe"]["min_trading_value_krw"],
         csv_path=cfg["universe"].get("csv_path"),
         cache_path=cfg["universe"].get("cache_path"),
-        source=cfg["universe"].get("source", "KOSPI200"),
+        source=cfg["universe"].get("source", "KOSPI"),
         refresh_daily=cfg["universe"].get("refresh_daily", True),
     )
+
+
+def resolve_fallback_expected_return_thresholds(strategy_cfg: dict) -> list[float]:
+    primary_threshold = float(strategy_cfg.get("min_expected_return_percent", 0.0) or 0.0)
+    raw_thresholds = strategy_cfg.get("min_expected_return_fallback_percents")
+    if raw_thresholds is None:
+        raw_thresholds = strategy_cfg.get("min_expected_return_fallback_percent", 0.0)
+
+    if isinstance(raw_thresholds, (list, tuple)):
+        values = raw_thresholds
+    else:
+        values = [raw_thresholds]
+
+    thresholds: list[float] = []
+    for value in values:
+        try:
+            threshold = float(value or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if 0 < threshold < primary_threshold and threshold not in thresholds:
+            thresholds.append(threshold)
+    return thresholds
 
 
 def resolve_target_budget_per_stock(cfg: dict, planning_cash: int) -> int:
@@ -276,7 +298,7 @@ def filter_candidates_for_entry(
     prev_scan_prices = previous_scan_prices or {}
     strategy_cfg = cfg["strategy"]
     primary_threshold = float(strategy_cfg["min_expected_return_percent"])
-    fallback_threshold = float(strategy_cfg.get("min_expected_return_fallback_percent", 0.0) or 0.0)
+    fallback_thresholds = resolve_fallback_expected_return_thresholds(strategy_cfg)
 
     top = get_candidates_top(calculated, strategy_cfg["top_ratio"])
 
@@ -300,9 +322,11 @@ def filter_candidates_for_entry(
     filtered = _apply_threshold(primary_threshold)
     used_threshold = primary_threshold
 
-    if not filtered and not active_ticker_keys and 0 < fallback_threshold < primary_threshold:
-        fallback_filtered = _apply_threshold(fallback_threshold)
-        if fallback_filtered:
+    if not filtered and not active_ticker_keys:
+        for fallback_threshold in fallback_thresholds:
+            fallback_filtered = _apply_threshold(fallback_threshold)
+            if not fallback_filtered:
+                continue
             print(
                 "No entry candidates at primary expected-return threshold. "
                 f"Retrying with fallback threshold {fallback_threshold:.2f} "
@@ -310,6 +334,7 @@ def filter_candidates_for_entry(
             )
             filtered = fallback_filtered
             used_threshold = fallback_threshold
+            break
 
     return filtered, used_threshold
 

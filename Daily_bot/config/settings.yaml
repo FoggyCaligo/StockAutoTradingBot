@@ -7,9 +7,9 @@ market:
   end_time: "15:20"
 
 universe:
-  source: "KOSPI200"
-  csv_path: "data/kospi200.csv"
-  cache_path: "data/kospi200_latest.csv"
+  source: "KOSPI"
+  csv_path: ""
+  cache_path: "data/kospi_latest.csv"
   refresh_daily: true
   min_market_cap_krw: 250000000000
   min_trading_value_krw: 3000000000
@@ -21,7 +21,7 @@ strategy:
   top_ratio: 1.0
   max_buy_count: 3
   min_expected_return_percent: 0.7
-  min_expected_return_fallback_percent: 0.4
+  min_expected_return_fallback_percents: [0.6, 0.5]
   max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
   min_prev_day_change_percent: 0.0

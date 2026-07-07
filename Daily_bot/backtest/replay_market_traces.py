@@ -29,6 +29,32 @@ from Daily_bot.strategy.signal import min_expected_return_with_spread
 from Daily_bot.utils import ceil_tick_count, count_ticks_between_prices, get_tick_size, load_yaml, move_price_by_ticks, round_to_tick
 
 
+def resolve_fallback_expected_return_thresholds(
+    strategy_cfg: dict,
+    primary_threshold: float | None = None,
+) -> list[float]:
+    if primary_threshold is None:
+        primary_threshold = float(strategy_cfg.get("min_expected_return_percent", 0.0) or 0.0)
+    raw_thresholds = strategy_cfg.get("min_expected_return_fallback_percents")
+    if raw_thresholds is None:
+        raw_thresholds = strategy_cfg.get("min_expected_return_fallback_percent", 0.0)
+
+    if isinstance(raw_thresholds, (list, tuple)):
+        values = raw_thresholds
+    else:
+        values = [raw_thresholds]
+
+    thresholds: list[float] = []
+    for value in values:
+        try:
+            threshold = float(value or 0.0)
+        except (TypeError, ValueError):
+            continue
+        if 0 < threshold < primary_threshold and threshold not in thresholds:
+            thresholds.append(threshold)
+    return thresholds
+
+
 @dataclass
 class TraceRow:
     session_date: str
@@ -527,7 +553,7 @@ def _pick_candidates_for_timestamp(
 def _pick_candidates_for_entry_with_fallback(
     rows: list[TraceRow],
     min_expected_return_percent: float,
-    fallback_min_expected_return_percent: float,
+    fallback_min_expected_return_percents: list[float] | tuple[float, ...] | None,
     max_spread_percent: float,
     top_ratio: float,
     spread_expected_return_multiplier: float,
@@ -551,23 +577,26 @@ def _pick_candidates_for_entry_with_fallback(
     )
     if candidates:
         return candidates, min_expected_return_percent
-    if active_tickers or fallback_min_expected_return_percent <= 0 or fallback_min_expected_return_percent >= min_expected_return_percent:
+    if active_tickers:
         return candidates, min_expected_return_percent
-    fallback_candidates = _pick_candidates_for_timestamp(
-        rows=rows,
-        min_expected_return_percent=fallback_min_expected_return_percent,
-        max_spread_percent=max_spread_percent,
-        top_ratio=top_ratio,
-        spread_expected_return_multiplier=spread_expected_return_multiplier,
-        min_prev_day_change_percent=min_prev_day_change_percent,
-        max_prev_day_change_percent=max_prev_day_change_percent,
-        active_tickers=active_tickers,
-        allowed_tickers=allowed_tickers,
-        trend_allowed_tickers=trend_allowed_tickers,
-    )
-    return fallback_candidates, (
-        fallback_min_expected_return_percent if fallback_candidates else min_expected_return_percent
-    )
+    for fallback_threshold in fallback_min_expected_return_percents or []:
+        if fallback_threshold <= 0 or fallback_threshold >= min_expected_return_percent:
+            continue
+        fallback_candidates = _pick_candidates_for_timestamp(
+            rows=rows,
+            min_expected_return_percent=fallback_threshold,
+            max_spread_percent=max_spread_percent,
+            top_ratio=top_ratio,
+            spread_expected_return_multiplier=spread_expected_return_multiplier,
+            min_prev_day_change_percent=min_prev_day_change_percent,
+            max_prev_day_change_percent=max_prev_day_change_percent,
+            active_tickers=active_tickers,
+            allowed_tickers=allowed_tickers,
+            trend_allowed_tickers=trend_allowed_tickers,
+        )
+        if fallback_candidates:
+            return fallback_candidates, fallback_threshold
+    return candidates, min_expected_return_percent
 
 
 def summarize_ask_depth_coverage(
@@ -758,9 +787,10 @@ def run_backtest(
     force_sell_time: str = "15:00",
     max_hold_seconds_before_exit: int = 0,
     spread_expected_return_multiplier: float = 0.0,
-    fallback_min_expected_return_percent: float = 0.0,
+    fallback_min_expected_return_percents: list[float] | tuple[float, ...] | None = None,
     max_orderbook_ask_depth_ratio: float = 0.0,
     missing_ask_depth_policy: str = "ignore",
+    allow_refill_empty_slots: bool = False,
     trend_filter_enabled: bool = False,
     trend_ok_tickers_by_day: dict[str, set[str]] | None = None,
     trend_filter_days: set[str] | None = None,
@@ -899,7 +929,7 @@ def run_backtest(
 
             # Match the live bot's batch flow: once any slot is occupied,
             # block new entries until the whole set is flat again.
-            if open_positions:
+            if not allow_refill_empty_slots and open_positions:
                 continue
 
             # Match the live bot's behavior by default: candidate ranking is trimmed by
@@ -922,7 +952,7 @@ def run_backtest(
             candidates, used_threshold = _pick_candidates_for_entry_with_fallback(
                 rows_at_time,
                 min_expected_return_percent=min_expected_return_percent,
-                fallback_min_expected_return_percent=fallback_min_expected_return_percent,
+                fallback_min_expected_return_percents=fallback_min_expected_return_percents,
                 max_spread_percent=max_spread_percent,
                 top_ratio=top_ratio,
                 spread_expected_return_multiplier=spread_expected_return_multiplier,
@@ -1265,6 +1295,10 @@ def parse_args():
     strategy_cfg = cfg.get("strategy", {})
     risk_cfg = cfg.get("risk", {})
     trend_cfg = cfg.get("trend_filter", {})
+    default_fallback_thresholds = resolve_fallback_expected_return_thresholds(
+        strategy_cfg,
+        primary_threshold=float(strategy_cfg.get("min_expected_return_percent", 0.71) or 0.71),
+    )
 
     parser = argparse.ArgumentParser(
         description="Replay Daily_bot market_traces from bot.sqlite3.",
@@ -1276,8 +1310,11 @@ def parse_args():
     parser.add_argument(
         "--fallback-min-expected-return",
         type=float,
-        default=float(strategy_cfg.get("min_expected_return_fallback_percent", 0.0) or 0.0),
+        action="append",
+        dest="fallback_min_expected_returns",
+        default=None,
     )
+    parser.add_argument("--fallback-min-expected-returns", dest="fallback_min_expected_returns_csv", default="")
     parser.add_argument("--max-spread", type=float, default=float(strategy_cfg.get("max_spread_percent", 0.0) or 0.0))
     parser.add_argument("--min-prev-day-change", type=float, default=float(strategy_cfg.get("min_prev_day_change_percent", 0.0) or 0.0))
     parser.add_argument("--max-prev-day-change", type=float, default=float(strategy_cfg.get("max_prev_day_change_percent", 0.0) or 0.0))
@@ -1325,7 +1362,29 @@ def parse_args():
     parser.add_argument("--use-selected-signals", dest="use_selected_signals", action="store_true")
     parser.add_argument("--ignore-selected-signals", dest="use_selected_signals", action="store_false")
     parser.set_defaults(use_selected_signals=False)
-    return parser.parse_args(remaining_argv)
+    parser.add_argument("--allow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_true")
+    parser.add_argument("--disallow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_false")
+    parser.set_defaults(allow_refill_empty_slots=False)
+    args = parser.parse_args(remaining_argv)
+
+    resolved_fallback_thresholds = list(args.fallback_min_expected_returns or [])
+    if args.fallback_min_expected_returns_csv:
+        for raw_value in str(args.fallback_min_expected_returns_csv).split(","):
+            raw_value = raw_value.strip()
+            if not raw_value:
+                continue
+            resolved_fallback_thresholds.append(float(raw_value))
+    if args.fallback_min_expected_returns is None and not args.fallback_min_expected_returns_csv:
+        resolved_fallback_thresholds = list(default_fallback_thresholds)
+
+    filtered_thresholds: list[float] = []
+    for threshold in resolved_fallback_thresholds:
+        if threshold <= 0 or threshold >= args.min_expected_return or threshold in filtered_thresholds:
+            continue
+        filtered_thresholds.append(threshold)
+    args.fallback_min_expected_returns = filtered_thresholds
+    args.fallback_min_expected_return = filtered_thresholds[0] if filtered_thresholds else 0.0
+    return args
 
 
 if __name__ == "__main__":
@@ -1366,9 +1425,10 @@ if __name__ == "__main__":
         force_sell_time=args.force_sell_time,
         max_hold_seconds_before_exit=args.max_hold_seconds_before_exit,
         spread_expected_return_multiplier=args.spread_expected_return_multiplier,
-        fallback_min_expected_return_percent=args.fallback_min_expected_return,
+        fallback_min_expected_return_percents=args.fallback_min_expected_returns,
         max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
         missing_ask_depth_policy=args.missing_ask_depth_policy,
+        allow_refill_empty_slots=args.allow_refill_empty_slots,
         trend_filter_enabled=args.trend_filter_enabled,
         trend_ok_tickers_by_day=trend_ok_tickers_by_day,
         trend_filter_days=trend_filter_days,

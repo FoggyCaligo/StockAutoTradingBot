@@ -69,7 +69,7 @@ KIWOOM_BASE_URL=https://api.kiwoom.com
 - `strategy.top_ratio: 1.0`
 - `strategy.max_buy_count: 3`
 - `strategy.min_expected_return_percent: 0.7`
-- `strategy.min_expected_return_fallback_percent: 0.4`
+- `strategy.min_expected_return_fallback_percents: [0.6, 0.5]`
 - `strategy.max_spread_percent: 0.0`
 - `strategy.min_prev_day_change_percent: 0.0`
 - `strategy.max_prev_day_change_percent: 0.0`
@@ -161,7 +161,7 @@ Get-ChildItem .\Daily_bot\logs | Sort-Object LastWriteTime -Descending | Select-
 - 설정 파일 기본값을 그대로 읽음
 - 시작자본 기본값은 `100만원`
 - `--use-selected-signals` 기본값은 `False`
-- `--fallback-min-expected-return` 기본값은 config의 `strategy.min_expected_return_fallback_percent`
+- `--fallback-min-expected-returns` 기본값은 config의 `strategy.min_expected_return_fallback_percents`
 - 라이브/리플레이 공통으로, 배치가 완전히 비어 있고 기본 기대수익률 문턱에서 후보가 0개일 때만 fallback 문턱으로 한 번 더 후보를 고른다.
 
 실거래 비교용 리플레이라면 보통 다음처럼 명시해서 쓴다.

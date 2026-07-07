@@ -204,7 +204,7 @@ def test_filter_candidates_for_entry_uses_fallback_threshold_when_batch_is_flat(
             "top_ratio": 1.0,
             "sell_tick_offset": 1,
             "min_expected_return_percent": 0.6,
-            "min_expected_return_fallback_percent": 0.4,
+            "min_expected_return_fallback_percents": [0.5, 0.4],
             "max_spread_percent": 0.7,
             "min_prev_day_change_percent": 0.0,
             "max_prev_day_change_percent": 15.0,
@@ -221,7 +221,7 @@ def test_filter_candidates_for_entry_uses_fallback_threshold_when_batch_is_flat(
     )
 
     assert [candidate.ticker for candidate in filtered] == ["005930"]
-    assert used_threshold == 0.4
+    assert used_threshold == 0.5
 
 
 def test_filter_candidates_for_entry_does_not_use_fallback_when_positions_are_active():
@@ -240,7 +240,7 @@ def test_filter_candidates_for_entry_does_not_use_fallback_when_positions_are_ac
             "top_ratio": 1.0,
             "sell_tick_offset": 1,
             "min_expected_return_percent": 0.6,
-            "min_expected_return_fallback_percent": 0.4,
+            "min_expected_return_fallback_percents": [0.5, 0.4],
             "max_spread_percent": 0.7,
             "min_prev_day_change_percent": 0.0,
             "max_prev_day_change_percent": 15.0,
@@ -258,3 +258,39 @@ def test_filter_candidates_for_entry_does_not_use_fallback_when_positions_are_ac
 
     assert filtered == []
     assert used_threshold == 0.6
+
+
+def test_filter_candidates_for_entry_tries_multiple_fallback_thresholds_in_order():
+    calculated = [
+        Candidate(
+            ticker="005930",
+            price=10_000,
+            expect_price=10_106,
+            expect_revenue_percent=0.56,
+            spread_percent=0.1,
+            trend_ok=True,
+        )
+    ]
+    cfg = {
+        "strategy": {
+            "top_ratio": 1.0,
+            "sell_tick_offset": 1,
+            "min_expected_return_percent": 0.7,
+            "min_expected_return_fallback_percents": [0.6, 0.5],
+            "max_spread_percent": 0.7,
+            "min_prev_day_change_percent": 0.0,
+            "max_prev_day_change_percent": 15.0,
+            "spread_expected_return_multiplier": 0.0,
+            "max_intraday_jump_from_prev_scan_percent": 1.0,
+        }
+    }
+
+    filtered, used_threshold = main.filter_candidates_for_entry(
+        calculated,
+        cfg,
+        previous_scan_prices={},
+        active_tickers=set(),
+    )
+
+    assert [candidate.ticker for candidate in filtered] == ["005930"]
+    assert used_threshold == 0.5

@@ -17,12 +17,11 @@ class UniverseConfig:
     min_trading_value_krw: int
     csv_path: str | None = None
     cache_path: str | None = None
-    source: str = "KOSPI200"
+    source: str = "KOSPI"
     refresh_daily: bool = True
 
 
-DEFAULT_KOSPI200_CSV = Path("data/kospi200.csv")
-DEFAULT_KOSPI200_CACHE = Path("data/kospi200_latest.csv")
+DEFAULT_UNIVERSE_CACHE = Path("data/kospi_latest.csv")
 NUMERIC_COLUMNS = [
     "Close",
     "Open",
@@ -125,11 +124,11 @@ def _load_fdr_listing(source: str) -> pd.DataFrame:
 def get_kospi200_list(
     csv_path: str | None = None,
     cache_path: str | None = None,
-    source: str = "KOSPI200",
+    source: str = "KOSPI",
     refresh_daily: bool = True,
 ) -> pd.DataFrame:
-    fallback_path = Path(csv_path) if csv_path else DEFAULT_KOSPI200_CSV
-    cache = Path(cache_path) if cache_path else DEFAULT_KOSPI200_CACHE
+    fallback_path = Path(csv_path) if csv_path else None
+    cache = Path(cache_path) if cache_path else DEFAULT_UNIVERSE_CACHE
 
     if refresh_daily:
         if _cache_is_today(cache):
@@ -146,11 +145,11 @@ def get_kospi200_list(
 
     if cache.exists():
         return _load_local_universe(cache)
-    if fallback_path.exists():
+    if fallback_path and fallback_path.exists():
         return _load_local_universe(fallback_path)
 
     raise RuntimeError(
-        "Failed to load universe. Enable network access for FinanceDataReader or provide data/kospi200.csv."
+        "Failed to load universe. Enable network access for FinanceDataReader or provide an explicit universe CSV/cache path."
     )
 
 

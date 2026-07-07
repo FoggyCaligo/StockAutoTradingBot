@@ -1,6 +1,6 @@
 # Daily Bot
 
-Daily Bot은 `KOSPI200` 유니버스를 장중 스캔해, 기대수익률 기준을 통과한 종목만 제한적으로 진입하는 당일 매매 봇이다.
+Daily Bot은 `현재 KOSPI 전체`를 당일 조회해 필터링한 유니버스를 장중 스캔하고, 기대수익률 기준을 통과한 종목만 제한적으로 진입하는 당일 매매 봇이다.
 
 문서보다 코드를 우선 기준으로 본다. 현재 실제 동작 기준 파일은 [config/settings.yaml](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/config/settings.yaml), [main.py](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/main.py), [backtest/replay_market_traces.py](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/backtest/replay_market_traces.py)다.
 
@@ -27,7 +27,9 @@ market:
 
 ```yaml
 universe:
-  source: "KOSPI200"
+  source: "KOSPI"
+  csv_path: ""
+  cache_path: "data/kospi_latest.csv"
   min_market_cap_krw: 250000000000
   min_trading_value_krw: 3000000000
 
@@ -38,7 +40,7 @@ strategy:
   top_ratio: 1.0
   max_buy_count: 3
   min_expected_return_percent: 0.7
-  min_expected_return_fallback_percent: 0.4
+  min_expected_return_fallback_percents: [0.6, 0.5]
   max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
   min_prev_day_change_percent: 0.0
@@ -67,11 +69,11 @@ risk:
 
 1. 세션 시작 전에 유니버스를 준비하고 전일종가를 기록한다.
 2. 세션 자본 기준으로 슬롯 수와 종목당 예산을 계산한다.
-3. `KOSPI200` 전 종목을 스캔하며 20호가 기준 기대가와 기대수익률을 계산한다.
+3. `당일 조회된 KOSPI 전체`를 필터링한 유니버스를 스캔하며 20호가 기준 기대가와 기대수익률을 계산한다.
 4. 아래 조건을 통과한 종목만 최종 후보로 남긴다.
 
 - 기본은 `expect_revenue_percent >= 0.7`
-- 단, 보유/미체결이 전혀 없는 신규 배치 시작 시점에 `0.7` 기준 후보가 0개면 같은 스캔 결과를 `0.4` 기준으로 한 번 더 재평가한다.
+- 단, 보유/미체결이 전혀 없는 신규 배치 시작 시점에 `0.7` 기준 후보가 0개면 같은 스캔 결과를 `0.6`, `0.5` 기준으로 순서대로 재평가한다.
 - `prev_day_change_percent < 0.0`이 아니라, 현재 설정상 `min_prev_day_change_percent = 0.0`, `max_prev_day_change_percent = 0.0`이므로 전일등락률 필터는 사실상 꺼져 있다.
 - `max_spread_percent = 0.0`이므로 스프레드 필터도 꺼져 있다.
 - 목표 매도가가 진입가보다 낮으면 제외한다.
@@ -106,7 +108,9 @@ risk:
 - 기본 `min_expected_return`, 시간 설정, 손절값, 슬롯 설정은 현재 설정 파일과 정렬된다.
 - `--starting-capital-krw` 기본값은 `1,000,000 KRW`다.
 - `--use-selected-signals` 기본값은 `False`다.
-- `--fallback-min-expected-return` 기본값은 config의 `strategy.min_expected_return_fallback_percent`다.
+- `--fallback-min-expected-returns` 기본값은 config의 `strategy.min_expected_return_fallback_percents`다.
+- 기본은 실코드처럼 `활성 포지션이 하나라도 있으면 재매수 비허용`이다.
+- `--allow-refill-empty-slots`를 주면 백테스트에서만 빈 슬롯 재매수를 허용할 수 있다.
 - 백테스트도 실거래와 같은 규칙으로, 배치가 완전히 비어 있고 기본 기대수익률 문턱에서 후보가 0개일 때만 fallback 문턱으로 다시 고른다.
 - 즉, 아무 옵션 없이 돌리면 백테스트는 실제로 저장된 `selected signals`를 강제 재현하지 않고, 저장된 `market_traces`에서 조건을 만족하는 후보를 다시 고른다.
 

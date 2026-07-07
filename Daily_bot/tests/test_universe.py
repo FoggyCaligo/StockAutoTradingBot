@@ -1,12 +1,14 @@
-from pathlib import Path
-
 import pandas as pd
 
 from Daily_bot.strategy.universe import UniverseConfig, get_candidates, get_kospi200_list
 
 
-def test_get_kospi200_list_loads_local_csv_when_refresh_daily_false():
-    csv_path = Path("Daily_bot/data/kospi200.csv")
+def test_get_kospi200_list_loads_explicit_local_csv_when_refresh_daily_false(tmp_path):
+    csv_path = tmp_path / "universe.csv"
+    csv_path.write_text(
+        "Code,Name,Close,Marcap,Amount\n005930,Samsung,65000,500000000000,10000000000\n",
+        encoding="utf-8",
+    )
     df = get_kospi200_list(str(csv_path), refresh_daily=False)
 
     assert not df.empty
@@ -15,11 +17,22 @@ def test_get_kospi200_list_loads_local_csv_when_refresh_daily_false():
 
 
 def test_get_candidates_uses_csv_when_refresh_daily_false(tmp_path):
+    csv_path = tmp_path / "universe.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "Code,Name,Close,Marcap,Amount",
+                "005930,Samsung,65000,500000000000,10000000000",
+                "000660,SK Hynix,120000,400000000000,9000000000",
+            ]
+        ),
+        encoding="utf-8",
+    )
     cache_path = tmp_path / "missing_cache.csv"
     cfg = UniverseConfig(
         min_market_cap_krw=100000000000,
         min_trading_value_krw=10000000000,
-        csv_path="Daily_bot/data/kospi200.csv",
+        csv_path=str(csv_path),
         cache_path=str(cache_path),
         refresh_daily=False,
     )
@@ -81,7 +94,7 @@ def test_get_candidates_reads_previous_day_change_percent_from_cache_columns(tmp
     cfg = UniverseConfig(
         min_market_cap_krw=100000000000,
         min_trading_value_krw=10000000000,
-        csv_path="Daily_bot/data/kospi200.csv",
+        csv_path=None,
         cache_path=str(cache_csv),
         refresh_daily=True,
     )
