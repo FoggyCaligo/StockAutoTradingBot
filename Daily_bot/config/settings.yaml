@@ -23,11 +23,11 @@ strategy:
   max_buy_count: 3
   allow_refill_empty_slots: true
   min_expected_return_percent: 0.7
-  min_expected_return_fallback_percents: [0.6]
+  min_expected_return_fallback_percents: []
   max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
   min_prev_day_change_percent: 0.0
-  max_prev_day_change_percent: 0.0
+  max_prev_day_change_percent: 1.0
   # 0 or below disables the previous-scan intraday jump filter.
   max_intraday_jump_from_prev_scan_percent: 0.0
   sell_tick_offset: 1
