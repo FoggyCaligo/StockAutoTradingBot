@@ -1,0 +1,59 @@
+﻿Initial account value estimate: 925385
+Universe warm-up completed. prev_close_count=239 session_capital_basis=925385 session_slot_count=3 slot_budget_per_stock=308461 position_limit=3
+Startup carryover liquidation completed. Proceeding with normal session flow.
+No entry candidates at primary expected-return threshold. Retrying with fallback threshold 0.60 instead of 0.70 produced 2 candidates.
+Using fallback expected-return threshold after prev-scan jump filter: 0.60 candidates=2
+Planned 2 affordable targets out of desired 3 due to cash constraints.
+FILL BUY 003030 qty=2 price=108300 filled_at=2026-07-10T09:31:39 source=wait_buy_filled order_id=0124399
+Submitting limit sell for 003030: target_price=109000 stop_loss_price=0 decision_fill_price=108300 raw_fill={'rows': [{'ord_no': '0124399', 'stk_nm': '세아제강지주', 'io_tp_nm': '+매수', 'ord_pric': '108300', 'ord_qty': '2', 'cntr_pric': '108300', 'cntr_qty': '2', 'oso_qty': '0', 'tdy_trde_cmsn': '30', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093139', 'stk_cd': '003030', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0124399', 'stk_nm': '세아제강지주', 'io_tp_nm': '+매수', 'ord_pric': '108300', 'ord_qty': '2', 'cntr_pric': '108300', 'cntr_qty': '2', 'oso_qty': '0', 'tdy_trde_cmsn': '30', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093139', 'stk_cd': '003030', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL BUY 029780 qty=6 price=48850 filled_at=2026-07-10T09:31:51 source=wait_buy_filled order_id=0124755
+Submitting limit sell for 029780: target_price=49150 stop_loss_price=0 decision_fill_price=48850 raw_fill={'rows': [{'ord_no': '0124755', 'stk_nm': '삼성카드', 'io_tp_nm': '+매수', 'ord_pric': '48850', 'ord_qty': '6', 'cntr_pric': '48850', 'cntr_qty': '6', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093151', 'stk_cd': '029780', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0124755', 'stk_nm': '삼성카드', 'io_tp_nm': '+매수', 'ord_pric': '48850', 'ord_qty': '6', 'cntr_pric': '48850', 'cntr_qty': '6', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093151', 'stk_cd': '029780', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL SELL 029780 qty=6 price=49150 filled_at=2026-07-10T09:31:51 source=poll order_id=0124767
+Daily loss limit reached: initial=925385 current=832676 adjusted_current=832676 external_cash_flow=0 loss_percent=10.02% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832676 adjusted_current=832676 external_cash_flow=0 loss_percent=10.02% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832476 adjusted_current=832476 external_cash_flow=0 loss_percent=10.04% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832676 adjusted_current=832676 external_cash_flow=0 loss_percent=10.02% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832276 adjusted_current=832276 external_cash_flow=0 loss_percent=10.06% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832076 adjusted_current=832076 external_cash_flow=0 loss_percent=10.08% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831876 adjusted_current=831876 external_cash_flow=0 loss_percent=10.10% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832276 adjusted_current=832276 external_cash_flow=0 loss_percent=10.06% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832076 adjusted_current=832076 external_cash_flow=0 loss_percent=10.08% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831476 adjusted_current=831476 external_cash_flow=0 loss_percent=10.15% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=830676 adjusted_current=830676 external_cash_flow=0 loss_percent=10.23% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831476 adjusted_current=831476 external_cash_flow=0 loss_percent=10.15% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831476 adjusted_current=831476 external_cash_flow=0 loss_percent=10.15% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831076 adjusted_current=831076 external_cash_flow=0 loss_percent=10.19% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831676 adjusted_current=831676 external_cash_flow=0 loss_percent=10.13% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832076 adjusted_current=832076 external_cash_flow=0 loss_percent=10.08% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832076 adjusted_current=832076 external_cash_flow=0 loss_percent=10.08% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832076 adjusted_current=832076 external_cash_flow=0 loss_percent=10.08% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831876 adjusted_current=831876 external_cash_flow=0 loss_percent=10.10% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831876 adjusted_current=831876 external_cash_flow=0 loss_percent=10.10% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831876 adjusted_current=831876 external_cash_flow=0 loss_percent=10.10% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831676 adjusted_current=831676 external_cash_flow=0 loss_percent=10.13% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831076 adjusted_current=831076 external_cash_flow=0 loss_percent=10.19% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831076 adjusted_current=831076 external_cash_flow=0 loss_percent=10.19% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=830876 adjusted_current=830876 external_cash_flow=0 loss_percent=10.21% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831076 adjusted_current=831076 external_cash_flow=0 loss_percent=10.19% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=831276 adjusted_current=831276 external_cash_flow=0 loss_percent=10.17% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832676 adjusted_current=832676 external_cash_flow=0 loss_percent=10.02% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832676 adjusted_current=832676 external_cash_flow=0 loss_percent=10.02% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=925385 current=832676 adjusted_current=832676 external_cash_flow=0 loss_percent=10.02% limit=10.00%. Blocking new buys only.
+Submitting market force sell for 003030: quantity=2
+FILL SELL 003030 qty=2 price=106200 filled_at=2026-07-10T15:01:24 source=force_sell order_id=0377001
+Force sell completed. Waiting for end-of-day reconciliation.
+FILL BUY 003030 qty=2 price=108300 filled_at=2026-07-10T09:31:39 source=eod_reconciliation order_id=0124399
+FILL BUY 029780 qty=6 price=48850 filled_at=2026-07-10T09:31:51 source=eod_reconciliation order_id=0124755
+FILL SELL 029780 qty=6 price=49150 filled_at=2026-07-10T09:31:51 source=eod_reconciliation order_id=0124767
+FILL SELL 003030 qty=2 price=106200 filled_at=2026-07-10T15:01:24 source=eod_reconciliation order_id=0377001
+End-of-day reconciliation completed: broker_fills=4 updated=4
