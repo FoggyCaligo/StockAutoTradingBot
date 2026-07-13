@@ -23,6 +23,52 @@ class TargetSellPrice(int):
         return False
 
 
+def clamp_decay_min_weight(value: float | int | None, default: float = 1.0) -> float:
+    try:
+        resolved = float(value if value is not None else default)
+    except (TypeError, ValueError):
+        resolved = float(default)
+    return min(1.0, max(0.0, resolved))
+
+
+def apply_linear_decay_to_levels(levels: list[HogaLevel], min_weight: float = 1.0) -> list[HogaLevel]:
+    adjusted: list[HogaLevel] = []
+    total_levels = len(levels)
+    if total_levels <= 0:
+        return adjusted
+
+    clipped_min_weight = clamp_decay_min_weight(min_weight, default=1.0)
+    for index, level in enumerate(levels, start=1):
+        if total_levels == 1:
+            weight = 1.0
+        else:
+            decay_ratio = (index - 1) / (total_levels - 1)
+            weight = 1.0 - ((1.0 - clipped_min_weight) * decay_ratio)
+        weighted_volume = int(round(max(0, level.volume) * weight))
+        adjusted.append(HogaLevel(price=level.price, volume=weighted_volume))
+    return adjusted
+
+
+def apply_orderbook_decay(
+    snapshot: HogaSnapshot,
+    bid_min_weight: float = 1.0,
+    ask_min_weight: float = 1.0,
+) -> HogaSnapshot:
+    clipped_bid_min_weight = clamp_decay_min_weight(bid_min_weight, default=1.0)
+    clipped_ask_min_weight = clamp_decay_min_weight(ask_min_weight, default=1.0)
+    if clipped_bid_min_weight >= 0.9999 and clipped_ask_min_weight >= 0.9999:
+        return snapshot
+
+    return HogaSnapshot(
+        ticker=snapshot.ticker,
+        current_price=snapshot.current_price,
+        bids=apply_linear_decay_to_levels(snapshot.bids, clipped_bid_min_weight),
+        asks=apply_linear_decay_to_levels(snapshot.asks, clipped_ask_min_weight),
+        captured_at=snapshot.captured_at,
+        raw=snapshot.raw,
+    )
+
+
 def predict_price_from_hoga(snapshot: HogaSnapshot) -> int:
     """Predict price by offsetting bid/ask volumes 1:1 across hoga levels.
 

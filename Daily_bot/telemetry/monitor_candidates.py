@@ -73,7 +73,12 @@ def scan_filtered_candidates(
         try:
             limiter.wait()
             snapshot = client.get_20hoga(ticker)
-            calculated_candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"])
+            calculated_candidate = calc_expected_return(
+                candidate,
+                snapshot,
+                cfg["strategy"]["sell_tick_offset"],
+                cfg["strategy"],
+            )
             recorder.save_snapshot(calculated_candidate, snapshot, scan_cycle_at=scan_cycle_at)
             recorder.save_signal(calculated_candidate, selected=False, scan_cycle_at=scan_cycle_at)
             recorder.save_market_trace(

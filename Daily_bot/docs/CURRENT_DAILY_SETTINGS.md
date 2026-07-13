@@ -1,6 +1,6 @@
 # Current Daily Bot Settings
 
-이 문서는 현재 실거래 기준 설정값만 간단히 요약한다. 개념 중심 설명은 [curr_strategy.txt](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/curr_strategy.txt)를 본다.
+이 문서는 현재 활성 설정값만 빠르게 확인하기 위한 요약이다. 개념 설명은 [curr_strategy.txt](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/curr_strategy.txt)와 [DAILY_BOT_LOGIC_REFERENCE.md](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/docs/DAILY_BOT_LOGIC_REFERENCE.md)를 본다.
 
 ## Universe
 
@@ -23,6 +23,8 @@
 - `strategy.min_prev_day_change_percent = 0.0`
 - `strategy.max_prev_day_change_percent = 1.0`
 - `strategy.max_intraday_jump_from_prev_scan_percent = 0.0`
+- `strategy.orderbook_bid_linear_decay_min_weight = 0.1`
+- `strategy.orderbook_ask_linear_decay_min_weight = 0.1`
 - `strategy.sell_tick_offset = 1`
 - `strategy.scan_interval_seconds = 60`
 
@@ -48,22 +50,21 @@
 - `risk.max_orderbook_ask_depth_ratio = 0.0`
 - `risk.stop_loss_tick_count = 0`
 - `risk.stop_loss_tick_multiplier = 0.0`
-- `risk.stop_loss_percent = 4.5`
+- `risk.stop_loss_percent = 0.0`
 - `risk.daily_loss_limit_percent = 10.0`
 
-## Important Notes
+## Operational Meaning
 
-- 현재 기대수익률 기준은 `0.7` 단일이다.
-- fallback은 현재 비활성화되어 있다.
-- 현재 `allow_refill_empty_slots = true` 이므로, 중간에 빈 슬롯이 생기면 이후 스캔에서 재매수할 수 있다.
-- 손절이 발생한 종목은 같은 날 다시 진입 후보에서 제외한다.
-- `max_buy_count = 3`은 전체 보유 수 상한이 아니라 한 번의 스캔당 신규 매수 상한이다.
-- 총 보유 가능 종목 수는 자금 기반 슬롯 계산과 `risk.max_position_count = 10`으로 결정된다.
-- 전일 급등 상한 필터는 현재 `1.0%`로 활성화되어 있다.
-- 스프레드 필터, 직전 스캔 급등 억제 필터, 매도호가 잔량 비율 필터도 현재 꺼져 있다.
+- 현재 운영은 `0.7 단일`이다. fallback은 꺼져 있다.
+- 현재 호가 기대수익률 계산은 매수/매도 양쪽 모두에 강한 대칭 선형 감쇠를 건다.
+- 현재 장중 손절은 완전히 꺼져 있다.
+- 현재 재매수는 허용되어 있다.
+- `max_buy_count = 3`은 총 보유 상한이 아니라 스캔당 신규 진입 상한이다.
+- 총 보유 상한은 슬롯 계산과 `risk.max_position_count = 10`이 함께 결정한다.
 
 ## Backtest Alignment
 
-- 백테스트 기본 기대수익률은 config의 `strategy.min_expected_return_percent`를 따른다.
-- 백테스트 fallback 기대수익률은 config의 `strategy.min_expected_return_fallback_percents`를 따른다.
-- 백테스트에서 재매수 금지는 `--disallow-refill-empty-slots` 또는 동일 config 기준으로 맞춘다.
+- 백테스트 기본 기대수익률 기준은 config의 `strategy.min_expected_return_percent`를 따른다.
+- 백테스트 fallback 기본값도 config의 `strategy.min_expected_return_fallback_percents`를 따른다.
+- 백테스트 기본 손절도 config의 `risk.stop_loss_*` 값을 그대로 따른다.
+- 백테스트 기본 호가 감쇠도 config의 `strategy.orderbook_*_linear_decay_min_weight`를 그대로 따른다.

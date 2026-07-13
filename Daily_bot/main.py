@@ -289,7 +289,7 @@ def scan_and_rank(
         try:
             limiter.wait()
             snapshot = client.get_20hoga(ticker)
-            candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"])
+            candidate = calc_expected_return(candidate, snapshot, cfg["strategy"]["sell_tick_offset"], cfg["strategy"])
             recorder.save_snapshot(candidate, snapshot, scan_cycle_at=scan_cycle_at)
             recorder.save_signal(candidate, selected=False, scan_cycle_at=scan_cycle_at)
             recorder.save_market_trace(

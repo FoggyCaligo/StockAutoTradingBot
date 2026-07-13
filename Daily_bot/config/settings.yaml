@@ -30,6 +30,8 @@ strategy:
   max_prev_day_change_percent: 1.0
   # 0 or below disables the previous-scan intraday jump filter.
   max_intraday_jump_from_prev_scan_percent: 0.0
+  orderbook_bid_linear_decay_min_weight: 0.1
+  orderbook_ask_linear_decay_min_weight: 0.1
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
@@ -46,17 +48,17 @@ risk:
   # Set all stop-loss values to 0 to disable intraday stop-loss handling.
   stop_loss_tick_count: 0
   stop_loss_tick_multiplier: 0.0
-  stop_loss_percent: 4.5
+  stop_loss_percent: 0.0
   daily_loss_limit_percent: 10.0
 
-# Intraday percent stop-loss is enabled at 4.5%.
-# Tick-based stop-loss is currently disabled.
+# Intraday stop-loss is fully disabled.
 # Current live summary:
 # - Universe: full KOSPI daily refresh, market cap >= 250B KRW, trading value >= 3B KRW
 # - Entry: expected return >= 0.7 only, fallback disabled
+# - Orderbook model: symmetric linear decay on both sides (1.0 -> 0.1)
 # - Buy flow: up to 3 new buys per scan, refill enabled when empty slots appear
-# - Guard: previous-day rise upper bound 1.0%, same-day re-entry blocked after stop-loss
-# - Risk: 4.5% percent stop-loss, force sell at 15:00, daily loss limit 10%
+# - Guard: previous-day rise upper bound 1.0%, same-day re-entry block remains available if stop-loss is re-enabled
+# - Risk: no intraday stop-loss, force sell at 15:00, daily loss limit 10%
 
 api:
   quote_rate_limit_per_second: 5

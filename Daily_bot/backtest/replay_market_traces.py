@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 import sqlite3
 import sys
@@ -16,7 +17,7 @@ if str(WORKSPACE_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKSPACE_ROOT))
 
 from Daily_bot.backtest.replay_db_builder import resolve_replay_db_path
-from Daily_bot.models import Candidate, Fill
+from Daily_bot.models import Candidate, Fill, HogaLevel, HogaSnapshot
 from Daily_bot.risk.guards import calc_order_quantity, passes_orderbook_ask_depth_ratio, select_affordable_targets
 from Daily_bot.storage.audit_csv import (
     DEFAULT_FEE_RATE,
@@ -24,7 +25,14 @@ from Daily_bot.storage.audit_csv import (
     rewrite_fill_audit_csv,
 )
 from Daily_bot.storage.db import DAILY_REV_FIELDNAMES
-from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
+from Daily_bot.strategy.orderbook_predictor import (
+    apply_orderbook_decay,
+    calc_ask_depth_amount,
+    calc_spread_percent,
+    calc_target_sell_price,
+    clamp_decay_min_weight,
+    predict_price_from_hoga,
+)
 from Daily_bot.strategy.signal import min_expected_return_with_spread
 from Daily_bot.utils import ceil_tick_count, count_ticks_between_prices, get_tick_size, load_yaml, move_price_by_ticks, round_to_tick
 
@@ -74,6 +82,7 @@ class TraceRow:
     spread_percent: float
     ask_depth_5_amount_krw: int
     prev_day_change_percent: float
+    raw_json: str
 
 
 @dataclass
@@ -205,7 +214,8 @@ def load_traces(db_path: Path) -> list[TraceRow]:
             expect_revenue_percent,
             spread_percent,
             {ask_depth_select},
-            {prev_day_change_select}
+            {prev_day_change_select},
+            raw_json
         FROM market_traces
         ORDER BY session_date, {effective_time_select}, ticker
         """
@@ -229,9 +239,159 @@ def load_traces(db_path: Path) -> list[TraceRow]:
                 spread_percent=_to_float(row["spread_percent"]),
                 ask_depth_5_amount_krw=_to_int(row["ask_depth_5_amount_krw"]),
                 prev_day_change_percent=_to_float(row["prev_day_change_percent"]),
+                raw_json=str(row["raw_json"] or "{}"),
             )
         )
     return traces
+
+
+def _extract_raw_value(raw: object, keys: list[str]) -> str | None:
+    if isinstance(raw, dict):
+        for key in keys:
+            if key in raw and raw[key] is not None:
+                return str(raw[key])
+        for value in raw.values():
+            result = _extract_raw_value(value, keys)
+            if result is not None:
+                return result
+    elif isinstance(raw, list):
+        for item in raw:
+            result = _extract_raw_value(item, keys)
+            if result is not None:
+                return result
+    return None
+
+
+def _extract_raw_number(raw: object, keys: list[str]) -> int:
+    text = _extract_raw_value(raw, keys)
+    if text is None:
+        return 0
+    cleaned = str(text).replace(",", "").strip().replace("+", "")
+    try:
+        return abs(int(cleaned))
+    except ValueError:
+        try:
+            return abs(int(float(cleaned)))
+        except ValueError:
+            return 0
+
+
+def _extract_hoga_levels_from_raw(raw: dict[str, object], side: str, levels_per_side: int) -> list[HogaLevel]:
+    levels: list[HogaLevel] = []
+    capped_levels = max(1, int(levels_per_side or 0))
+
+    if side == "ask":
+        first_price_key = "sel_fpr_bid"
+        first_volume_key = "sel_fpr_req"
+        prefix = "sel"
+    else:
+        first_price_key = "buy_fpr_bid"
+        first_volume_key = "buy_fpr_req"
+        prefix = "buy"
+
+    first_price = _extract_raw_number(raw, [first_price_key])
+    first_volume = _extract_raw_number(raw, [first_volume_key])
+    if first_price > 0 and first_volume >= 0:
+        levels.append(HogaLevel(price=first_price, volume=first_volume))
+
+    for level in range(2, capped_levels + 1):
+        price_key = f"{prefix}_{level}th_pre_bid"
+        volume_key = f"{prefix}_{level}th_pre_req"
+        price = _extract_raw_number(raw, [price_key])
+        volume = _extract_raw_number(raw, [volume_key])
+        if price > 0 and volume >= 0:
+            levels.append(HogaLevel(price=price, volume=volume))
+
+    if side == "bid":
+        levels.sort(key=lambda item: item.price, reverse=True)
+    else:
+        levels.sort(key=lambda item: item.price)
+    return levels
+
+
+def _rebuild_snapshot_from_raw(
+    row: TraceRow,
+    levels_per_side: int,
+    bid_linear_decay_min_weight: float = 1.0,
+    ask_linear_decay_min_weight: float = 1.0,
+) -> HogaSnapshot | None:
+    try:
+        raw = json.loads(row.raw_json or "{}")
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(raw, dict):
+        return None
+
+    bids = _extract_hoga_levels_from_raw(raw, "bid", levels_per_side)
+    asks = _extract_hoga_levels_from_raw(raw, "ask", levels_per_side)
+    if not bids or not asks:
+        return None
+
+    current_price = _extract_raw_number(raw, ["cur_prc", "close_pric", "pred_close_pric", "sel_fpr_bid", "buy_fpr_bid"])
+    if current_price <= 0:
+        current_price = row.current_price or row.price or (bids[0].price + asks[0].price) // 2
+
+    snapshot = HogaSnapshot(
+        ticker=row.ticker,
+        current_price=current_price,
+        bids=bids,
+        asks=asks,
+        raw=raw,
+    )
+    return apply_orderbook_decay(
+        snapshot,
+        bid_min_weight=bid_linear_decay_min_weight,
+        ask_min_weight=ask_linear_decay_min_weight,
+    )
+
+
+def apply_orderbook_level_limit(
+    traces: list[TraceRow],
+    levels_per_side: int,
+    sell_tick_offset: int,
+    bid_linear_decay_min_weight: float = 1.0,
+    ask_linear_decay_min_weight: float = 1.0,
+) -> list[TraceRow]:
+    clipped_bid_decay_min_weight = clamp_decay_min_weight(bid_linear_decay_min_weight, default=1.0)
+    clipped_ask_decay_min_weight = clamp_decay_min_weight(ask_linear_decay_min_weight, default=1.0)
+    apply_bid_decay = clipped_bid_decay_min_weight < 0.9999
+    apply_ask_decay = clipped_ask_decay_min_weight < 0.9999
+    if (levels_per_side <= 0 or levels_per_side >= 10) and not apply_bid_decay and not apply_ask_decay:
+        return traces
+
+    adjusted: list[TraceRow] = []
+    for row in traces:
+        rebuilt = _rebuild_snapshot_from_raw(
+            row,
+            levels_per_side=levels_per_side,
+            bid_linear_decay_min_weight=clipped_bid_decay_min_weight,
+            ask_linear_decay_min_weight=clipped_ask_decay_min_weight,
+        )
+        if rebuilt is None:
+            adjusted.append(row)
+            continue
+        expect_price = predict_price_from_hoga(rebuilt)
+        current_price = rebuilt.current_price or row.current_price or row.price
+        target_sell_price = calc_target_sell_price(expect_price, sell_tick_offset)
+        adjusted.append(
+            TraceRow(
+                session_date=row.session_date,
+                ticker=row.ticker,
+                created_at=row.created_at,
+                phase=row.phase,
+                selected=row.selected,
+                price=row.price,
+                prev_close_price=row.prev_close_price,
+                current_price=current_price,
+                expect_price=expect_price,
+                expect_revenue_percent=((target_sell_price - current_price) / current_price * 100) if current_price > 0 else 0.0,
+                spread_percent=calc_spread_percent(rebuilt),
+                ask_depth_5_amount_krw=calc_ask_depth_amount(rebuilt, levels=min(5, levels_per_side)),
+                prev_day_change_percent=row.prev_day_change_percent,
+                raw_json=row.raw_json,
+            )
+        )
+    return adjusted
 
 
 def _resolve_prev_day_change_percent(row: TraceRow) -> float:
@@ -762,6 +922,7 @@ def _pick_candidates_for_timestamp(
     min_prev_day_change_percent: float,
     max_prev_day_change_percent: float,
     active_tickers: set[str],
+    blocked_tickers: set[str],
     allowed_tickers: set[str] | None,
     trend_allowed_tickers: set[str] | None,
     previous_scan_prices: dict[str, int],
@@ -772,6 +933,8 @@ def _pick_candidates_for_timestamp(
         if row.phase != "scan_candidate":
             continue
         if row.ticker in active_tickers:
+            continue
+        if row.ticker in blocked_tickers:
             continue
         if allowed_tickers is not None and row.ticker not in allowed_tickers:
             continue
@@ -824,6 +987,7 @@ def _pick_candidates_for_entry_with_fallback(
     min_prev_day_change_percent: float,
     max_prev_day_change_percent: float,
     active_tickers: set[str],
+    blocked_tickers: set[str],
     allowed_tickers: set[str] | None,
     trend_allowed_tickers: set[str] | None,
     previous_scan_prices: dict[str, int],
@@ -839,6 +1003,7 @@ def _pick_candidates_for_entry_with_fallback(
         min_prev_day_change_percent=min_prev_day_change_percent,
         max_prev_day_change_percent=max_prev_day_change_percent,
         active_tickers=active_tickers,
+        blocked_tickers=blocked_tickers,
         allowed_tickers=allowed_tickers,
         trend_allowed_tickers=trend_allowed_tickers,
         previous_scan_prices=previous_scan_prices,
@@ -860,6 +1025,7 @@ def _pick_candidates_for_entry_with_fallback(
             min_prev_day_change_percent=min_prev_day_change_percent,
             max_prev_day_change_percent=max_prev_day_change_percent,
             active_tickers=active_tickers,
+            blocked_tickers=blocked_tickers,
             allowed_tickers=allowed_tickers,
             trend_allowed_tickers=trend_allowed_tickers,
             previous_scan_prices=previous_scan_prices,
@@ -1064,13 +1230,24 @@ def run_backtest(
     max_orderbook_ask_depth_ratio: float = 0.0,
     missing_ask_depth_policy: str = "ignore",
     allow_refill_empty_slots: bool = False,
+    block_stop_loss_reentry_same_day: bool = False,
     trend_filter_enabled: bool = False,
     trend_ok_tickers_by_day: dict[str, set[str]] | None = None,
     trend_filter_days: set[str] | None = None,
+    orderbook_levels_per_side: int = 10,
+    orderbook_bid_linear_decay_min_weight: float = 1.0,
+    orderbook_ask_linear_decay_min_weight: float = 1.0,
     selected_signals_override: list[SelectedSignal] | None = None,
     actual_exit_overrides_by_ticker: dict[tuple[str, str], list[ActualExitOverride]] | None = None,
 ) -> list[BacktestTrade]:
     traces = load_traces(db_path)
+    traces = apply_orderbook_level_limit(
+        traces,
+        levels_per_side=orderbook_levels_per_side,
+        sell_tick_offset=sell_tick_offset,
+        bid_linear_decay_min_weight=orderbook_bid_linear_decay_min_weight,
+        ask_linear_decay_min_weight=orderbook_ask_linear_decay_min_weight,
+    )
     selected_signals = (
         list(selected_signals_override)
         if selected_signals_override is not None
@@ -1110,6 +1287,7 @@ def run_backtest(
                 session_override_times.update(item.final_exit_time for item in overrides)
 
         open_positions: dict[str, ReplayPosition] = {}
+        blocked_reentry_tickers: set[str] = set()
         previous_scan_prices: dict[str, int] = {}
         trend_allowed_tickers = None
         if trend_filter_enabled and trend_filter_days and session_date in trend_filter_days:
@@ -1211,6 +1389,8 @@ def run_backtest(
                         )
                     )
                     available_cash += position.quantity * current_price
+                    if block_stop_loss_reentry_same_day:
+                        blocked_reentry_tickers.add(ticker)
                     del open_positions[ticker]
                     exited_tickers_at_time.add(ticker)
                     continue
@@ -1306,6 +1486,7 @@ def run_backtest(
                 min_prev_day_change_percent=min_prev_day_change_percent,
                 max_prev_day_change_percent=max_prev_day_change_percent,
                 active_tickers=set(open_positions) | exited_tickers_at_time,
+                blocked_tickers=blocked_reentry_tickers,
                 allowed_tickers=allowed_tickers,
                 trend_allowed_tickers=effective_trend_allowed_tickers,
                 previous_scan_prices=previous_scan_prices,
@@ -1708,7 +1889,7 @@ def parse_args():
     parser.add_argument("--top-n", type=int, default=0)
     parser.add_argument("--top-ratio", type=float, default=float(strategy_cfg.get("top_ratio", 1.0) or 1.0))
     parser.add_argument("--take-profit", type=float, default=0.4)
-    parser.add_argument("--stop-loss", type=float, default=float(risk_cfg.get("stop_loss_percent", 4.5) or 4.5))
+    parser.add_argument("--stop-loss", type=float, default=float(risk_cfg.get("stop_loss_percent", 4.5)))
     parser.add_argument("--stop-loss-tick-count", type=int, default=int(risk_cfg.get("stop_loss_tick_count", 0) or 0))
     parser.add_argument("--stop-loss-tick-multiplier", type=float, default=float(risk_cfg.get("stop_loss_tick_multiplier", 0.0) or 0.0))
     parser.add_argument("--sell-tick-offset", type=int, default=int(strategy_cfg.get("sell_tick_offset", 1) or 1))
@@ -1756,6 +1937,20 @@ def parse_args():
     parser.add_argument("--allow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_true")
     parser.add_argument("--disallow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_false")
     parser.set_defaults(allow_refill_empty_slots=bool(strategy_cfg.get("allow_refill_empty_slots", True)))
+    parser.add_argument("--block-stop-loss-reentry-same-day", dest="block_stop_loss_reentry_same_day", action="store_true")
+    parser.add_argument("--allow-stop-loss-reentry-same-day", dest="block_stop_loss_reentry_same_day", action="store_false")
+    parser.set_defaults(block_stop_loss_reentry_same_day=False)
+    parser.add_argument("--orderbook-levels-per-side", type=int, default=10)
+    parser.add_argument(
+        "--orderbook-bid-linear-decay-min-weight",
+        type=float,
+        default=float(strategy_cfg.get("orderbook_bid_linear_decay_min_weight", 1.0) or 1.0),
+    )
+    parser.add_argument(
+        "--orderbook-ask-linear-decay-min-weight",
+        type=float,
+        default=float(strategy_cfg.get("orderbook_ask_linear_decay_min_weight", 1.0) or 1.0),
+    )
     args = parser.parse_args(remaining_argv)
 
     resolved_fallback_thresholds = list(args.fallback_min_expected_returns or [])
@@ -1843,9 +2038,13 @@ if __name__ == "__main__":
         max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
         missing_ask_depth_policy=args.missing_ask_depth_policy,
         allow_refill_empty_slots=args.allow_refill_empty_slots,
+        block_stop_loss_reentry_same_day=args.block_stop_loss_reentry_same_day,
         trend_filter_enabled=args.trend_filter_enabled,
         trend_ok_tickers_by_day=trend_ok_tickers_by_day,
         trend_filter_days=trend_filter_days,
+        orderbook_levels_per_side=args.orderbook_levels_per_side,
+        orderbook_bid_linear_decay_min_weight=args.orderbook_bid_linear_decay_min_weight,
+        orderbook_ask_linear_decay_min_weight=args.orderbook_ask_linear_decay_min_weight,
         selected_signals_override=selected_signals_override,
         actual_exit_overrides_by_ticker=actual_exit_overrides_by_ticker,
     )

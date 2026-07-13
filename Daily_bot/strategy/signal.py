@@ -1,21 +1,42 @@
 from __future__ import annotations
 
 from Daily_bot.models import Candidate, HogaSnapshot
-from Daily_bot.strategy.orderbook_predictor import calc_ask_depth_amount, calc_spread_percent, calc_target_sell_price, predict_price_from_hoga
+from Daily_bot.strategy.orderbook_predictor import (
+    apply_orderbook_decay,
+    calc_ask_depth_amount,
+    calc_spread_percent,
+    calc_target_sell_price,
+    clamp_decay_min_weight,
+    predict_price_from_hoga,
+)
 
 
-def calc_expected_return(candidate: Candidate, snapshot: HogaSnapshot, sell_tick_offset: int = 1) -> Candidate:
-    expect_price = predict_price_from_hoga(snapshot)
+def calc_expected_return(
+    candidate: Candidate,
+    snapshot: HogaSnapshot,
+    sell_tick_offset: int = 1,
+    strategy_cfg: dict | None = None,
+) -> Candidate:
+    strategy_cfg = strategy_cfg or {}
+    bid_decay_min_weight = clamp_decay_min_weight(strategy_cfg.get("orderbook_bid_linear_decay_min_weight", 1.0), default=1.0)
+    ask_decay_min_weight = clamp_decay_min_weight(strategy_cfg.get("orderbook_ask_linear_decay_min_weight", 1.0), default=1.0)
+    effective_snapshot = apply_orderbook_decay(
+        snapshot,
+        bid_min_weight=bid_decay_min_weight,
+        ask_min_weight=ask_decay_min_weight,
+    )
+
+    expect_price = predict_price_from_hoga(effective_snapshot)
     target_sell_price = calc_target_sell_price(expect_price, sell_tick_offset)
-    price = snapshot.current_price or candidate.price
+    price = effective_snapshot.current_price or candidate.price
     candidate.price = price
     if candidate.prev_close_price > 0 and price > 0:
         candidate.prev_day_change_percent = ((price - candidate.prev_close_price) / candidate.prev_close_price) * 100
     candidate.expect_price = expect_price
     candidate.expect_revenue_percent = ((target_sell_price - price) / price * 100) if price > 0 else 0.0
-    candidate.spread_percent = calc_spread_percent(snapshot)
-    candidate.ask_depth_5_amount_krw = calc_ask_depth_amount(snapshot, levels=5)
-    candidate.hoga_snapshot_time = snapshot.captured_at
+    candidate.spread_percent = calc_spread_percent(effective_snapshot)
+    candidate.ask_depth_5_amount_krw = calc_ask_depth_amount(effective_snapshot, levels=5)
+    candidate.hoga_snapshot_time = effective_snapshot.captured_at
     candidate.raw_hoga = snapshot.raw
     return candidate
 
