@@ -1478,6 +1478,11 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             continue
         active_tickers = _get_active_tickers(positions, open_orders)
         poll_and_record_new_fills(client, recorder, cfg)
+        positions, open_orders = _fetch_account_state_safely(client, "Post-fill account refresh")
+        if positions is None or open_orders is None:
+            time.sleep(5)
+            continue
+        active_tickers = _get_active_tickers(positions, open_orders)
         if watchlist:
             watchlist = trace_candidate_watchlist(
                 client=client,
@@ -1561,6 +1566,11 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             print(f"Scan cycle failed: {exc}")
             time.sleep(cfg["strategy"]["scan_interval_seconds"])
             continue
+        positions, open_orders = _fetch_account_state_safely(client, "Post-scan account refresh")
+        if positions is None or open_orders is None:
+            time.sleep(active_poll_seconds if active_tickers else cfg["strategy"]["scan_interval_seconds"])
+            continue
+        active_tickers = _get_active_tickers(positions, open_orders)
         filtered, used_expected_return_threshold = filter_candidates_for_entry(
             calculated,
             cfg,

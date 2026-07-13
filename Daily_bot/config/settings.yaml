@@ -51,6 +51,12 @@ risk:
 
 # Intraday percent stop-loss is enabled at 4.5%.
 # Tick-based stop-loss is currently disabled.
+# Current live summary:
+# - Universe: full KOSPI daily refresh, market cap >= 250B KRW, trading value >= 3B KRW
+# - Entry: expected return >= 0.7 only, fallback disabled
+# - Buy flow: up to 3 new buys per scan, refill enabled when empty slots appear
+# - Guard: previous-day rise upper bound 1.0%, same-day re-entry blocked after stop-loss
+# - Risk: 4.5% percent stop-loss, force sell at 15:00, daily loss limit 10%
 
 api:
   quote_rate_limit_per_second: 5
