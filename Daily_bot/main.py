@@ -312,9 +312,11 @@ def filter_candidates_for_entry(
     cfg: dict,
     previous_scan_prices: dict[str, int] | None = None,
     active_tickers: set[str] | None = None,
+    blocked_tickers: set[str] | None = None,
     allow_refill_empty_slots: bool | None = None,
 ) -> tuple[list[Candidate], float]:
     active_ticker_keys = active_tickers or set()
+    blocked_ticker_keys = blocked_tickers or set()
     prev_scan_prices = previous_scan_prices or {}
     strategy_cfg = cfg["strategy"]
     primary_threshold = float(strategy_cfg["min_expected_return_percent"])
@@ -342,7 +344,12 @@ def filter_candidates_for_entry(
             prev_scan_prices,
             strategy_cfg.get("max_intraday_jump_from_prev_scan_percent", 1.0),
         )
-        return [candidate for candidate in filtered_candidates if _ticker_key(candidate.ticker) not in active_ticker_keys]
+        return [
+            candidate
+            for candidate in filtered_candidates
+            if _ticker_key(candidate.ticker) not in active_ticker_keys
+            and _ticker_key(candidate.ticker) not in blocked_ticker_keys
+        ]
 
     filtered = _apply_threshold(primary_threshold)
     used_threshold = primary_threshold
@@ -691,9 +698,10 @@ def _attempt_stop_loss_safely(
     positions: list,
     open_orders: list[dict],
     cfg: dict,
-) -> tuple[bool, bool]:
+) -> tuple[bool, bool, str | None]:
     try:
-        return monitor_stop_loss(client, recorder, positions, open_orders, cfg), False
+        stop_loss_executed, stop_loss_ticker = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+        return stop_loss_executed, False, stop_loss_ticker
     except Exception as exc:
         print(f"Stop-loss handling error: {exc}")
         _report_risk_recovery_state(client, "Stop-loss recovery")
@@ -701,7 +709,7 @@ def _attempt_stop_loss_safely(
             poll_and_record_new_fills(client, recorder, cfg)
         except Exception as poll_exc:
             print(f"Stop-loss recovery fill poll failed: {poll_exc}")
-        return False, True
+        return False, True, None
 
 
 def _ticker_key(ticker: str) -> str:
@@ -1355,6 +1363,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     eod_reconciliation_done = False
     daily_revenue_written = False
     warmed_session = False
+    blocked_stop_loss_tickers: set[str] = set()
     watchlist: dict[str, Candidate] = {}
     previous_scan_prices: dict[str, int] = {}
     prev_close_prices: dict[str, int] = {}
@@ -1488,7 +1497,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 kospi_change_percent=kospi_change_percent,
             )
         if has_position(positions):
-            stop_loss_executed, stop_loss_error = _attempt_stop_loss_safely(
+            stop_loss_executed, stop_loss_error, stop_loss_ticker = _attempt_stop_loss_safely(
                 client,
                 recorder,
                 positions,
@@ -1497,6 +1506,13 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             )
             poll_and_record_new_fills(client, recorder, cfg)
             if stop_loss_executed:
+                if stop_loss_ticker:
+                    blocked_ticker_key = _ticker_key(stop_loss_ticker)
+                    blocked_stop_loss_tickers.add(blocked_ticker_key)
+                    print(
+                        f"Blocking same-day re-entry after stop-loss for {stop_loss_ticker}. "
+                        f"blocked_tickers={sorted(blocked_stop_loss_tickers)}"
+                    )
                 time.sleep(1)
                 continue
             if stop_loss_error:
@@ -1550,6 +1566,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
             cfg,
             previous_scan_prices=previous_scan_prices,
             active_tickers=active_tickers,
+            blocked_tickers=blocked_stop_loss_tickers,
             allow_refill_empty_slots=bool(cfg["strategy"].get("allow_refill_empty_slots", True)),
         )
         previous_scan_prices = {

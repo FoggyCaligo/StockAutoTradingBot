@@ -152,9 +152,15 @@ def _poll_fill_until_recorded(
         time.sleep(poll_seconds)
 
 
-def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], open_orders: list[dict], cfg: dict) -> bool:
+def monitor_stop_loss(
+    client,
+    recorder: Recorder,
+    positions: list[Position],
+    open_orders: list[dict],
+    cfg: dict,
+) -> tuple[bool, str | None]:
     if not is_stop_loss_enabled(cfg):
-        return False
+        return False, None
 
     stop_loss_percent = float(cfg["risk"].get("stop_loss_percent", 2.0))
 
@@ -210,6 +216,6 @@ def monitor_stop_loss(client, recorder: Recorder, positions: list[Position], ope
         sell_order_id = _get_order_id_from_object(sell_order)
         if not _record_fill_safely(client, recorder, sell_order_id, "SELL", "stop_loss"):
             _poll_fill_until_recorded(client, recorder, sell_order_id, "SELL", "stop_loss_safety_poll")
-        return True
+        return True, position.ticker
 
-    return False
+    return False, None
