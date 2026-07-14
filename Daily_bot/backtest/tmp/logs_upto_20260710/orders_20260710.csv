@@ -1,0 +1,6 @@
+﻿broker_order_id,ticker,side,quantity,price,status,raw_json
+0124399,003030,BUY,2,108300,KRX 매수주문이 완료되었습니다.,"{""ord_no"": ""0124399"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""KRX 매수주문이 완료되었습니다.""}"
+0124406,003030,SELL,2,109000,매도주문이 완료되었습니다.,"{""ord_no"": ""0124406"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""매도주문이 완료되었습니다."", ""planned_entry_price"": 108300, ""planned_expect_price"": 109500, ""planned_target_price"": 109000, ""planned_profit_tick_distance"": 3, ""planned_stop_loss_tick_distance"": 0, ""planned_stop_loss_tick_multiplier"": 0.0, ""planned_stop_loss_price"": 0}"
+0124755,029780,BUY,6,48850,KRX 매수주문이 완료되었습니다.,"{""ord_no"": ""0124755"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""KRX 매수주문이 완료되었습니다.""}"
+0124767,029780,SELL,6,49150,매도주문이 완료되었습니다.,"{""ord_no"": ""0124767"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""매도주문이 완료되었습니다."", ""planned_entry_price"": 48850, ""planned_expect_price"": 49200, ""planned_target_price"": 49150, ""planned_profit_tick_distance"": 7, ""planned_stop_loss_tick_distance"": 0, ""planned_stop_loss_tick_multiplier"": 0.0, ""planned_stop_loss_price"": 0}"
+0377001,003030,SELL,2,0,매도주문이 완료되었습니다.,"{""ord_no"": ""0377001"", ""dmst_stex_tp"": ""KRX"", ""return_code"": 0, ""return_msg"": ""매도주문이 완료되었습니다.""}"
