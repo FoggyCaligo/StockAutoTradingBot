@@ -166,17 +166,91 @@ class Recorder:
         self.audit_fill_csv_path = self.log_dir / "trade_fills_audit.csv"
         self.daily_audit_fill_csv_path = self.log_dir / DAILY_AUDIT_FILENAME
         self.daily_revenue_csv_path = self.log_dir / "daily_rev.csv"
+        self.conn: sqlite3.Connection | None = None
+        self._db_enabled = True
+        self._csv_enabled = True
+        self._audit_enabled = True
+        self._warned_sink_keys: set[str] = set()
         self.log_dir.mkdir(parents=True, exist_ok=True)
         if log_dir is None:
             self._migrate_legacy_logs()
-        self.conn = sqlite3.connect(self.path)
-        self.conn.row_factory = sqlite3.Row
-        self.conn.executescript(SCHEMA)
-        self._ensure_table_columns()
-        self._ensure_account_trace_columns()
-        self.conn.commit()
+        try:
+            self.conn = sqlite3.connect(self.path)
+            self.conn.row_factory = sqlite3.Row
+            self.conn.executescript(SCHEMA)
+            self._ensure_table_columns()
+            self._ensure_account_trace_columns()
+            self.conn.commit()
+        except Exception as exc:
+            self._disable_db_sink("recorder initialization", exc)
+
+    def _warn_once(self, sink_key: str, message: str) -> None:
+        if sink_key in self._warned_sink_keys:
+            return
+        self._warned_sink_keys.add(sink_key)
+        print(message)
+
+    def _disable_db_sink(self, context: str, exc: Exception) -> None:
+        self._db_enabled = False
+        self._warn_once(
+            "db_sink_disabled",
+            f"Recorder DB sink disabled after {context} failed: {exc}",
+        )
+        if self.conn is None:
+            return
+        try:
+            self.conn.close()
+        except Exception:
+            pass
+        finally:
+            self.conn = None
+
+    def _disable_csv_sink(self, context: str, exc: Exception) -> None:
+        self._csv_enabled = False
+        self._warn_once(
+            "csv_sink_disabled",
+            f"Recorder CSV sink disabled after {context} failed: {exc}",
+        )
+
+    def _disable_audit_sink(self, context: str, exc: Exception) -> None:
+        self._audit_enabled = False
+        self._warn_once(
+            "audit_sink_disabled",
+            f"Recorder audit CSV sink disabled after {context} failed: {exc}",
+        )
+
+    def _run_db(self, context: str, operation, default: Any = None) -> Any:
+        if not self._db_enabled or self.conn is None:
+            return default
+        try:
+            return operation()
+        except Exception as exc:
+            self._disable_db_sink(context, exc)
+            return default
+
+    def _run_csv(self, context: str, operation) -> bool:
+        if not self._csv_enabled:
+            return False
+        try:
+            operation()
+            return True
+        except Exception as exc:
+            self._disable_csv_sink(context, exc)
+            return False
+
+    def _run_audit(self, context: str, operation) -> bool:
+        if not self._audit_enabled:
+            return False
+        try:
+            operation()
+            return True
+        except Exception as exc:
+            self._disable_audit_sink(context, exc)
+            return False
 
     def _ensure_table_columns(self) -> None:
+        if self.conn is None:
+            return
         for table_name, extra_columns in TABLE_EXTRA_COLUMNS.items():
             existing_columns = {
                 row["name"] for row in self.conn.execute(f"PRAGMA table_info({table_name})").fetchall()
@@ -186,6 +260,8 @@ class Recorder:
                     self.conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
 
     def _ensure_account_trace_columns(self) -> None:
+        if self.conn is None:
+            return
         existing_columns = {
             row["name"] for row in self.conn.execute("PRAGMA table_info(account_traces)").fetchall()
         }
@@ -304,43 +380,53 @@ class Recorder:
                 "trend_ok": 1 if candidate.trend_ok else 0,
                 "source": source,
             }
-            self.conn.execute(
-                """
-                INSERT INTO daily_reference_prices
-                (session_date, ticker, name, prev_close_price, market_cap, trading_value, trend_ok, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(session_date, ticker) DO UPDATE SET
-                    name=excluded.name,
-                    prev_close_price=excluded.prev_close_price,
-                    market_cap=excluded.market_cap,
-                    trading_value=excluded.trading_value,
-                    trend_ok=excluded.trend_ok,
-                    source=excluded.source
-                """,
-                (
-                    row["session_date"],
-                    row["ticker"],
-                    row["name"],
-                    row["prev_close_price"],
-                    row["market_cap"],
-                    row["trading_value"],
-                    row["trend_ok"],
-                    row["source"],
+            self._run_db(
+                "save_daily_reference_prices",
+                lambda row=row: self.conn.execute(
+                    """
+                    INSERT INTO daily_reference_prices
+                    (session_date, ticker, name, prev_close_price, market_cap, trading_value, trend_ok, source)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(session_date, ticker) DO UPDATE SET
+                        name=excluded.name,
+                        prev_close_price=excluded.prev_close_price,
+                        market_cap=excluded.market_cap,
+                        trading_value=excluded.trading_value,
+                        trend_ok=excluded.trend_ok,
+                        source=excluded.source
+                    """,
+                    (
+                        row["session_date"],
+                        row["ticker"],
+                        row["name"],
+                        row["prev_close_price"],
+                        row["market_cap"],
+                        row["trading_value"],
+                        row["trend_ok"],
+                        row["source"],
+                    ),
                 ),
             )
-            self._upsert_csv_row(csv_path, fieldnames, "ticker", row)
-        self.conn.commit()
+            self._run_csv(
+                "save_daily_reference_prices",
+                lambda row=row: self._upsert_csv_row(csv_path, fieldnames, "ticker", row),
+            )
+        self._run_db("save_daily_reference_prices commit", lambda: self.conn.commit())
 
     def get_daily_reference_prices(self, session_date: str | None = None) -> dict[str, int]:
         normalized_session_date = session_date or datetime.now().strftime("%Y-%m-%d")
-        rows = self.conn.execute(
-            """
-            SELECT ticker, prev_close_price
-            FROM daily_reference_prices
-            WHERE session_date = ?
-            """,
-            (normalized_session_date,),
-        ).fetchall()
+        rows = self._run_db(
+            "get_daily_reference_prices",
+            lambda: self.conn.execute(
+                """
+                SELECT ticker, prev_close_price
+                FROM daily_reference_prices
+                WHERE session_date = ?
+                """,
+                (normalized_session_date,),
+            ).fetchall(),
+            default=[],
+        )
         return {
             str(row["ticker"] or "").strip().upper().removeprefix("A"): int(row["prev_close_price"] or 0)
             for row in rows
@@ -372,14 +458,18 @@ class Recorder:
                 writer.writerow({field: existing_row.get(field, "") for field in fieldnames})
 
     def _latest_account_trace(self) -> dict[str, Any] | None:
-        row = self.conn.execute(
-            """
-            SELECT cash, account_value, adjusted_account_value, adjusted_pnl, loss_percent, kospi_change_percent
-            FROM account_traces
-            ORDER BY id DESC
-            LIMIT 1
-            """
-        ).fetchone()
+        row = self._run_db(
+            "_latest_account_trace",
+            lambda: self.conn.execute(
+                """
+                SELECT cash, account_value, adjusted_account_value, adjusted_pnl, loss_percent, kospi_change_percent
+                FROM account_traces
+                ORDER BY id DESC
+                LIMIT 1
+                """
+            ).fetchone(),
+            default=None,
+        )
         return dict(row) if row is not None else None
 
     def save_snapshot(
@@ -388,24 +478,27 @@ class Recorder:
         snapshot: HogaSnapshot,
         scan_cycle_at: datetime | None = None,
     ) -> None:
-        self.conn.execute(
-            """
-            INSERT INTO hoga_snapshots
-            (ticker, captured_at, scan_cycle_at, current_price, expect_price, expect_revenue_percent, spread_percent, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                candidate.ticker,
-                snapshot.captured_at.isoformat(),
-                scan_cycle_at.isoformat() if scan_cycle_at is not None else None,
-                snapshot.current_price,
-                candidate.expect_price,
-                candidate.expect_revenue_percent,
-                candidate.spread_percent,
-                json.dumps(snapshot.raw or {}, ensure_ascii=False),
+        self._run_db(
+            "save_snapshot",
+            lambda: self.conn.execute(
+                """
+                INSERT INTO hoga_snapshots
+                (ticker, captured_at, scan_cycle_at, current_price, expect_price, expect_revenue_percent, spread_percent, raw_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    candidate.ticker,
+                    snapshot.captured_at.isoformat(),
+                    scan_cycle_at.isoformat() if scan_cycle_at is not None else None,
+                    snapshot.current_price,
+                    candidate.expect_price,
+                    candidate.expect_revenue_percent,
+                    candidate.spread_percent,
+                    json.dumps(snapshot.raw or {}, ensure_ascii=False),
+                ),
             ),
         )
-        self.conn.commit()
+        self._run_db("save_snapshot commit", lambda: self.conn.commit())
 
     def save_signal(
         self,
@@ -413,23 +506,26 @@ class Recorder:
         selected: bool = False,
         scan_cycle_at: datetime | None = None,
     ) -> None:
-        self.conn.execute(
-            """
-            INSERT INTO signals
-            (ticker, created_at, scan_cycle_at, price, expect_price, expect_revenue_percent, spread_percent, selected)
-            VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                candidate.ticker,
-                scan_cycle_at.isoformat() if scan_cycle_at is not None else None,
-                candidate.price,
-                candidate.expect_price,
-                candidate.expect_revenue_percent,
-                candidate.spread_percent,
-                1 if selected else 0,
+        self._run_db(
+            "save_signal",
+            lambda: self.conn.execute(
+                """
+                INSERT INTO signals
+                (ticker, created_at, scan_cycle_at, price, expect_price, expect_revenue_percent, spread_percent, selected)
+                VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    candidate.ticker,
+                    scan_cycle_at.isoformat() if scan_cycle_at is not None else None,
+                    candidate.price,
+                    candidate.expect_price,
+                    candidate.expect_revenue_percent,
+                    candidate.spread_percent,
+                    1 if selected else 0,
+                ),
             ),
         )
-        self.conn.commit()
+        self._run_db("save_signal commit", lambda: self.conn.commit())
 
     def save_market_trace(
         self,
@@ -469,63 +565,69 @@ class Recorder:
             "prev_day_change_percent": candidate.prev_day_change_percent,
             "raw_json": raw_json,
         }
-        self.conn.execute(
-            """
-            INSERT INTO market_traces
-            (session_date, phase, ticker, scan_cycle_at, selected, reason, price, prev_close_price, current_price, best_bid, best_ask,
-             expect_price, expect_revenue_percent, spread_percent, ask_depth_5_amount_krw,
-             market_cap, trading_value, kospi_change_percent, prev_day_change_percent, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                row["session_date"],
-                row["phase"],
-                row["ticker"],
-                row["scan_cycle_at"],
-                row["selected"],
-                row["reason"],
-                row["price"],
-                row["prev_close_price"],
-                row["current_price"],
-                row["best_bid"],
-                row["best_ask"],
-                row["expect_price"],
-                row["expect_revenue_percent"],
-                row["spread_percent"],
-                row["ask_depth_5_amount_krw"],
-                row["market_cap"],
-                row["trading_value"],
-                row["kospi_change_percent"],
-                row["prev_day_change_percent"],
-                row["raw_json"],
+        self._run_db(
+            "save_market_trace",
+            lambda: self.conn.execute(
+                """
+                INSERT INTO market_traces
+                (session_date, phase, ticker, scan_cycle_at, selected, reason, price, prev_close_price, current_price, best_bid, best_ask,
+                 expect_price, expect_revenue_percent, spread_percent, ask_depth_5_amount_krw,
+                 market_cap, trading_value, kospi_change_percent, prev_day_change_percent, raw_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["session_date"],
+                    row["phase"],
+                    row["ticker"],
+                    row["scan_cycle_at"],
+                    row["selected"],
+                    row["reason"],
+                    row["price"],
+                    row["prev_close_price"],
+                    row["current_price"],
+                    row["best_bid"],
+                    row["best_ask"],
+                    row["expect_price"],
+                    row["expect_revenue_percent"],
+                    row["spread_percent"],
+                    row["ask_depth_5_amount_krw"],
+                    row["market_cap"],
+                    row["trading_value"],
+                    row["kospi_change_percent"],
+                    row["prev_day_change_percent"],
+                    row["raw_json"],
+                ),
             ),
         )
-        self.conn.commit()
-        self._append_csv_row(
-            self._daily_csv_path("market_traces"),
-            [
-                "session_date",
-                "phase",
-                "ticker",
-                "scan_cycle_at",
-                "selected",
-                "reason",
-                "price",
-                "prev_close_price",
-                "current_price",
-                "best_bid",
-                "best_ask",
-                "expect_price",
-                "expect_revenue_percent",
-                "spread_percent",
-                "ask_depth_5_amount_krw",
-                "market_cap",
-                "trading_value",
-                "kospi_change_percent",
-                "prev_day_change_percent",
-                "raw_json",
-            ],
-            row,
+        self._run_db("save_market_trace commit", lambda: self.conn.commit())
+        self._run_csv(
+            "save_market_trace",
+            lambda: self._append_csv_row(
+                self._daily_csv_path("market_traces"),
+                [
+                    "session_date",
+                    "phase",
+                    "ticker",
+                    "scan_cycle_at",
+                    "selected",
+                    "reason",
+                    "price",
+                    "prev_close_price",
+                    "current_price",
+                    "best_bid",
+                    "best_ask",
+                    "expect_price",
+                    "expect_revenue_percent",
+                    "spread_percent",
+                    "ask_depth_5_amount_krw",
+                    "market_cap",
+                    "trading_value",
+                    "kospi_change_percent",
+                    "prev_day_change_percent",
+                    "raw_json",
+                ],
+                row,
+            ),
         )
 
     def save_account_trace(
@@ -559,77 +661,89 @@ class Recorder:
             "positions_json": positions_json,
             "open_orders_json": open_orders_json,
         }
-        self.conn.execute(
-            """
-            INSERT INTO account_traces
-            (session_date, phase, cash, account_value, external_cash_flow, adjusted_account_value,
-             adjusted_pnl, loss_percent, kospi_change_percent, positions_json, open_orders_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                row["session_date"],
-                row["phase"],
-                row["cash"],
-                row["account_value"],
-                row["external_cash_flow"],
-                row["adjusted_account_value"],
-                row["adjusted_pnl"],
-                row["loss_percent"],
-                row["kospi_change_percent"],
-                row["positions_json"],
-                row["open_orders_json"],
+        self._run_db(
+            "save_account_trace",
+            lambda: self.conn.execute(
+                """
+                INSERT INTO account_traces
+                (session_date, phase, cash, account_value, external_cash_flow, adjusted_account_value,
+                 adjusted_pnl, loss_percent, kospi_change_percent, positions_json, open_orders_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["session_date"],
+                    row["phase"],
+                    row["cash"],
+                    row["account_value"],
+                    row["external_cash_flow"],
+                    row["adjusted_account_value"],
+                    row["adjusted_pnl"],
+                    row["loss_percent"],
+                    row["kospi_change_percent"],
+                    row["positions_json"],
+                    row["open_orders_json"],
+                ),
             ),
         )
-        self.conn.commit()
-        self._append_csv_row(
-            self._daily_csv_path("account_traces"),
-            [
-                "session_date",
-                "phase",
-                "cash",
-                "account_value",
-                "external_cash_flow",
-                "adjusted_account_value",
-                "adjusted_pnl",
-                "loss_percent",
-                "kospi_change_percent",
-                "positions_json",
-                "open_orders_json",
-            ],
-            row,
+        self._run_db("save_account_trace commit", lambda: self.conn.commit())
+        self._run_csv(
+            "save_account_trace",
+            lambda: self._append_csv_row(
+                self._daily_csv_path("account_traces"),
+                [
+                    "session_date",
+                    "phase",
+                    "cash",
+                    "account_value",
+                    "external_cash_flow",
+                    "adjusted_account_value",
+                    "adjusted_pnl",
+                    "loss_percent",
+                    "kospi_change_percent",
+                    "positions_json",
+                    "open_orders_json",
+                ],
+                row,
+            ),
         )
 
     def save_order(self, order: OrderResult) -> None:
         raw_json = json.dumps(order.raw or {}, ensure_ascii=False)
-        self.conn.execute(
-            """
-            INSERT INTO orders
-            (broker_order_id, ticker, side, quantity, price, status, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                order.order_id,
-                order.ticker,
-                order.side,
-                order.quantity,
-                order.price,
-                order.status,
-                raw_json,
+        self._run_db(
+            "save_order",
+            lambda: self.conn.execute(
+                """
+                INSERT INTO orders
+                (broker_order_id, ticker, side, quantity, price, status, raw_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    order.order_id,
+                    order.ticker,
+                    order.side,
+                    order.quantity,
+                    order.price,
+                    order.status,
+                    raw_json,
+                ),
             ),
         )
-        self.conn.commit()
-        self._append_csv_row(
-            self._daily_csv_path("orders"),
-            ["broker_order_id", "ticker", "side", "quantity", "price", "status", "raw_json"],
-            {
-                "broker_order_id": order.order_id,
-                "ticker": order.ticker,
-                "side": order.side,
-                "quantity": order.quantity,
-                "price": order.price,
-                "status": order.status,
-                "raw_json": raw_json,
-            },
+        self._run_db("save_order commit", lambda: self.conn.commit())
+        self._run_csv(
+            "save_order",
+            lambda: self._append_csv_row(
+                self._daily_csv_path("orders"),
+                ["broker_order_id", "ticker", "side", "quantity", "price", "status", "raw_json"],
+                {
+                    "broker_order_id": order.order_id,
+                    "ticker": order.ticker,
+                    "side": order.side,
+                    "quantity": order.quantity,
+                    "price": order.price,
+                    "status": order.status,
+                    "raw_json": raw_json,
+                },
+            ),
         )
 
     def save_fill(self, fill: Fill, side: str, source: str = "broker") -> None:
@@ -649,80 +763,95 @@ class Recorder:
         filled_at = fill.filled_at.isoformat()
         side_upper = str(side or "").strip().upper()
         if replace_existing:
-            self.conn.execute(
-                """
-                DELETE FROM fills
-                WHERE broker_order_id = ?
-                  AND side = ?
-                """,
-                (fill.order_id, side_upper),
+            self._run_db(
+                "replace_fill delete",
+                lambda: self.conn.execute(
+                    """
+                    DELETE FROM fills
+                    WHERE broker_order_id = ?
+                      AND side = ?
+                    """,
+                    (fill.order_id, side_upper),
+                ),
             )
-        self.conn.execute(
-            """
-            INSERT INTO fills
-            (broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                fill.order_id,
-                fill.ticker,
-                side_upper,
-                fill.quantity,
-                fill.price,
-                filled_at,
-                source,
-                raw_json,
+        self._run_db(
+            "save_fill",
+            lambda: self.conn.execute(
+                """
+                INSERT INTO fills
+                (broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    fill.order_id,
+                    fill.ticker,
+                    side_upper,
+                    fill.quantity,
+                    fill.price,
+                    filled_at,
+                    source,
+                    raw_json,
+                ),
             ),
         )
-        self.conn.commit()
-        self._append_csv_row(
-            self._daily_csv_path("fills"),
-            ["broker_order_id", "ticker", "side", "quantity", "price", "filled_at", "source", "raw_json"],
-            {
-                "broker_order_id": fill.order_id,
-                "ticker": fill.ticker,
-                "side": side_upper,
-                "quantity": fill.quantity,
-                "price": fill.price,
-                "filled_at": filled_at,
-                "source": source,
-                "raw_json": raw_json,
-            },
+        self._run_db("save_fill commit", lambda: self.conn.commit())
+        self._run_csv(
+            "save_fill",
+            lambda: self._append_csv_row(
+                self._daily_csv_path("fills"),
+                ["broker_order_id", "ticker", "side", "quantity", "price", "filled_at", "source", "raw_json"],
+                {
+                    "broker_order_id": fill.order_id,
+                    "ticker": fill.ticker,
+                    "side": side_upper,
+                    "quantity": fill.quantity,
+                    "price": fill.price,
+                    "filled_at": filled_at,
+                    "source": source,
+                    "raw_json": raw_json,
+                },
+            ),
         )
         if should_include_in_fill_audit(source):
-            try:
-                append_fill_audit_csv(
-                    self.audit_fill_csv_path,
-                    fill,
-                    side=side_upper,
-                    source=source,
-                    account_snapshot=self._latest_account_trace(),
-                )
-                append_fill_audit_csv(
-                    self.daily_audit_fill_csv_path,
-                    fill,
-                    side=side_upper,
-                    source=source,
-                    account_snapshot=self._latest_account_trace(),
-                    reset_by_trade_date=True,
-                )
-            except Exception as exc:
-                print(f"Failed to append fill audit CSV for {fill.ticker}: {exc}")
+            self._run_audit(
+                "save_fill audit append",
+                lambda: (
+                    append_fill_audit_csv(
+                        self.audit_fill_csv_path,
+                        fill,
+                        side=side_upper,
+                        source=source,
+                        account_snapshot=self._latest_account_trace(),
+                    ),
+                    append_fill_audit_csv(
+                        self.daily_audit_fill_csv_path,
+                        fill,
+                        side=side_upper,
+                        source=source,
+                        account_snapshot=self._latest_account_trace(),
+                        reset_by_trade_date=True,
+                    ),
+                ),
+            )
         print(
             f"FILL {side_upper} {fill.ticker} qty={fill.quantity} price={fill.price} "
             f"filled_at={filled_at} source={source} order_id={fill.order_id}"
         )
 
     def get_session_fills(self, session_date: str) -> list[dict[str, Any]]:
-        rows = self.conn.execute(
-            """
-            SELECT broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json, created_at
-            FROM fills
-            WHERE substr(filled_at, 1, 10) = ?
-            ORDER BY filled_at ASC, id ASC
-            """,
-            (session_date,),
-        ).fetchall()
+        rows = self._run_db(
+            "get_session_fills",
+            lambda: self.conn.execute(
+                """
+                SELECT broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json, created_at
+                FROM fills
+                WHERE substr(filled_at, 1, 10) = ?
+                ORDER BY filled_at ASC, id ASC
+                """,
+                (session_date,),
+            ).fetchall(),
+            default=[],
+        )
         return [dict(row) for row in rows]
 
     def get_fill_index(self, session_date: str) -> dict[tuple[str, str], dict[str, Any]]:
@@ -762,17 +891,21 @@ class Recorder:
         return False
 
     def get_latest_planned_stop_loss_price(self, ticker: str) -> int:
-        row = self.conn.execute(
-            """
-            SELECT raw_json
-            FROM orders
-            WHERE ticker = ?
-              AND side = 'SELL'
-            ORDER BY id DESC
-            LIMIT 1
-            """,
-            (ticker,),
-        ).fetchone()
+        row = self._run_db(
+            "get_latest_planned_stop_loss_price",
+            lambda: self.conn.execute(
+                """
+                SELECT raw_json
+                FROM orders
+                WHERE ticker = ?
+                  AND side = 'SELL'
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (ticker,),
+            ).fetchone(),
+            default=None,
+        )
         if row is None:
             return 0
         try:
@@ -788,33 +921,40 @@ class Recorder:
         fill_rows = self.get_session_fills(session_date)
         fills_csv_path = self.log_dir / f"fills_{session_date.replace('-', '')}.csv"
         if fills_csv_path.exists():
-            fills_csv_path.unlink()
+            self._run_csv("rebuild_session_fill_exports unlink fills csv", lambda: fills_csv_path.unlink())
 
         fill_fieldnames = ["broker_order_id", "ticker", "side", "quantity", "price", "filled_at", "source", "raw_json"]
         for row in fill_rows:
-            self._append_csv_row(
-                fills_csv_path,
-                fill_fieldnames,
-                {
-                    "broker_order_id": row["broker_order_id"],
-                    "ticker": row["ticker"],
-                    "side": row["side"],
-                    "quantity": row["quantity"],
-                    "price": row["price"],
-                    "filled_at": row["filled_at"],
-                    "source": row["source"],
-                    "raw_json": row["raw_json"],
-                },
+            self._run_csv(
+                "rebuild_session_fill_exports write fills csv",
+                lambda row=row: self._append_csv_row(
+                    fills_csv_path,
+                    fill_fieldnames,
+                    {
+                        "broker_order_id": row["broker_order_id"],
+                        "ticker": row["ticker"],
+                        "side": row["side"],
+                        "quantity": row["quantity"],
+                        "price": row["price"],
+                        "filled_at": row["filled_at"],
+                        "source": row["source"],
+                        "raw_json": row["raw_json"],
+                    },
+                ),
             )
 
         existing_snapshot_map = self._read_audit_snapshot_map()
-        audit_rows = self.conn.execute(
-            """
-            SELECT broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json
-            FROM fills
-            ORDER BY filled_at ASC, id ASC
-            """
-        ).fetchall()
+        audit_rows = self._run_db(
+            "rebuild_session_fill_exports audit rows",
+            lambda: self.conn.execute(
+                """
+                SELECT broker_order_id, ticker, side, quantity, price, filled_at, source, raw_json
+                FROM fills
+                ORDER BY filled_at ASC, id ASC
+                """
+            ).fetchall(),
+            default=[],
+        )
         audit_entries: list[tuple[Fill, str, str]] = []
         for row in audit_rows:
             raw_json = row["raw_json"]
@@ -840,60 +980,73 @@ class Recorder:
                 )
             )
 
-        rewrite_fill_audit_csv(
-            self.audit_fill_csv_path,
-            audit_entries,
-            account_snapshots_by_order_id=existing_snapshot_map,
-        )
-        rewrite_fill_audit_csv(
-            self.daily_audit_fill_csv_path,
-            audit_entries,
-            account_snapshots_by_order_id=existing_snapshot_map,
-            reset_by_trade_date=True,
+        self._run_audit(
+            "rebuild_session_fill_exports rewrite audit csv",
+            lambda: (
+                rewrite_fill_audit_csv(
+                    self.audit_fill_csv_path,
+                    audit_entries,
+                    account_snapshots_by_order_id=existing_snapshot_map,
+                ),
+                rewrite_fill_audit_csv(
+                    self.daily_audit_fill_csv_path,
+                    audit_entries,
+                    account_snapshots_by_order_id=existing_snapshot_map,
+                    reset_by_trade_date=True,
+                ),
+            ),
         )
 
     def _read_audit_snapshot_map(self) -> dict[str, dict[str, Any]]:
         if not self.audit_fill_csv_path.exists() or self.audit_fill_csv_path.stat().st_size == 0:
             return {}
         snapshot_map: dict[str, dict[str, Any]] = {}
-        with self.audit_fill_csv_path.open("r", newline="", encoding="utf-8-sig") as fp:
-            for row in csv.DictReader(fp):
-                order_id = str(row.get("broker_order_id") or "").strip()
-                if not order_id:
-                    continue
-                snapshot_map[order_id] = {
-                    "cash": row.get("cash", ""),
-                    "account_value": row.get("account_value", ""),
-                    "adjusted_account_value": row.get("adjusted_account_value", ""),
-                    "adjusted_pnl": row.get("adjusted_pnl", ""),
-                    "loss_percent": row.get("loss_percent", ""),
-                    "kospi_change_percent": row.get("kospi_change_percent", ""),
-                }
+
+        def _load_snapshot_map() -> None:
+            with self.audit_fill_csv_path.open("r", newline="", encoding="utf-8-sig") as fp:
+                for row in csv.DictReader(fp):
+                    order_id = str(row.get("broker_order_id") or "").strip()
+                    if not order_id:
+                        continue
+                    snapshot_map[order_id] = {
+                        "cash": row.get("cash", ""),
+                        "account_value": row.get("account_value", ""),
+                        "adjusted_account_value": row.get("adjusted_account_value", ""),
+                        "adjusted_pnl": row.get("adjusted_pnl", ""),
+                        "loss_percent": row.get("loss_percent", ""),
+                        "kospi_change_percent": row.get("kospi_change_percent", ""),
+                    }
+
+        self._run_audit("read_audit_snapshot_map", _load_snapshot_map)
         return snapshot_map
 
     def get_orders_needing_fill_poll(self, limit: int = 200) -> list[dict[str, Any]]:
-        rows = self.conn.execute(
-            """
-            SELECT
-                o.broker_order_id,
-                o.ticker,
-                o.side,
-                o.quantity,
-                o.price,
-                o.status,
-                o.created_at,
-                COALESCE(SUM(f.quantity), 0) AS recorded_fill_quantity
-            FROM orders o
-            LEFT JOIN fills f ON f.broker_order_id = o.broker_order_id
-            WHERE o.broker_order_id IS NOT NULL
-              AND o.broker_order_id != ''
-            GROUP BY o.id
-            HAVING COALESCE(SUM(f.quantity), 0) < COALESCE(o.quantity, 0)
-            ORDER BY o.id DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ).fetchall()
+        rows = self._run_db(
+            "get_orders_needing_fill_poll",
+            lambda: self.conn.execute(
+                """
+                SELECT
+                    o.broker_order_id,
+                    o.ticker,
+                    o.side,
+                    o.quantity,
+                    o.price,
+                    o.status,
+                    o.created_at,
+                    COALESCE(SUM(f.quantity), 0) AS recorded_fill_quantity
+                FROM orders o
+                LEFT JOIN fills f ON f.broker_order_id = o.broker_order_id
+                WHERE o.broker_order_id IS NOT NULL
+                  AND o.broker_order_id != ''
+                GROUP BY o.id
+                HAVING COALESCE(SUM(f.quantity), 0) < COALESCE(o.quantity, 0)
+                ORDER BY o.id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall(),
+            default=[],
+        )
         return [dict(row) for row in rows]
 
     def purge_superseded_sell_reconciliation_fills(self, session_date: str | None = None) -> int:
@@ -903,25 +1056,29 @@ class Recorder:
             session_filter = "AND substr(sr.filled_at, 1, 10) = ?"
             params.append(session_date)
 
-        rows = self.conn.execute(
-            f"""
-            SELECT
-                sr.id,
-                sr.broker_order_id,
-                sr.ticker,
-                sr.quantity,
-                COALESCE(o.created_at, sr.filled_at) AS order_created_at
-            FROM fills sr
-            LEFT JOIN orders o
-              ON o.broker_order_id = sr.broker_order_id
-             AND o.side = 'SELL'
-            WHERE sr.side = 'SELL'
-              AND sr.source = 'sell_reconciliation'
-              {session_filter}
-            ORDER BY sr.id ASC
-            """,
-            params,
-        ).fetchall()
+        rows = self._run_db(
+            "purge_superseded_sell_reconciliation_fills select",
+            lambda: self.conn.execute(
+                f"""
+                SELECT
+                    sr.id,
+                    sr.broker_order_id,
+                    sr.ticker,
+                    sr.quantity,
+                    COALESCE(o.created_at, sr.filled_at) AS order_created_at
+                FROM fills sr
+                LEFT JOIN orders o
+                  ON o.broker_order_id = sr.broker_order_id
+                 AND o.side = 'SELL'
+                WHERE sr.side = 'SELL'
+                  AND sr.source = 'sell_reconciliation'
+                  {session_filter}
+                ORDER BY sr.id ASC
+                """,
+                params,
+            ).fetchall(),
+            default=[],
+        )
 
         stale_ids: list[int] = []
         for row in rows:
@@ -937,12 +1094,21 @@ class Recorder:
             return 0
 
         placeholders = ",".join("?" for _ in stale_ids)
-        self.conn.execute(f"DELETE FROM fills WHERE id IN ({placeholders})", stale_ids)
-        self.conn.commit()
+        self._run_db(
+            "purge_superseded_sell_reconciliation_fills delete",
+            lambda: self.conn.execute(f"DELETE FROM fills WHERE id IN ({placeholders})", stale_ids),
+        )
+        self._run_db("purge_superseded_sell_reconciliation_fills commit", lambda: self.conn.commit())
         return len(stale_ids)
 
     def write_daily_revenue_summary(self, session_date: str, starting_capital_krw: int) -> None:
-        summary = summarize_daily_revenue(str(self.path), session_date, starting_capital_krw)
+        if not self._csv_enabled:
+            return
+        try:
+            summary = summarize_daily_revenue(str(self.path), session_date, starting_capital_krw)
+        except Exception as exc:
+            self._disable_csv_sink("write_daily_revenue_summary summarize", exc)
+            return
         row = {
             "session_date": summary.session_date,
             "starting_capital_krw": summary.starting_capital_krw,
@@ -955,4 +1121,7 @@ class Recorder:
             "total_return_percent_on_starting_capital": f"{summary.total_return_percent_on_starting_capital:.4f}",
             "traded_tickers": ",".join(summary.traded_tickers),
         }
-        self._upsert_csv_row(self.daily_revenue_csv_path, DAILY_REV_FIELDNAMES, "session_date", row)
+        self._run_csv(
+            "write_daily_revenue_summary",
+            lambda: self._upsert_csv_row(self.daily_revenue_csv_path, DAILY_REV_FIELDNAMES, "session_date", row),
+        )

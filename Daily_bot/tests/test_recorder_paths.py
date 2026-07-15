@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import sqlite3
 
 from Daily_bot.models import Candidate, Fill, HogaLevel, HogaSnapshot
 from Daily_bot.storage.db import Recorder
@@ -360,4 +361,67 @@ def test_write_daily_revenue_summary_upserts_single_session_row(tmp_path):
     assert "005930" in daily_rev_text
     assert "0.7150" in daily_rev_text
     assert "0.0143" in daily_rev_text
+    recorder.conn.close()
+
+
+def test_recorder_disables_db_sink_when_write_fails(tmp_path):
+    recorder = Recorder(tmp_path / "bot.sqlite3")
+
+    class _BrokenConnection:
+        def execute(self, *_args, **_kwargs):
+            raise sqlite3.OperationalError("database or disk is full")
+
+        def commit(self):
+            raise sqlite3.OperationalError("database or disk is full")
+
+        def close(self):
+            return None
+
+    recorder.conn = _BrokenConnection()
+
+    recorder.save_order(
+        type(
+            "Order",
+            (),
+            {
+                "order_id": "ORDER-1",
+                "ticker": "005930",
+                "side": "BUY",
+                "quantity": 1,
+                "price": 70_000,
+                "status": "ok",
+                "raw": {},
+            },
+        )()
+    )
+
+    assert recorder._db_enabled is False
+    assert recorder.conn is None
+
+
+def test_recorder_disables_csv_sink_when_csv_write_fails(tmp_path, monkeypatch):
+    recorder = Recorder(tmp_path / "bot.sqlite3")
+
+    def _raise_disk_full(*_args, **_kwargs):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(recorder, "_append_csv_row", _raise_disk_full)
+
+    recorder.save_order(
+        type(
+            "Order",
+            (),
+            {
+                "order_id": "ORDER-1",
+                "ticker": "005930",
+                "side": "BUY",
+                "quantity": 1,
+                "price": 70_000,
+                "status": "ok",
+                "raw": {},
+            },
+        )()
+    )
+
+    assert recorder._csv_enabled is False
     recorder.conn.close()
