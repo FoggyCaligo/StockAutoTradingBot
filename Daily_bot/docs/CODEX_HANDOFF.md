@@ -12,7 +12,7 @@
 ## Current Active Settings
 
 - `trend_filter.enabled = false`
-- `strategy.top_ratio = 1.0`
+- `strategy.top_ratio = 0.25`
 - `strategy.max_buy_count = 3`
 - `strategy.allow_refill_empty_slots = true`
 - `strategy.min_expected_return_percent = 0.7`
@@ -32,7 +32,7 @@
 
 ## Operational Meaning
 
-- 현재 운영은 `0.7 단일 + 재매수 허용 + 전일 1% 상한 + 무손절`이다.
+- 현재 운영은 `0.7 단일 + 상위 25% 컷 + 재매수 허용 + 전일 1% 상한 + 무손절`이다.
 - 호가 모델은 매수/매도 양쪽 모두 강한 대칭 선형 감쇠를 건다.
 - `max_buy_count = 3`은 총 보유 제한이 아니라 스캔당 신규 진입 제한이다.
 - 총 보유 상한은 슬롯 계산 결과와 `risk.max_position_count = 10`이 함께 결정한다.

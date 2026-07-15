@@ -13,7 +13,7 @@
 
 ## Strategy
 
-- `strategy.top_ratio = 1.0`
+- `strategy.top_ratio = 0.25`
 - `strategy.max_buy_count = 3`
 - `strategy.allow_refill_empty_slots = true`
 - `strategy.min_expected_return_percent = 0.7`
@@ -56,6 +56,7 @@
 ## Operational Meaning
 
 - 현재 운영은 `0.7 단일`이다. fallback은 꺼져 있다.
+- 현재 랭킹 컷은 `상위 25%`다.
 - 현재 호가 기대수익률 계산은 매수/매도 양쪽 모두에 강한 대칭 선형 감쇠를 건다.
 - 현재 장중 손절은 완전히 꺼져 있다.
 - 현재 재매수는 허용되어 있다.

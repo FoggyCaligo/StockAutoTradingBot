@@ -19,7 +19,7 @@ trend_filter:
   enabled: false
 
 strategy:
-  top_ratio: 1.0
+  top_ratio: 0.25
   max_buy_count: 3
   allow_refill_empty_slots: true
   min_expected_return_percent: 0.7
@@ -74,7 +74,7 @@ accounting:
 
 
 # 후보 탐색: KOSPI 전체, 시총 2,500억 이상, 거래대금 30억 이상
-# 랭킹 컷: top_ratio 1.0으로 사실상 비활성화
+# 랭킹 컷: 기대수익률 상위 25%만 유지
 # 보조 필터: 스프레드/전일 등락률/직전 스캔 급등/호가잔량 비율 필터 비활성화
 # 핵심 신호: 20호가 기반 기대수익률 0.7% 이상
 # fallback: 후보 부족 시 0.6% -> 0.5% 순서로 완화

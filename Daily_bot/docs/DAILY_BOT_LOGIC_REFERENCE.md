@@ -101,7 +101,7 @@ expect_revenue_percent = (target_sell_price - current_price) / current_price * 1
 
 현재 운영에서 실제로 켜져 있는 진입 기준은 아래다.
 
-- `top_ratio = 1.0`
+- `top_ratio = 0.25`
 - 기대수익률 기준 `0.7%`
 - fallback `OFF`
 - 전일 상승률 상한 `1.0%`
@@ -110,7 +110,7 @@ expect_revenue_percent = (target_sell_price - current_price) / current_price * 1
 - 매도호가 잔량비율 필터 `OFF`
 - 추세 필터 `OFF`
 
-즉 현재 전략은 “강한 기대수익 후보만 받고, 전일 과열 종목만 추가로 거른다”는 구조다.
+즉 현재 전략은 “강한 기대수익 후보만 받고, 그중 상위 25%만 남기고, 전일 과열 종목만 추가로 거른다”는 구조다.
 
 ## 8. 실제 종목 선택 방식
 
@@ -232,6 +232,7 @@ expect_revenue_percent = (target_sell_price - current_price) / current_price * 1
 - 유니버스 필터: 시총 `2500억` 이상, 거래대금 `30억` 이상
 - 스캔: `60초`
 - 기대수익률 기준: `0.7`
+- 랭킹 컷: `상위 25%`
 - fallback: `OFF`
 - 호가 감쇠: 매수/매도 모두 `1.0 -> 0.1`
 - 스캔당 신규 진입 상한: `3`
