@@ -21,10 +21,10 @@
 - `strategy.max_spread_percent = 0.0`
 - `strategy.spread_expected_return_multiplier = 0.0`
 - `strategy.min_prev_day_change_percent = 0.0`
-- `strategy.max_prev_day_change_percent = 1.0`
+- `strategy.max_prev_day_change_percent = 10.0`
 - `strategy.max_intraday_jump_from_prev_scan_percent = 0.0`
-- `strategy.orderbook_bid_linear_decay_min_weight = 0.1`
-- `strategy.orderbook_ask_linear_decay_min_weight = 0.1`
+- `strategy.orderbook_bid_linear_decay_min_weight = 0.0`
+- `strategy.orderbook_ask_linear_decay_min_weight = 0.0`
 - `strategy.sell_tick_offset = 1`
 - `strategy.scan_interval_seconds = 60`
 

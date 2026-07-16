@@ -87,7 +87,7 @@ expect_revenue_percent = (target_sell_price - current_price) / current_price * 1
 
 - 매수/매도 양쪽 모두 같은 방식으로 감쇠
 - 1단계 호가 가중치: `1.0`
-- 마지막 단계 호가 가중치: `0.1`
+- 마지막 단계 호가 가중치: `0.0`
 - 중간 단계는 선형으로 감소
 
 즉 가까운 호가잔량은 거의 그대로 반영하고, 현재가에서 먼 잔량일수록 영향력을 작게 본다.
@@ -104,7 +104,7 @@ expect_revenue_percent = (target_sell_price - current_price) / current_price * 1
 - `top_ratio = 0.25`
 - 기대수익률 기준 `0.7%`
 - fallback `OFF`
-- 전일 상승률 상한 `1.0%`
+- 전일 상승률 상한 `10.0%`
 - 스프레드 상한 `OFF`
 - 직전 스캔 급등 억제 `OFF`
 - 매도호가 잔량비율 필터 `OFF`
@@ -234,10 +234,10 @@ expect_revenue_percent = (target_sell_price - current_price) / current_price * 1
 - 기대수익률 기준: `0.7`
 - 랭킹 컷: `상위 25%`
 - fallback: `OFF`
-- 호가 감쇠: 매수/매도 모두 `1.0 -> 0.1`
+- 호가 감쇠: 매수/매도 모두 `1.0 -> 0.0`
 - 스캔당 신규 진입 상한: `3`
 - 총 보유 상한: `10`
 - 재매수: `허용`
-- 전일 상승 상한: `1.0%`
+- 전일 상승 상한: `10.0%`
 - 장중 손절: `OFF`
 - 일손실 제한: `10%`

@@ -27,11 +27,11 @@ strategy:
   max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
   min_prev_day_change_percent: 0.0
-  max_prev_day_change_percent: 1.0
+  max_prev_day_change_percent: 10.0
   # 0 or below disables the previous-scan intraday jump filter.
   max_intraday_jump_from_prev_scan_percent: 0.0
-  orderbook_bid_linear_decay_min_weight: 0.1
-  orderbook_ask_linear_decay_min_weight: 0.1
+  orderbook_bid_linear_decay_min_weight: 0.0
+  orderbook_ask_linear_decay_min_weight: 0.0
   sell_tick_offset: 1
   scan_interval_seconds: 60
 
@@ -55,9 +55,9 @@ risk:
 # Current live summary:
 # - Universe: full KOSPI daily refresh, market cap >= 250B KRW, trading value >= 3B KRW
 # - Entry: expected return >= 0.7 only, fallback disabled
-# - Orderbook model: symmetric linear decay on both sides (1.0 -> 0.1)
+# - Orderbook model: symmetric linear decay on both sides (1.0 -> 0.0)
 # - Buy flow: up to 3 new buys per scan, refill enabled when empty slots appear
-# - Guard: previous-day rise upper bound 1.0%, same-day re-entry block remains available if stop-loss is re-enabled
+# - Guard: previous-day rise upper bound 10.0%, same-day re-entry block remains available if stop-loss is re-enabled
 # - Risk: no intraday stop-loss, force sell at 15:00, daily loss limit 10%
 
 api:
