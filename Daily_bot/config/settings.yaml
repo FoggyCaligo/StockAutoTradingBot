@@ -21,7 +21,7 @@ trend_filter:
 strategy:
   top_ratio: 0.25
   max_buy_count: 3
-  allow_refill_empty_slots: true
+  allow_refill_empty_slots: false
   min_expected_return_percent: 0.7
   min_expected_return_fallback_percents: []
   max_spread_percent: 0.0
