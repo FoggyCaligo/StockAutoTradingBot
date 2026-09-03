@@ -27,6 +27,20 @@ def _get_order_id_from_object(order: object) -> str:
     ).strip()
 
 
+def _validate_submitted_sell_order(order: object, ticker: str) -> str:
+    order_id = _get_order_id_from_object(order)
+    raw = getattr(order, "raw", None)
+    if isinstance(raw, dict):
+        return_code = raw.get("return_code")
+        if return_code is not None and _to_int(return_code, default=-1) != 0:
+            message = raw.get("return_msg") or getattr(order, "status", "")
+            raise RuntimeError(f"Market sell rejected for {ticker}: return_code={return_code} message={message}")
+    if not order_id:
+        status = getattr(order, "status", "")
+        raise RuntimeError(f"Market sell for {ticker} returned no order id: status={status}")
+    return order_id
+
+
 def _get_ticker(order: dict) -> str:
     return str(order.get("ticker") or order.get("stk_cd") or order.get("pdno") or "").strip().upper().removeprefix("A")
 
@@ -106,10 +120,10 @@ def sell_all_positions_at_current_price(client, recorder: Recorder | None = None
             f"quantity={position.quantity}"
         )
         sell_order = client.sell_market(position.ticker, position.quantity)
+        sell_order_id = _validate_submitted_sell_order(sell_order, position.ticker)
 
         if recorder is not None:
             recorder.save_order(sell_order)
-            sell_order_id = _get_order_id_from_object(sell_order)
             if not _record_fill_safely(client, recorder, sell_order_id, "SELL", "force_sell"):
                 _poll_fill_until_recorded(client, recorder, sell_order_id, "SELL", "force_sell_safety_poll")
 
@@ -122,4 +136,13 @@ def force_sell(client, recorder: Recorder | None = None) -> None:
         raise RuntimeError("Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.")
     sell_all_positions_at_current_price(client, recorder=recorder)
     if hasattr(client, "wait_until_no_position"):
-        client.wait_until_no_position()
+        cleared = client.wait_until_no_position()
+        if not cleared:
+            remaining = client.get_positions()
+            remaining_summary = ", ".join(
+                f"{position.ticker}:{position.quantity}" for position in remaining if position.quantity > 0
+            )
+            raise RuntimeError(
+                "Positions still remain after market force-sell timeout"
+                + (f": {remaining_summary}" if remaining_summary else ".")
+            )

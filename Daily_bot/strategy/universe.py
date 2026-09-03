@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import warnings
+import queue
+import threading
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Sequence, TypeVar
 
 import pandas as pd  # type: ignore[import]
 
@@ -17,7 +19,7 @@ class UniverseConfig:
     min_trading_value_krw: int
     csv_path: str | None = None
     cache_path: str | None = None
-    source: str = "KOSPI"
+    source: str | list[str] = "KOSPI"
     refresh_daily: bool = True
 
 
@@ -32,6 +34,30 @@ NUMERIC_COLUMNS = [
     "market_cap",
     "trading_value",
 ]
+FDR_LISTING_TIMEOUT_SECONDS = 30.0
+FDR_INDEX_TIMEOUT_SECONDS = 15.0
+T = TypeVar("T")
+
+
+def _call_with_timeout(call: Callable[[], T], timeout_seconds: float, label: str) -> T:
+    """Run an unreliable third-party data call without blocking bot startup forever."""
+    result_queue: queue.Queue[tuple[bool, object]] = queue.Queue(maxsize=1)
+
+    def _run() -> None:
+        try:
+            result_queue.put((True, call()))
+        except BaseException as exc:
+            result_queue.put((False, exc))
+
+    threading.Thread(target=_run, name=f"timeout-{label}", daemon=True).start()
+    try:
+        succeeded, result = result_queue.get(timeout=max(0.01, timeout_seconds))
+    except queue.Empty as exc:
+        raise TimeoutError(f"{label} timed out after {timeout_seconds:g} seconds") from exc
+    if not succeeded:
+        assert isinstance(result, BaseException)
+        raise result
+    return result  # type: ignore[return-value]
 
 
 def _safe_int(value: Any) -> int:
@@ -99,7 +125,7 @@ def _save_cache(df: pd.DataFrame, cache_path: Path) -> None:
     df.to_csv(cache_path, index=False)
 
 
-def _load_fdr_listing(source: str) -> pd.DataFrame:
+def _load_fdr_market(source: str) -> pd.DataFrame:
     import FinanceDataReader as fdr  # type: ignore[import]
 
     candidates = [source]
@@ -114,17 +140,42 @@ def _load_fdr_listing(source: str) -> pd.DataFrame:
         try:
             df = fdr.StockListing(market)
             if isinstance(df, pd.DataFrame) and not df.empty:
-                return _coerce_numeric_columns(df)
+                result = _coerce_numeric_columns(df)
+                if "Market" not in result.columns:
+                    result["Market"] = source.upper()
+                return result
         except Exception as exc:  # pragma: no cover - network/data source dependent
             last_error = exc
 
     raise RuntimeError(f"FinanceDataReader failed to load source={source}") from last_error
 
 
+def _normalize_sources(source: str | Sequence[str]) -> list[str]:
+    raw_sources = [source] if isinstance(source, str) else list(source)
+    sources: list[str] = []
+    for value in raw_sources:
+        normalized = str(value or "").strip().upper()
+        if normalized and normalized not in sources:
+            sources.append(normalized)
+    return sources or ["KOSPI"]
+
+
+def _load_fdr_listing(source: str | Sequence[str]) -> pd.DataFrame:
+    sources = _normalize_sources(source)
+    frames = [_load_fdr_market(market) for market in sources]
+    combined = pd.concat(frames, ignore_index=True, sort=False)
+    code_column = next((column for column in ("Code", "Symbol", "code") if column in combined.columns), None)
+    if code_column is not None:
+        normalized_codes = combined[code_column].map(_normalize_code)
+        combined = combined.loc[~normalized_codes.duplicated()].copy()
+        combined[code_column] = normalized_codes.loc[combined.index]
+    return _coerce_numeric_columns(combined).reset_index(drop=True)
+
+
 def get_kospi200_list(
     csv_path: str | None = None,
     cache_path: str | None = None,
-    source: str = "KOSPI",
+    source: str | Sequence[str] = "KOSPI",
     refresh_daily: bool = True,
 ) -> pd.DataFrame:
     fallback_path = Path(csv_path) if csv_path else None
@@ -134,7 +185,11 @@ def get_kospi200_list(
         if _cache_is_today(cache):
             return _load_local_universe(cache)
         try:
-            df = _load_fdr_listing(source)
+            df = _call_with_timeout(
+                lambda: _load_fdr_listing(source),
+                FDR_LISTING_TIMEOUT_SECONDS,
+                f"FDR StockListing({source})",
+            )
             _save_cache(df, cache)
             return df
         except Exception as exc:
@@ -165,7 +220,11 @@ def get_kospi_change_percent() -> float | None:
 
     for symbol in ("KS11", "KOSPI"):
         try:
-            df = fdr.DataReader(symbol, start=start, end=end)
+            df = _call_with_timeout(
+                lambda symbol=symbol: fdr.DataReader(symbol, start=start, end=end),
+                FDR_INDEX_TIMEOUT_SECONDS,
+                f"FDR DataReader({symbol})",
+            )
         except Exception:
             continue
         if not isinstance(df, pd.DataFrame) or df.empty or "Close" not in df.columns:

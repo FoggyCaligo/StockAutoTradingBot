@@ -4,6 +4,7 @@ from pathlib import Path
 from Daily_bot.backtest import replay_db_builder
 from Daily_bot.backtest.replay_market_traces import (
     ActualExitOverride,
+    _refill_is_allowed,
     infer_selected_signals_from_fill_audit,
     load_actual_exit_overrides_from_fills,
     load_trend_ok_tickers_by_day,
@@ -14,6 +15,14 @@ from Daily_bot.backtest.replay_market_traces import (
     run_backtest,
     write_backtest_reports,
 )
+
+
+def test_refill_policy_can_wait_until_half_of_slots_are_empty():
+    assert _refill_is_allowed(3, 4, True, refill_min_empty_fraction=0.5) is False
+    assert _refill_is_allowed(2, 4, True, refill_min_empty_fraction=0.5) is True
+    assert _refill_is_allowed(1, 3, True, refill_min_empty_fraction=0.5) is True
+    assert _refill_is_allowed(2, 3, True, refill_min_empty_fraction=0.5) is False
+    assert _refill_is_allowed(0, 4, False, refill_min_empty_fraction=0.5) is True
 from Daily_bot.backtest.replay_db_builder import resolve_replay_db_path
 
 

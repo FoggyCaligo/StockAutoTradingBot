@@ -1355,8 +1355,10 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     dry_run = cfg["risk"]["dry_run"] if dry_run_override is None else dry_run_override
     client = build_client(dry_run)
     recorder = Recorder(BOT_DB_PATH, log_dir=BOT_LOG_DIR)
+    print(f"Bot startup: dry_run={dry_run} config={cfg_path}")
     while not _authenticate_client_safely(client):
         time.sleep(5)
+    print("Bot startup: authentication completed")
     state = BotState.NO_POSITION
     force_sell_done = False
     startup_carryover_clear_done = False
@@ -1368,6 +1370,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     previous_scan_prices: dict[str, int] = {}
     prev_close_prices: dict[str, int] = {}
     session_started_at = datetime.now()
+    print("Bot startup: estimating initial account value")
     initial_account_value = estimate_account_value(client)
     session_capital_basis = 0
     session_slot_count = 0
@@ -1375,7 +1378,9 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
     session_position_limit = 0
     print(f"Initial account value estimate: {initial_account_value}")
     active_poll_seconds = min(5, max(1, int(cfg["strategy"].get("scan_interval_seconds", 60))))
+    print("Bot startup: loading KOSPI change percent")
     kospi_change_percent = resolve_kospi_change_percent()
+    print(f"Bot startup: KOSPI change lookup completed value={kospi_change_percent}")
 
     while True:
         in_buy_window = is_between_now(cfg["market"]["start_buy_time"], cfg["market"]["stop_buy_time"])
@@ -1420,6 +1425,7 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 
         if is_between_now(cfg["market"].get("prewarm_start_time", cfg["market"]["start_buy_time"]), cfg["market"]["start_buy_time"]) and not warmed_session:
             try:
+                print("Universe warm-up started")
                 warm_universe(cfg)
                 prev_close_prices = record_session_prev_close_prices(recorder, cfg)
                 session_capital_basis = resolve_session_capital_basis(client)

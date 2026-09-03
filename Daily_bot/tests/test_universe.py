@@ -1,6 +1,36 @@
-import pandas as pd
+import time
 
-from Daily_bot.strategy.universe import UniverseConfig, get_candidates, get_kospi200_list
+import pandas as pd
+import pytest
+
+from Daily_bot.strategy import universe
+from Daily_bot.strategy.universe import UniverseConfig, _call_with_timeout, get_candidates, get_kospi200_list
+
+
+def test_call_with_timeout_does_not_block_startup_forever():
+    started_at = time.monotonic()
+
+    with pytest.raises(TimeoutError, match="test data call timed out"):
+        _call_with_timeout(lambda: time.sleep(1), timeout_seconds=0.01, label="test data call")
+
+    assert time.monotonic() - started_at < 0.5
+
+
+def test_load_fdr_listing_combines_kospi_and_kosdaq_and_deduplicates(monkeypatch):
+    listings = {
+        "KOSPI": pd.DataFrame([{"Code": "005930", "Name": "Samsung", "Marcap": 500}]),
+        "KOSDAQ": pd.DataFrame(
+            [
+                {"Code": "005930", "Name": "Duplicate", "Marcap": 500},
+                {"Code": "247540", "Name": "Ecopro BM", "Marcap": 300},
+            ]
+        ),
+    }
+    monkeypatch.setattr(universe, "_load_fdr_market", lambda market: listings[market].copy())
+
+    combined = universe._load_fdr_listing(["KOSPI", "KOSDAQ"])
+
+    assert combined["Code"].tolist() == ["005930", "247540"]
 
 
 def test_get_kospi200_list_loads_explicit_local_csv_when_refresh_daily_false(tmp_path):

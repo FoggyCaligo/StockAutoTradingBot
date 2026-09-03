@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 
+import pytest
+
 from Daily_bot.models import Fill
 from Daily_bot.risk.force_sell import _get_ticker, force_sell
 
@@ -92,3 +94,31 @@ def test_force_sell_passes_ticker_and_quantity_to_cancel_order():
 
 def test_force_sell_get_ticker_normalizes_a_prefixed_codes():
     assert _get_ticker({"stk_cd": "A005930"}) == "005930"
+
+
+def test_force_sell_raises_when_market_sell_is_rejected():
+    client = _ClientStub()
+
+    def _rejected_sell(ticker: str, quantity: int):
+        return type(
+            "Order",
+            (),
+            {
+                "order_id": "",
+                "status": "주문이 거절되었습니다.",
+                "raw": {"return_code": 20, "return_msg": "주문이 거절되었습니다."},
+            },
+        )()
+
+    client.sell_market = _rejected_sell
+
+    with pytest.raises(RuntimeError, match="Market sell rejected"):
+        force_sell(client)
+
+
+def test_force_sell_raises_when_positions_remain_after_timeout():
+    client = _ClientStub()
+    client.wait_until_no_position = lambda: False
+
+    with pytest.raises(RuntimeError, match="Positions still remain.*005930:3"):
+        force_sell(client)

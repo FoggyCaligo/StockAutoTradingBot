@@ -53,7 +53,7 @@ Push-Location $botRoot
 try {
     $process = Start-Process `
         -FilePath $pythonPath `
-        -ArgumentList @($mainPath, "--real") `
+        -ArgumentList @("-u", $mainPath, "--real") `
         -WorkingDirectory $botRoot `
         -WindowStyle Hidden `
         -RedirectStandardOutput $stdoutPath `

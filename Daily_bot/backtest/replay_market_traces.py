@@ -41,6 +41,23 @@ def _ticker_key(ticker: str) -> str:
     return str(ticker or "").strip().upper().removeprefix("A")
 
 
+def _refill_is_allowed(
+    active_position_count: int,
+    position_limit: int,
+    allow_refill_empty_slots: bool,
+    refill_min_empty_fraction: float = 0.0,
+) -> bool:
+    if active_position_count <= 0:
+        return True
+    if not allow_refill_empty_slots:
+        return False
+    empty_slots = max(0, position_limit - active_position_count)
+    minimum_empty_slots = 1
+    if refill_min_empty_fraction > 0:
+        minimum_empty_slots = max(1, math.ceil(position_limit * refill_min_empty_fraction))
+    return empty_slots >= minimum_empty_slots
+
+
 def resolve_fallback_expected_return_thresholds(
     strategy_cfg: dict,
     primary_threshold: float | None = None,
@@ -1230,6 +1247,7 @@ def run_backtest(
     max_orderbook_ask_depth_ratio: float = 0.0,
     missing_ask_depth_policy: str = "ignore",
     allow_refill_empty_slots: bool = False,
+    refill_min_empty_fraction: float = 0.0,
     block_stop_loss_reentry_same_day: bool = False,
     trend_filter_enabled: bool = False,
     trend_ok_tickers_by_day: dict[str, set[str]] | None = None,
@@ -1442,16 +1460,6 @@ def run_backtest(
             if effective_trend_allowed_tickers is not None and allowed_tickers is not None:
                 effective_trend_allowed_tickers = effective_trend_allowed_tickers & allowed_tickers
 
-            # Match the live bot's batch flow: once any slot is occupied,
-            # block new entries until the whole set is flat again.
-            if not allow_refill_empty_slots and open_positions:
-                previous_scan_prices = {
-                    _ticker_key(row.ticker): int((row.current_price or row.price) or 0)
-                    for row in scan_rows
-                    if int((row.current_price or row.price) or 0) > 0
-                }
-                continue
-
             # Match the live bot's behavior by default: candidate ranking is trimmed by
             # top_ratio, while the actual buy count is bounded by session position limits,
             # empty slots, and cash. top_n_per_day remains as an optional extra cap only
@@ -1461,6 +1469,18 @@ def run_backtest(
                 if top_n_per_day > 0
                 else session_plan.position_limit
             )
+            if not _refill_is_allowed(
+                active_position_count=len(open_positions),
+                position_limit=effective_position_limit,
+                allow_refill_empty_slots=allow_refill_empty_slots,
+                refill_min_empty_fraction=refill_min_empty_fraction,
+            ):
+                previous_scan_prices = {
+                    _ticker_key(row.ticker): int((row.current_price or row.price) or 0)
+                    for row in scan_rows
+                    if int((row.current_price or row.price) or 0) > 0
+                }
+                continue
             available_slots = max(0, effective_position_limit - len(open_positions))
             if available_slots <= 0:
                 continue
@@ -1937,6 +1957,12 @@ def parse_args():
     parser.add_argument("--allow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_true")
     parser.add_argument("--disallow-refill-empty-slots", dest="allow_refill_empty_slots", action="store_false")
     parser.set_defaults(allow_refill_empty_slots=bool(strategy_cfg.get("allow_refill_empty_slots", True)))
+    parser.add_argument(
+        "--refill-min-empty-fraction",
+        type=float,
+        default=0.0,
+        help="When refills are enabled, require at least this fraction of total slots to be empty (0 means any empty slot).",
+    )
     parser.add_argument("--block-stop-loss-reentry-same-day", dest="block_stop_loss_reentry_same_day", action="store_true")
     parser.add_argument("--allow-stop-loss-reentry-same-day", dest="block_stop_loss_reentry_same_day", action="store_false")
     parser.set_defaults(block_stop_loss_reentry_same_day=False)
@@ -2038,6 +2064,7 @@ if __name__ == "__main__":
         max_orderbook_ask_depth_ratio=args.max_orderbook_ask_depth_ratio,
         missing_ask_depth_policy=args.missing_ask_depth_policy,
         allow_refill_empty_slots=args.allow_refill_empty_slots,
+        refill_min_empty_fraction=args.refill_min_empty_fraction,
         block_stop_loss_reentry_same_day=args.block_stop_loss_reentry_same_day,
         trend_filter_enabled=args.trend_filter_enabled,
         trend_ok_tickers_by_day=trend_ok_tickers_by_day,
