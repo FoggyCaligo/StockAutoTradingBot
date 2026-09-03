@@ -22,7 +22,8 @@
 - 총 보유 종목 하드 상한: `10종목`
 - 빈 슬롯 재매수: `허용`
 - 전일 상승 상한 필터: `10.0%`
-- 장중 손절: `비활성화`
+- 고정 장중 손절: `비활성화`
+- 동적 예상수익률 손절: `.env`의 `DYNAMIC_EXPECT_STOP_PERCENT` 사용, 기본 `-0.3%`
 - 일손실 제한: `10%`
 
 ## 중요한 해석 포인트
@@ -32,21 +33,66 @@
 - fallback은 현재 설정에서 꺼져 있다. 즉 현재 운영은 `0.7 단일`이다.
 - 현재는 기대수익률 계산이 끝난 후보 중 상위 25%만 다음 단계로 넘긴다.
 - 재매수는 허용되어 있다. 다만 한 번의 스캔에서 새로 진입하는 수는 최대 3개로 제한된다.
-- 손절 후 당일 재진입 차단 코드는 남아 있지만, 현재 손절 자체가 꺼져 있으므로 실제 운영 중에는 거의 작동하지 않는다.
+- 고정 손절은 꺼져 있지만, 동적 예상수익률 손절은 별도로 작동한다. 기본값은 현재가 대비 예상수익률 `-0.3%` 이하이며 `.env`에서 조정하거나 `off`로 끌 수 있다.
 
 ## 백테스트 정합성 요약
 
 - 리플레이는 `market_traces.raw_json`에서 호가를 다시 읽어 같은 기대수익률 계산 구조를 재현한다.
-- 현재 백테스트 기본값도 실코드와 동일하게 `강한 대칭 감쇠 + 무손절`을 사용한다.
+- 백테스트 기준 DB는 `Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3`다.
+- 이 DB는 `Daily_bot/logs/market_traces_*.csv`에서 복원한 전용 replay DB이며, 실거래 DB `Daily_bot/bot.sqlite3`와 분리한다.
+- 현재 백테스트 기본값도 실코드와 동일하게 `강한 대칭 감쇠 + 고정 손절 비활성화`를 사용한다.
 - `scan_cycle_at` 배치 기준, `scan_candidate` 기준 진입, 목표가 체결가 고정, 자본 기반 조합 선택을 맞춘 상태다.
 - 여전히 60초 스캔 사이의 순간 고가/저가, 부분체결, 취소 후 재주문 세부 흐름까지 완전히 복원하는 것은 아니다.
+- `Daily_bot/backtest/results/*.csv`는 실행 결과물이다. 진단 전에 replay를 먼저 실행해 `backtest_replay.csv`를 생성해야 한다.
 
 ## 실행 예시
+
+실거래:
 
 ```powershell
 .\.venv\Scripts\python.exe .\Daily_bot\main.py --real
 ```
 
-```powershell
-.\.venv\Scripts\python.exe .\Daily_bot\backtest\replay_market_traces.py --logs-dir .\Daily_bot\logs
+Git Bash에서 Git에 기록된 market trace 로그로 replay DB와 기본 백테스트 결과를 다시 생성:
+
+```bash
+python Daily_bot/backtest/replay_market_traces.py \
+  --db Daily_bot/rebuild_from_logs.sqlite3 \
+  --logs-dir Daily_bot/logs
+```
+
+위 명령의 replay DB 결과:
+
+```text
+Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3
+```
+
+기본 거래 결과:
+
+```text
+Daily_bot/backtest/results/backtest_replay.csv
+Daily_bot/backtest/results/backtest_replay_daily_rev.csv
+Daily_bot/backtest/results/backtest_replay_trade_fills_audit_daily.csv
+```
+
+복원된 replay DB를 사용한 일반 백테스트:
+
+```bash
+python Daily_bot/backtest/replay_market_traces.py \
+  --db Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3
+```
+
+동적 예상수익률 진단:
+
+```bash
+python Daily_bot/backtest/diagnose_dynamic_expect_stop.py \
+  --db Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3 \
+  --trades Daily_bot/backtest/results/backtest_replay.csv
+```
+
+진단 결과:
+
+```text
+Daily_bot/backtest/results/dynamic_expect_stop_diagnostics.csv
+Daily_bot/backtest/results/dynamic_expect_stop_threshold_sweep.csv
 ```
