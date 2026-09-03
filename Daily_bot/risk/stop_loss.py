@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import os
 import time
 from typing import Any
 
-from Daily_bot.models import HogaSnapshot, Position
+from Daily_bot.models import Candidate, HogaSnapshot, Position
 from Daily_bot.storage.db import Recorder
+from Daily_bot.strategy.signal import calc_expected_return
+
+
+DYNAMIC_EXPECT_STOP_ENV = "DYNAMIC_EXPECT_STOP_PERCENT"
+DEFAULT_DYNAMIC_EXPECT_STOP_PERCENT = -0.3
 
 
 def _get_order_id(order: dict) -> str:
@@ -92,12 +98,31 @@ def get_planned_stop_loss_price(recorder: Recorder | Any, ticker: str) -> int:
         return 0
 
 
+def get_dynamic_expected_return_stop_percent() -> float | None:
+    raw = str(os.getenv(DYNAMIC_EXPECT_STOP_ENV, str(DEFAULT_DYNAMIC_EXPECT_STOP_PERCENT))).strip()
+    if raw.lower() in {"", "off", "none", "false", "disabled"}:
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        print(
+            f"Invalid {DYNAMIC_EXPECT_STOP_ENV}={raw!r}; "
+            f"using default {DEFAULT_DYNAMIC_EXPECT_STOP_PERCENT:.2f}%"
+        )
+        return DEFAULT_DYNAMIC_EXPECT_STOP_PERCENT
+
+
 def is_stop_loss_enabled(cfg: dict) -> bool:
     risk_cfg = cfg.get("risk", {}) if isinstance(cfg, dict) else {}
     stop_loss_percent = float(risk_cfg.get("stop_loss_percent", 0.0) or 0.0)
     stop_loss_tick_count = int(risk_cfg.get("stop_loss_tick_count", 0) or 0)
     stop_loss_tick_multiplier = float(risk_cfg.get("stop_loss_tick_multiplier", 0.0) or 0.0)
-    return stop_loss_percent > 0 or stop_loss_tick_count > 0 or stop_loss_tick_multiplier > 0
+    return (
+        stop_loss_percent > 0
+        or stop_loss_tick_count > 0
+        or stop_loss_tick_multiplier > 0
+        or get_dynamic_expected_return_stop_percent() is not None
+    )
 
 
 def wait_until_no_open_orders_for_ticker(
@@ -162,37 +187,66 @@ def monitor_stop_loss(
     if not is_stop_loss_enabled(cfg):
         return False, None
 
-    stop_loss_percent = float(cfg["risk"].get("stop_loss_percent", 2.0))
+    risk_cfg = cfg.get("risk", {}) if isinstance(cfg, dict) else {}
+    strategy_cfg = cfg.get("strategy", {}) if isinstance(cfg, dict) else {}
+    stop_loss_percent = float(risk_cfg.get("stop_loss_percent", 0.0) or 0.0)
+    dynamic_expected_return_stop = get_dynamic_expected_return_stop_percent()
+    sell_tick_offset = int(strategy_cfg.get("sell_tick_offset", 1) or 1)
 
     for position in positions:
         snapshot = client.get_20hoga(position.ticker)
         limit_price = get_stop_loss_limit_price(snapshot)
         reference_price = get_stop_loss_reference_price(snapshot)
         planned_stop_loss_price = get_planned_stop_loss_price(recorder, position.ticker)
+        trigger_source = ""
 
-        if planned_stop_loss_price > 0 and is_stop_loss_triggered_by_price(reference_price, planned_stop_loss_price):
+        if dynamic_expected_return_stop is not None and snapshot.current_price > 0:
+            dynamic_candidate = Candidate(
+                ticker=position.ticker,
+                price=int(snapshot.current_price),
+            )
+            dynamic_candidate = calc_expected_return(
+                dynamic_candidate,
+                snapshot,
+                sell_tick_offset=sell_tick_offset,
+                strategy_cfg=strategy_cfg,
+            )
+            if dynamic_candidate.expect_revenue_percent <= dynamic_expected_return_stop:
+                trigger_source = "dynamic_expect_stop"
+                print(
+                    "Dynamic expected-return stop triggered: "
+                    f"{position.ticker} current={snapshot.current_price} "
+                    f"expect_price={dynamic_candidate.expect_price} "
+                    f"expected_return={dynamic_candidate.expect_revenue_percent:.4f}% "
+                    f"threshold={dynamic_expected_return_stop:.4f}% limit_price={limit_price}"
+                )
+
+        if not trigger_source and planned_stop_loss_price > 0 and is_stop_loss_triggered_by_price(reference_price, planned_stop_loss_price):
+            trigger_source = "stop_loss"
             print(
                 "Stop-loss triggered from planned stop-loss price: "
                 f"{position.ticker} avg={position.avg_price} ref_price={reference_price} "
                 f"planned_stop_loss_price={planned_stop_loss_price} limit_price={limit_price}"
             )
-        else:
+        elif not trigger_source:
             loss_percent = get_position_loss_percent(position)
             if loss_percent is not None and stop_loss_percent > 0 and loss_percent <= -stop_loss_percent:
+                trigger_source = "stop_loss"
                 print(
                     "Stop-loss triggered from account snapshot fallback: "
                     f"{position.ticker} avg={position.avg_price} loss_percent={loss_percent:.2f} limit_price={limit_price}"
                 )
-            else:
-                if not is_stop_loss_triggered(position, reference_price, stop_loss_percent):
-                    continue
-
+            elif stop_loss_percent > 0 and is_stop_loss_triggered(position, reference_price, stop_loss_percent):
+                trigger_source = "stop_loss"
                 threshold_price = position.avg_price * (1 - stop_loss_percent / 100)
                 print(
                     "Stop-loss triggered from hoga snapshot fallback: "
                     f"{position.ticker} avg={position.avg_price} "
                     f"ref_price={reference_price} threshold={int(threshold_price)} limit_price={limit_price}"
                 )
+
+        if not trigger_source:
+            continue
 
         for order in open_orders:
             if _get_ticker(order) != position.ticker:
@@ -214,8 +268,14 @@ def monitor_stop_loss(
         sell_order = client.sell_limit(position.ticker, position.quantity, limit_price)
         recorder.save_order(sell_order)
         sell_order_id = _get_order_id_from_object(sell_order)
-        if not _record_fill_safely(client, recorder, sell_order_id, "SELL", "stop_loss"):
-            _poll_fill_until_recorded(client, recorder, sell_order_id, "SELL", "stop_loss_safety_poll")
+        if not _record_fill_safely(client, recorder, sell_order_id, "SELL", trigger_source):
+            _poll_fill_until_recorded(
+                client,
+                recorder,
+                sell_order_id,
+                "SELL",
+                f"{trigger_source}_safety_poll",
+            )
         return True, position.ticker
 
     return False, None

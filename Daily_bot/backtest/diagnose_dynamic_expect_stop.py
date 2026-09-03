@@ -25,6 +25,50 @@ def _load_trades(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(fp))
 
 
+def _looks_like_trade_csv(path: Path) -> bool:
+    name = path.name.lower()
+    if any(token in name for token in ("daily_rev", "audit", "diagnostic")):
+        return False
+    try:
+        with path.open("r", newline="", encoding="utf-8-sig") as fp:
+            fields = set(next(csv.DictReader(fp), {}).keys())
+    except (OSError, UnicodeError):
+        return False
+    return {"session_date", "ticker", "entry_time", "exit_time", "entry_price", "pnl_percent"}.issubset(fields)
+
+
+def _resolve_trades_path(raw_path: str) -> Path:
+    if raw_path:
+        explicit = Path(raw_path)
+        if explicit.exists():
+            return explicit
+        raise FileNotFoundError(f"Trade CSV not found: {explicit}")
+
+    candidates = [
+        Path("Daily_bot/backtest/results/backtest_replay.csv"),
+        Path("backtest_replay.csv"),
+        Path("Daily_bot/backtest/results/dynamic_expect_stop.csv"),
+        Path("dynamic_expect_stop.csv"),
+    ]
+    for candidate in candidates:
+        if candidate.exists() and _looks_like_trade_csv(candidate):
+            return candidate
+
+    discovered: list[Path] = []
+    for directory in (Path("Daily_bot/backtest/results"), Path.cwd()):
+        if not directory.exists():
+            continue
+        for candidate in directory.glob("*.csv"):
+            if _looks_like_trade_csv(candidate):
+                discovered.append(candidate)
+    if discovered:
+        return max(discovered, key=lambda path: path.stat().st_mtime)
+
+    raise FileNotFoundError(
+        "No replay trade CSV found. Run replay_market_traces.py first, or pass --trades <path>."
+    )
+
+
 def _phase_counts_text(rows: list[replay.TraceRow]) -> str:
     counts = Counter(row.phase for row in rows)
     return ",".join(f"{phase}:{counts[phase]}" for phase in sorted(counts))
@@ -159,7 +203,7 @@ def main() -> None:
         parents=[config_parser],
     )
     parser.add_argument("--db", default="Daily_bot/bot.sqlite3")
-    parser.add_argument("--trades", default="Daily_bot/backtest/results/backtest_replay.csv")
+    parser.add_argument("--trades", default="", help="Replay trade CSV. If omitted, common output paths are searched automatically.")
     parser.add_argument("--out", default="Daily_bot/backtest/results/dynamic_expect_stop_diagnostics.csv")
     parser.add_argument("--sell-tick-offset", type=int, default=int(strategy_cfg.get("sell_tick_offset", 1) or 1))
     parser.add_argument("--orderbook-levels-per-side", type=int, default=10)
@@ -174,10 +218,12 @@ def main() -> None:
         default=float(strategy_cfg.get("orderbook_ask_linear_decay_min_weight", 1.0) or 0.0),
     )
     args = parser.parse_args(remaining)
+    trades_path = _resolve_trades_path(args.trades)
+    print(f"using_trades={trades_path}")
 
     diagnostics = diagnose(
         db_path=Path(args.db),
-        trades_path=Path(args.trades),
+        trades_path=trades_path,
         out_path=Path(args.out),
         sell_tick_offset=args.sell_tick_offset,
         orderbook_levels_per_side=args.orderbook_levels_per_side,
