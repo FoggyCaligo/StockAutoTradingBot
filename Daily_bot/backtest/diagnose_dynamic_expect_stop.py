@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import argparse
 import csv
+import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from statistics import median
+
+ROOT = Path(__file__).resolve().parent
+WORKSPACE_ROOT = ROOT.parent.parent
+if str(WORKSPACE_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORKSPACE_ROOT))
 
 from Daily_bot.backtest import replay_market_traces as replay
 
