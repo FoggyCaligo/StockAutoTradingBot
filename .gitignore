@@ -1,10 +1,12 @@
 .env
 https*
 *.html
-bot.sqlite3
 Daily_bot/bot.sqlite3
 logs/*.tmp
 Daily_bot/logs/*.tmp
+Daily_bot/logs/account_traces*.csv
+Daily_bot/logs/daily_reference_prices*.csv
+Daily_bot/logs/orders_*.csv
+
 .aider*
 Daily_bot/backtest/results/*.csv
-Daily_bot/bot.sqlite3

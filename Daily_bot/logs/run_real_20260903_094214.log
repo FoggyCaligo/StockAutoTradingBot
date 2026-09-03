@@ -1,0 +1,8 @@
+﻿Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 1045795
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=-3.994850639281429
+Startup carryover liquidation completed. Proceeding with normal session flow.
+Session slot plan initialized without prewarm. prev_close_count=229 session_capital_basis=1045795 session_slot_count=3 slot_budget_per_stock=348598 position_limit=3
