@@ -1,17 +1,28 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from Daily_bot.models import Candidate
 from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.signal import calc_expected_return
-from Daily_bot.strategy.orderbook_predictor import calc_spread_percent
-from Daily_bot.utils import RateLimiter
+from Daily_bot.utils import RateLimiter, load_yaml
 
 
 def ticker_key(ticker: str) -> str:
     return str(ticker or "").strip().upper().removeprefix("A")
+
+
+def _default_strategy_cfg() -> dict:
+    try:
+        cfg_path = Path(__file__).resolve().parents[1] / "config" / "settings.yaml"
+        cfg = load_yaml(cfg_path)
+        strategy_cfg = cfg.get("strategy", {}) if isinstance(cfg, dict) else {}
+        return strategy_cfg if isinstance(strategy_cfg, dict) else {}
+    except Exception as exc:
+        print(f"Failed to load strategy config for market trace: {exc}")
+        return {}
 
 
 def record_scan_candidate(recorder: Recorder, candidate: Candidate, snapshot: Any, reason: str = "scan_candidate") -> None:
@@ -33,8 +44,10 @@ def trace_candidate_watchlist(
     sell_tick_offset: int,
     selected_keys: set[str] | None = None,
     kospi_change_percent: float | None = None,
+    strategy_cfg: dict | None = None,
 ) -> dict[str, Candidate]:
     selected_keys = selected_keys or set()
+    effective_strategy_cfg = strategy_cfg if isinstance(strategy_cfg, dict) else _default_strategy_cfg()
     limiter = RateLimiter(quote_rate_limit_per_second)
     updated: dict[str, Candidate] = {}
     scan_cycle_at = datetime.now()
@@ -42,7 +55,12 @@ def trace_candidate_watchlist(
         try:
             limiter.wait()
             snapshot = client.get_20hoga(candidate.ticker)
-            traced = calc_expected_return(candidate, snapshot, sell_tick_offset)
+            traced = calc_expected_return(
+                candidate,
+                snapshot,
+                sell_tick_offset=sell_tick_offset,
+                strategy_cfg=effective_strategy_cfg,
+            )
             recorder.save_market_trace(
                 traced,
                 snapshot,
@@ -65,9 +83,12 @@ def trace_active_positions(
     positions: list,
     quote_rate_limit_per_second: int,
     kospi_change_percent: float | None = None,
+    strategy_cfg: dict | None = None,
 ) -> None:
     if not positions:
         return
+    effective_strategy_cfg = strategy_cfg if isinstance(strategy_cfg, dict) else _default_strategy_cfg()
+    sell_tick_offset = int(effective_strategy_cfg.get("sell_tick_offset", 1) or 1)
     limiter = RateLimiter(quote_rate_limit_per_second)
     scan_cycle_at = datetime.now()
     for position in positions:
@@ -81,12 +102,15 @@ def trace_active_positions(
             candidate = Candidate(
                 ticker=ticker,
                 price=int(getattr(position, "avg_price", 0) or 0),
-                expect_price=snapshot.current_price,
-                expect_revenue_percent=0.0,
-                spread_percent=calc_spread_percent(snapshot),
+            )
+            traced = calc_expected_return(
+                candidate,
+                snapshot,
+                sell_tick_offset=sell_tick_offset,
+                strategy_cfg=effective_strategy_cfg,
             )
             recorder.save_market_trace(
-                candidate,
+                traced,
                 snapshot,
                 phase="active_position",
                 selected=True,
