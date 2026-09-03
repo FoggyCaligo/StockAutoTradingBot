@@ -2,10 +2,10 @@ market:
   prewarm_start_time: "08:55"
   startup_clear_time: "09:10"
   start_buy_time: "09:30"
-  stop_buy_time: "11:00"
-  force_sell_time: "15:00"
-  reconcile_time: "15:15"
-  end_time: "15:20"
+  stop_buy_time: "11:30"
+  force_sell_time: "15:15"
+  reconcile_time: "15:20"
+  end_time: "15:25"
 
 universe:
   source:

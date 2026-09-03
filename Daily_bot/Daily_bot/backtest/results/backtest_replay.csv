@@ -1,0 +1,2 @@
+﻿session_date,ticker,entry_time,exit_time,quantity,entry_price,exit_price,buy_amount_krw,sell_amount_krw,exit_reason,pnl_percent
+2026-09-03,445680,2026-09-03 09:48:11,2026-09-03 10:04:07,7,47250,47550,330750,332850,force_exit_last_trace,0.6349
