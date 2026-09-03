@@ -21,7 +21,7 @@ trend_filter:
   enabled: false
 
 strategy:
-  top_ratio: 0.25
+  top_ratio: 1.0
   max_buy_count: 3
   allow_refill_empty_slots: false
   min_expected_return_percent: 0.71
@@ -29,7 +29,7 @@ strategy:
   max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
   min_prev_day_change_percent: 0.0
-  max_prev_day_change_percent: 10.0
+  max_prev_day_change_percent: 0.0
   # 0 or below disables the previous-scan intraday jump filter.
   max_intraday_jump_from_prev_scan_percent: 0.0
   orderbook_bid_linear_decay_min_weight: 0.0
@@ -56,11 +56,11 @@ risk:
 # Intraday stop-loss is fully disabled.
 # Current live summary:
 # - Universe: full KOSPI + KOSDAQ daily refresh, market cap >= 250B KRW, trading value >= 3B KRW
-# - Entry: expected return >= 0.7 only, fallback disabled
+# - Entry: expected return >= 0.71%, no top-ratio cutoff, fallback disabled
 # - Orderbook model: symmetric linear decay on both sides (1.0 -> 0.0)
-# - Buy flow: up to 3 new buys per scan, refill enabled when empty slots appear
-# - Guard: previous-day rise upper bound 10.0%, same-day re-entry block remains available if stop-loss is re-enabled
-# - Risk: no intraday stop-loss, force sell at 15:00, daily loss limit 10%
+# - Buy flow: up to 3 new buys per scan, refill disabled until the current batch is flat
+# - Guard: previous-day rise upper bound disabled; same-day re-entry block remains available if stop-loss is re-enabled
+# - Risk: no intraday fixed stop-loss, force sell at 15:15, daily loss limit 10%
 
 api:
   quote_rate_limit_per_second: 5
@@ -76,12 +76,12 @@ accounting:
 
 
 # 후보 탐색: KOSPI + KOSDAQ 전체, 시총 2,500억 이상, 거래대금 30억 이상
-# 랭킹 컷: 기대수익률 상위 25%만 유지
+# 랭킹 컷: 비활성화; 기대수익률 절대 기준으로만 진입 후보를 거른다.
 # 보조 필터: 스프레드/전일 등락률/직전 스캔 급등/호가잔량 비율 필터 비활성화
-# 핵심 신호: 20호가 기반 기대수익률 0.7% 이상
-# fallback: 후보 부족 시 0.6% -> 0.5% 순서로 완화
-# 매수 방식: 한 배치 최대 3종목, 빈 슬롯 발생 시 재진입 허용
-# 위험 관리: 4.5% 손절, 15:00 강제매도, 10% 일손실 제한
+# 핵심 신호: 20호가 기반 기대수익률 0.71% 이상
+# fallback: 비활성화
+# 매수 방식: 한 배치 최대 3종목, 현재 배치가 모두 청산되기 전에는 빈 슬롯 재진입 안 함
+# 위험 관리: 고정 장중 손절 비활성화, 15:15 강제매도, 10% 일손실 제한
 
 
 # 6/16에 봐야 할 것
