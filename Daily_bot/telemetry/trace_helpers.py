@@ -21,7 +21,7 @@ def _default_strategy_cfg() -> dict:
         strategy_cfg = cfg.get("strategy", {}) if isinstance(cfg, dict) else {}
         return strategy_cfg if isinstance(strategy_cfg, dict) else {}
     except Exception as exc:
-        print(f"Failed to load strategy config for active-position trace: {exc}")
+        print(f"Failed to load strategy config for market trace: {exc}")
         return {}
 
 
@@ -44,8 +44,10 @@ def trace_candidate_watchlist(
     sell_tick_offset: int,
     selected_keys: set[str] | None = None,
     kospi_change_percent: float | None = None,
+    strategy_cfg: dict | None = None,
 ) -> dict[str, Candidate]:
     selected_keys = selected_keys or set()
+    effective_strategy_cfg = strategy_cfg if isinstance(strategy_cfg, dict) else _default_strategy_cfg()
     limiter = RateLimiter(quote_rate_limit_per_second)
     updated: dict[str, Candidate] = {}
     scan_cycle_at = datetime.now()
@@ -53,7 +55,12 @@ def trace_candidate_watchlist(
         try:
             limiter.wait()
             snapshot = client.get_20hoga(candidate.ticker)
-            traced = calc_expected_return(candidate, snapshot, sell_tick_offset)
+            traced = calc_expected_return(
+                candidate,
+                snapshot,
+                sell_tick_offset=sell_tick_offset,
+                strategy_cfg=effective_strategy_cfg,
+            )
             recorder.save_market_trace(
                 traced,
                 snapshot,
