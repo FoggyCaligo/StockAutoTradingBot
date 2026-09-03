@@ -10,7 +10,10 @@ from Daily_bot.strategy.signal import calc_expected_return
 
 
 DYNAMIC_EXPECT_STOP_ENV = "DYNAMIC_EXPECT_STOP_PERCENT"
-DEFAULT_DYNAMIC_EXPECT_STOP_PERCENT = -0.3
+DYNAMIC_EXPECT_STOP_CONSECUTIVE_ENV = "DYNAMIC_EXPECT_STOP_CONSECUTIVE"
+DEFAULT_DYNAMIC_EXPECT_STOP_PERCENT = -0.1
+DEFAULT_DYNAMIC_EXPECT_STOP_CONSECUTIVE = 3
+_dynamic_expect_stop_counts: dict[str, int] = {}
 
 
 def _get_order_id(order: dict) -> str:
@@ -112,6 +115,30 @@ def get_dynamic_expected_return_stop_percent() -> float | None:
         return DEFAULT_DYNAMIC_EXPECT_STOP_PERCENT
 
 
+def get_dynamic_expected_return_stop_consecutive() -> int:
+    raw = str(
+        os.getenv(
+            DYNAMIC_EXPECT_STOP_CONSECUTIVE_ENV,
+            str(DEFAULT_DYNAMIC_EXPECT_STOP_CONSECUTIVE),
+        )
+    ).strip()
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        print(
+            f"Invalid {DYNAMIC_EXPECT_STOP_CONSECUTIVE_ENV}={raw!r}; "
+            f"using default {DEFAULT_DYNAMIC_EXPECT_STOP_CONSECUTIVE}"
+        )
+        return DEFAULT_DYNAMIC_EXPECT_STOP_CONSECUTIVE
+
+
+def _drop_inactive_dynamic_stop_counts(positions: list[Position]) -> None:
+    active_tickers = {position.ticker for position in positions}
+    for ticker in list(_dynamic_expect_stop_counts):
+        if ticker not in active_tickers:
+            _dynamic_expect_stop_counts.pop(ticker, None)
+
+
 def is_stop_loss_enabled(cfg: dict) -> bool:
     risk_cfg = cfg.get("risk", {}) if isinstance(cfg, dict) else {}
     stop_loss_percent = float(risk_cfg.get("stop_loss_percent", 0.0) or 0.0)
@@ -185,12 +212,15 @@ def monitor_stop_loss(
     cfg: dict,
 ) -> tuple[bool, str | None]:
     if not is_stop_loss_enabled(cfg):
+        _dynamic_expect_stop_counts.clear()
         return False, None
 
+    _drop_inactive_dynamic_stop_counts(positions)
     risk_cfg = cfg.get("risk", {}) if isinstance(cfg, dict) else {}
     strategy_cfg = cfg.get("strategy", {}) if isinstance(cfg, dict) else {}
     stop_loss_percent = float(risk_cfg.get("stop_loss_percent", 0.0) or 0.0)
     dynamic_expected_return_stop = get_dynamic_expected_return_stop_percent()
+    dynamic_expected_return_consecutive = get_dynamic_expected_return_stop_consecutive()
     sell_tick_offset = int(strategy_cfg.get("sell_tick_offset", 1) or 1)
 
     for position in positions:
@@ -212,14 +242,26 @@ def monitor_stop_loss(
                 strategy_cfg=strategy_cfg,
             )
             if dynamic_candidate.expect_revenue_percent <= dynamic_expected_return_stop:
-                trigger_source = "dynamic_expect_stop"
+                consecutive_count = _dynamic_expect_stop_counts.get(position.ticker, 0) + 1
+                _dynamic_expect_stop_counts[position.ticker] = consecutive_count
                 print(
-                    "Dynamic expected-return stop triggered: "
+                    "Dynamic expected-return stop sample: "
                     f"{position.ticker} current={snapshot.current_price} "
                     f"expect_price={dynamic_candidate.expect_price} "
                     f"expected_return={dynamic_candidate.expect_revenue_percent:.4f}% "
-                    f"threshold={dynamic_expected_return_stop:.4f}% limit_price={limit_price}"
+                    f"threshold={dynamic_expected_return_stop:.4f}% "
+                    f"consecutive={consecutive_count}/{dynamic_expected_return_consecutive}"
                 )
+                if consecutive_count >= dynamic_expected_return_consecutive:
+                    trigger_source = "dynamic_expect_stop"
+                    print(
+                        "Dynamic expected-return stop triggered: "
+                        f"{position.ticker} expected_return={dynamic_candidate.expect_revenue_percent:.4f}% "
+                        f"threshold={dynamic_expected_return_stop:.4f}% "
+                        f"consecutive={consecutive_count} limit_price={limit_price}"
+                    )
+            else:
+                _dynamic_expect_stop_counts[position.ticker] = 0
 
         if not trigger_source and planned_stop_loss_price > 0 and is_stop_loss_triggered_by_price(reference_price, planned_stop_loss_price):
             trigger_source = "stop_loss"
@@ -275,6 +317,15 @@ def monitor_stop_loss(
                 sell_order_id,
                 "SELL",
                 f"{trigger_source}_safety_poll",
+            )
+
+        _dynamic_expect_stop_counts.pop(position.ticker, None)
+        if trigger_source == "dynamic_expect_stop":
+            market_cfg = cfg.get("market", {}) if isinstance(cfg, dict) else {}
+            if isinstance(market_cfg, dict):
+                market_cfg["stop_buy_time"] = "00:00"
+            print(
+                "Dynamic expected-return stop disabled new buys for the rest of the session."
             )
         return True, position.ticker
 
