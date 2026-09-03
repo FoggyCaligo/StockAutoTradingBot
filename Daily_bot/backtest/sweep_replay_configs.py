@@ -16,6 +16,9 @@ from Daily_bot.backtest.replay_db_builder import resolve_replay_db_path
 from Daily_bot.backtest.replay_market_traces import run_backtest, summarize_trades
 
 
+DEFAULT_REPLAY_DB_PATH = "Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3"
+
+
 def _parse_number_list(raw: str, cast):
     values = []
     for part in raw.split(","):
@@ -93,7 +96,7 @@ def write_csv(path: Path, rows: list[dict[str, object]]) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Sweep Daily_bot replay backtest settings.")
-    parser.add_argument("--db", default="Daily_bot/bot.sqlite3")
+    parser.add_argument("--db", default=DEFAULT_REPLAY_DB_PATH)
     parser.add_argument("--logs-dir", default="")
     parser.add_argument("--min-expected-returns", default="0.3,0.4,0.5")
     parser.add_argument("--max-spreads", default="0.5,0.7")
