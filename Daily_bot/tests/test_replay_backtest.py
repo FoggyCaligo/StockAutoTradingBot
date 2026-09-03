@@ -1095,6 +1095,7 @@ def test_pick_candidates_with_fallback_allows_active_positions_when_refill_is_en
             spread_percent=0.2,
             ask_depth_5_amount_krw=0,
             prev_day_change_percent=0.0,
+            raw_json="{}",
         ),
         TraceRow(
             session_date="2026-06-02",
@@ -1110,6 +1111,7 @@ def test_pick_candidates_with_fallback_allows_active_positions_when_refill_is_en
             spread_percent=0.2,
             ask_depth_5_amount_krw=0,
             prev_day_change_percent=0.0,
+            raw_json="{}",
         ),
     ]
 
@@ -1123,6 +1125,7 @@ def test_pick_candidates_with_fallback_allows_active_positions_when_refill_is_en
         min_prev_day_change_percent=0.0,
         max_prev_day_change_percent=15.0,
         active_tickers={"000660"},
+        blocked_tickers=set(),
         allowed_tickers=None,
         trend_allowed_tickers=None,
         previous_scan_prices={},
