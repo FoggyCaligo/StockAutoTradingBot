@@ -1,0 +1,71 @@
+name: tmp-pr39-backtest
+
+on:
+  push:
+    branches:
+      - tmp-run-pr39-backtest
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Rebuild replay DB
+        run: |
+          python Daily_bot/backtest/replay_market_traces.py \
+            --db Daily_bot/rebuild_from_logs.sqlite3 \
+            --logs-dir Daily_bot/logs
+      - name: Run current live-equivalent baseline
+        run: |
+          python -m Daily_bot.backtest.replay_dynamic_expect_debounce_no_refill \
+            --db Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3 \
+            --out Daily_bot/backtest/results/tmp_live_current.csv
+      - name: Run no-top-cut no-prevday-cap variant
+        run: |
+          python -m Daily_bot.backtest.replay_live_no_top_cut_no_prevday_cap \
+            --db Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3 \
+            --out Daily_bot/backtest/results/tmp_no_top_no_prevday.csv
+      - name: Print comparison
+        run: |
+          python - <<'PY'
+          import csv
+          from pathlib import Path
+          from statistics import mean, median
+
+          def summarize(name, trade_path, daily_path):
+              with open(trade_path, encoding='utf-8-sig', newline='') as f:
+                  rows = list(csv.DictReader(f))
+              pnls = [float(r['pnl_percent']) for r in rows]
+              wins = sum(x > 0 for x in pnls)
+              losses = len(pnls) - wins
+              with open(daily_path, encoding='utf-8-sig', newline='') as f:
+                  daily = list(csv.DictReader(f))
+              total_profit = sum(int(float(r['total_profit_krw'])) for r in daily)
+              start_returns = [float(r['total_return_percent_on_starting_capital']) for r in daily]
+              reasons = {}
+              for r in rows:
+                  reasons[r['exit_reason']] = reasons.get(r['exit_reason'], 0) + 1
+              print(f'=== {name} ===')
+              print(f'trades={len(rows)} wins={wins} losses={losses} win_rate={(wins/len(rows)*100 if rows else 0):.4f}%')
+              print(f'avg_pnl={(mean(pnls) if pnls else 0):.6f}% median_pnl={(median(pnls) if pnls else 0):.6f}% sum_pnl={sum(pnls):.6f}%')
+              print(f'best={(max(pnls) if pnls else 0):.6f}% worst={(min(pnls) if pnls else 0):.6f}%')
+              print(f'total_profit_krw={total_profit}')
+              print(f'sum_daily_start_return={sum(start_returns):.6f}% avg_daily_start_return={(mean(start_returns) if start_returns else 0):.6f}%')
+              print('exit_reasons=' + ','.join(f'{k}:{v}' for k,v in sorted(reasons.items())))
+
+          base = Path('Daily_bot/backtest/results')
+          summarize('live_current', base/'tmp_live_current.csv', base/'tmp_live_current_daily_rev.csv')
+          summarize('no_top_no_prevday', base/'tmp_no_top_no_prevday.csv', base/'tmp_no_top_no_prevday_daily_rev.csv')
+          PY
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr39-backtest-results
+          path: |
+            Daily_bot/backtest/results/tmp_live_current*.csv
+            Daily_bot/backtest/results/tmp_no_top_no_prevday*.csv
