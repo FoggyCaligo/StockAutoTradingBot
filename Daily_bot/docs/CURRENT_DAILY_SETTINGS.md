@@ -52,13 +52,14 @@
 - `risk.stop_loss_tick_multiplier = 0.0`
 - `risk.stop_loss_percent = 0.0`
 - `risk.daily_loss_limit_percent = 10.0`
+- 동적 예상수익률 손절: `.env`의 `DYNAMIC_EXPECT_STOP_PERCENT`, 기본 `-0.3%`, `off`로 비활성화 가능
 
 ## Operational Meaning
 
 - 현재 운영은 `0.7 단일`이다. fallback은 꺼져 있다.
 - 현재 랭킹 컷은 `상위 25%`다.
 - 현재 호가 기대수익률 계산은 매수/매도 양쪽 모두에 강한 대칭 선형 감쇠를 건다.
-- 현재 장중 손절은 완전히 꺼져 있다.
+- 고정 장중 손절은 꺼져 있다. 다만 동적 예상수익률 손절은 별도로 작동하며, 현재가 대비 예상수익률이 `.env` 임계값 이하이면 청산한다.
 - 현재 재매수는 허용되어 있다.
 - `max_buy_count = 3`은 총 보유 상한이 아니라 스캔당 신규 진입 상한이다.
 - 총 보유 상한은 슬롯 계산과 `risk.max_position_count = 10`이 함께 결정한다.
@@ -67,5 +68,11 @@
 
 - 백테스트 기본 기대수익률 기준은 config의 `strategy.min_expected_return_percent`를 따른다.
 - 백테스트 fallback 기본값도 config의 `strategy.min_expected_return_fallback_percents`를 따른다.
-- 백테스트 기본 손절도 config의 `risk.stop_loss_*` 값을 그대로 따른다.
+- 백테스트 기본 고정 손절도 config의 `risk.stop_loss_*` 값을 그대로 따른다.
 - 백테스트 기본 호가 감쇠도 config의 `strategy.orderbook_*_linear_decay_min_weight`를 그대로 따른다.
+- 백테스트의 기준 DB는 `Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3`다.
+- 이 DB는 `Daily_bot/logs/market_traces_*.csv`에서 복원한 전용 replay DB이며, 실거래 `Daily_bot/bot.sqlite3`와 분리한다.
+- 일반 replay, 동적 예상수익률 진단, 설정 sweep 실행 시 모두 위 replay DB를 사용한다.
+- 기본 거래 결과는 `Daily_bot/backtest/results/backtest_replay.csv`에 생성된다.
+- 동적 예상수익률 진단 결과는 `Daily_bot/backtest/results/dynamic_expect_stop_diagnostics.csv`에 생성된다.
+- 임계값 sweep 결과는 `Daily_bot/backtest/results/dynamic_expect_stop_threshold_sweep.csv`에 생성된다.
