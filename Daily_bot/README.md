@@ -2,23 +2,16 @@
 
 문서보다 코드를 우선 진실원천으로 본다. 현재 실제 동작 기준 파일은 [settings.yaml](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/config/settings.yaml), [main.py](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/main.py), [replay_market_traces.py](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/backtest/replay_market_traces.py)다.
 
-## 문서 안내
-
-- 현재 운영값 요약: [CURRENT_DAILY_SETTINGS.md](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/docs/CURRENT_DAILY_SETTINGS.md)
-- 현재 전략 개념과 재구성 설명: [DAILY_BOT_LOGIC_REFERENCE.md](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/docs/DAILY_BOT_LOGIC_REFERENCE.md)
-- 빠른 인수인계 메모: [CODEX_HANDOFF.md](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/docs/CODEX_HANDOFF.md)
-- 제로베이스 재구축용 개념 문서: [curr_strategy.txt](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/curr_strategy.txt)
-
 ## 현재 전략 한 줄 요약
 
-데일리 봇은 당일 KOSPI 전체에서 유동성 필터를 통과한 종목만 대상으로 60초마다 호가를 다시 스캔하고, 양쪽 호가잔량에 강한 대칭 선형 감쇠를 적용한 뒤 계산한 기대수익률이 0.7% 이상인 후보만 자본 기반 슬롯 구조 안에서 즉시 매수하고 즉시 목표가 매도로 정리하는 장중 전략이다.
+데일리 봇은 당일 KOSPI&KOSDAQ 전체에서 유동성 필터를 통과한 종목만 대상으로 60초마다 호가를 다시 스캔하고, 양쪽 호가잔량에 강한 대칭 선형 감쇠를 적용한 뒤 계산한 기대수익률이 0.7% 이상인 후보만 자본 기반 슬롯 구조 안에서 즉시 매수하고 즉시 목표가 매도로 정리하는 장중 전략이다.
 
 ## 현재 운영값 요약
 
-- 시장: `KOSPI`
-- 유니버스: 당일 조회한 KOSPI 전체 종목 중 시가총액 `2500억` 이상, 거래대금 `30억` 이상
+- 시장: `KOSPI & KOSDAQ`
+- 유니버스: 당일 조회한 KOSPI&KOSDAQ 전체 종목 중 시가총액 `2500억` 이상, 거래대금 `30억` 이상
 - 스캔 주기: `60초`
-- 기대수익률 기준: `0.7`
+- 기대수익률 기준: `0.71`
 - 랭킹 컷: `상위 25%`
 - fallback: `비활성화`
 - 호가 모델: `매수/매도 모두 1.0 -> 0.0 더 강한 대칭 선형 감쇠`
