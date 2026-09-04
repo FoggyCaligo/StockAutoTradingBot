@@ -13,6 +13,7 @@ from Daily_bot.backtest import replay_dynamic_expect_debounce as replay
 
 LIVE_DYNAMIC_EXPECT_STOP_THRESHOLD = -0.1
 LIVE_DYNAMIC_EXPECT_STOP_CONSECUTIVE = 3
+LIVE_STOP_BUY_TIME = "11:30"
 LIVE_SLOT_POLICY_OUT = "Daily_bot/backtest/results/backtest_replay_live_slot_policy.csv"
 
 
@@ -22,6 +23,7 @@ def _apply_live_slot_policy_defaults() -> None:
     defaults = [
         ("--dynamic-expect-stop-threshold", str(LIVE_DYNAMIC_EXPECT_STOP_THRESHOLD)),
         ("--dynamic-expect-stop-consecutive", str(LIVE_DYNAMIC_EXPECT_STOP_CONSECUTIVE)),
+        ("--stop-buy-time", LIVE_STOP_BUY_TIME),
         ("--top-ratio", "1.0"),
         ("--max-prev-day-change", "0.0"),
         ("--allow-refill-empty-slots", None),
@@ -41,7 +43,7 @@ def main() -> None:
     """Replay the current live slot lifecycle policy.
 
     Policy per replay session:
-    - profit-taking exits return their slot and may be refilled before stop-buy time;
+    - profit-taking exits return their slot and may be refilled before 11:30;
     - each dynamic expected-return stop closes one slot for the rest of that session;
     - the stopped ticker is blocked from same-day re-entry;
     - closed-slot count resets when the next replay session begins.
