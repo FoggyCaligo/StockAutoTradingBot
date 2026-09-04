@@ -31,9 +31,9 @@ class DailySlotClosurePolicy:
         if payload.get("session_date") != self.session_date:
             return
         self.closed_tickers = {
-            str(ticker).strip()
+            bot_main._ticker_key(str(ticker))
             for ticker in payload.get("closed_tickers", [])
-            if str(ticker).strip()
+            if bot_main._ticker_key(str(ticker))
         }
 
     def _save(self) -> None:
@@ -52,7 +52,7 @@ class DailySlotClosurePolicy:
         return len(self.closed_tickers)
 
     def record_stop_loss(self, ticker: str | None) -> None:
-        ticker_key = str(ticker or "").strip()
+        ticker_key = bot_main._ticker_key(str(ticker or ""))
         if not ticker_key or ticker_key in self.closed_tickers:
             return
         self.closed_tickers.add(ticker_key)
