@@ -1,0 +1,69 @@
+name: Backtest 0.90 refill 12:30 comparison
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/backtest_refill_090_1230_compare.yml"
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip uninstall -y finance-datareader
+      - name: Run 11:30 baseline
+        run: |
+          python Daily_bot/backtest/replay_refill_threshold.py \
+            --logs-dir Daily_bot/logs \
+            --refill-min-expected-return 0.90 \
+            --stop-buy-time 11:30 \
+            --out Daily_bot/backtest/results/refill_090_1130.csv
+      - name: Run 12:30 candidate
+        run: |
+          python Daily_bot/backtest/replay_refill_threshold.py \
+            --logs-dir Daily_bot/logs \
+            --refill-min-expected-return 0.90 \
+            --stop-buy-time 12:30 \
+            --out Daily_bot/backtest/results/refill_090_1230.csv
+      - name: Print comparison
+        run: |
+          python - <<'PY'
+          import csv
+          from collections import Counter
+          from pathlib import Path
+
+          root = Path('Daily_bot/backtest/results')
+          for label in ('1130', '1230'):
+              p = root / f'refill_090_{label}.csv'
+              d = p.with_name(p.stem + '_daily_rev.csv')
+              with p.open(encoding='utf-8-sig', newline='') as f:
+                  trades = list(csv.DictReader(f))
+              with d.open(encoding='utf-8-sig', newline='') as f:
+                  daily = list(csv.DictReader(f))
+              wins = sum(float(r['pnl_percent']) > 0 for r in trades)
+              net = sum(int(float(r['total_profit_krw'])) for r in daily)
+              rets = [float(r['total_return_percent_on_starting_capital']) for r in daily]
+              eq = peak = 1.0
+              mdd = 0.0
+              for r in rets:
+                  eq *= 1 + r / 100
+                  peak = max(peak, eq)
+                  mdd = min(mdd, eq / peak - 1)
+              print(
+                  f'COMPARE {label} trades={len(trades)} wins={wins} '
+                  f'win_rate={(wins/len(trades)*100 if trades else 0):.4f}% '
+                  f'net_profit_krw={net} compounded_return={(eq-1)*100:.4f}% '
+                  f'mdd={mdd*100:.4f}% reasons={dict(sorted(Counter(r["exit_reason"] for r in trades).items()))}'
+              )
+              for r in daily:
+                  print('DAY', label, r['session_date'], r['total_profit_krw'], r['total_return_percent_on_starting_capital'], r['total_buy_amount_krw'])
+          PY
