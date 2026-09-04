@@ -1,0 +1,83 @@
+name: Backtest slot policy comparison
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Daily_bot/backtest/**"
+      - "Daily_bot/config/settings.yaml"
+      - ".github/workflows/backtest_slot_policy_compare.yml"
+  workflow_dispatch:
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pre-change policy replay
+        run: |
+          python Daily_bot/backtest/replay_live_no_top_cut_no_prevday_cap.py \
+            --logs-dir Daily_bot/logs \
+            --disallow-refill-empty-slots \
+            --block-stop-loss-reentry-same-day \
+            --out Daily_bot/backtest/results/before_slot_policy.csv
+
+      - name: Run live-aligned slot policy replay
+        run: |
+          python Daily_bot/backtest/replay_dynamic_expect_debounce_reserve_stopped_slots.py \
+            --logs-dir Daily_bot/logs \
+            --out Daily_bot/backtest/results/after_slot_policy.csv
+
+      - name: Print comparison
+        run: |
+          python - <<'PY'
+          import csv
+          from collections import Counter
+          from pathlib import Path
+
+          result_dir = Path('Daily_bot/backtest/results')
+          paths = {
+              'before': result_dir / 'before_slot_policy.csv',
+              'after': result_dir / 'after_slot_policy.csv',
+          }
+
+          def read_trades(path):
+              with path.open(encoding='utf-8-sig', newline='') as fp:
+                  return list(csv.DictReader(fp))
+
+          def read_daily(path):
+              daily_path = path.with_name(path.stem + '_daily_rev.csv')
+              with daily_path.open(encoding='utf-8-sig', newline='') as fp:
+                  return list(csv.DictReader(fp))
+
+          for label, path in paths.items():
+              trades = read_trades(path)
+              daily = read_daily(path)
+              reasons = Counter(row['exit_reason'] for row in trades)
+              wins = sum(float(row['pnl_percent']) > 0 for row in trades)
+              net = sum(int(float(row['total_profit_krw'])) for row in daily)
+              start_cap = sum(int(float(row['starting_capital_krw'])) for row in daily)
+              day_returns = [float(row['total_return_percent_on_starting_capital']) for row in daily]
+              compounded = 1.0
+              for r in day_returns:
+                  compounded *= 1 + r / 100
+              compounded_return = (compounded - 1) * 100
+              print(f'COMPARE {label} trades={len(trades)} wins={wins} win_rate={(wins/len(trades)*100 if trades else 0):.4f}% net_profit_krw={net} compounded_daily_return={compounded_return:.4f}% summed_daily_return={sum(day_returns):.4f}%')
+              print('REASONS', label, dict(sorted(reasons.items())))
+              for row in daily:
+                  print('DAY', label, row['session_date'], row['total_profit_krw'], row['total_return_percent_on_starting_capital'], row['total_buy_amount_krw'])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slot-policy-backtest-results
+          path: Daily_bot/backtest/results/*slot_policy*.csv
