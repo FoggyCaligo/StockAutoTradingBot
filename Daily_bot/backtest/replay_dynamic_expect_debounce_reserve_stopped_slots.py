@@ -11,15 +11,46 @@ if str(WORKSPACE_ROOT) not in sys.path:
 from Daily_bot.backtest import replay_dynamic_expect_debounce as replay
 
 
+LIVE_DYNAMIC_EXPECT_STOP_THRESHOLD = -0.1
+LIVE_DYNAMIC_EXPECT_STOP_CONSECUTIVE = 3
+LIVE_SLOT_POLICY_OUT = "Daily_bot/backtest/results/backtest_replay_live_slot_policy.csv"
+
+
+def _apply_live_slot_policy_defaults() -> None:
+    """Apply the live-equivalent defaults while preserving explicit CLI overrides."""
+    argv = list(sys.argv)
+    defaults = [
+        ("--dynamic-expect-stop-threshold", str(LIVE_DYNAMIC_EXPECT_STOP_THRESHOLD)),
+        ("--dynamic-expect-stop-consecutive", str(LIVE_DYNAMIC_EXPECT_STOP_CONSECUTIVE)),
+        ("--top-ratio", "1.0"),
+        ("--max-prev-day-change", "0.0"),
+        ("--allow-refill-empty-slots", None),
+        ("--block-stop-loss-reentry-same-day", None),
+        ("--out", LIVE_SLOT_POLICY_OUT),
+    ]
+    for flag, value in defaults:
+        if flag in argv:
+            continue
+        argv.append(flag)
+        if value is not None:
+            argv.append(value)
+    sys.argv = argv
+
+
 def main() -> None:
-    """Replay debounced dynamic stops while reserving stopped slots for the day.
+    """Replay the current live slot lifecycle policy.
 
-    Each ``dynamic_expect_stop`` permanently reduces that session's effective
-    position limit by one. Profit-taking exits do not reduce the limit, so those
-    vacated slots may still be refilled. The reservation resets next session.
+    Policy per replay session:
+    - profit-taking exits return their slot and may be refilled before stop-buy time;
+    - each dynamic expected-return stop closes one slot for the rest of that session;
+    - the stopped ticker is blocked from same-day re-entry;
+    - closed-slot count resets when the next replay session begins.
 
-    This is backtest-only and leaves live trading behavior unchanged.
+    This matches the live bot's session-only slot closure policy. Explicit CLI
+    arguments still override the live-equivalent defaults above.
     """
+
+    _apply_live_slot_policy_defaults()
 
     base = replay.base
     state = {
