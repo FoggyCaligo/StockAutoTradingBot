@@ -23,7 +23,7 @@ trend_filter:
 strategy:
   top_ratio: 1.0
   max_buy_count: 3
-  allow_refill_empty_slots: false
+  allow_refill_empty_slots: true
   min_expected_return_percent: 0.71
   min_expected_return_fallback_percents: []
   max_spread_percent: 0.0
@@ -53,13 +53,14 @@ risk:
   stop_loss_percent: 0.0
   daily_loss_limit_percent: 10.0
 
-# Intraday stop-loss is fully disabled.
+# Intraday fixed stop-loss is disabled; dynamic expected-return stop remains available in live flow.
 # Current live summary:
 # - Universe: full KOSPI + KOSDAQ daily refresh, market cap >= 250B KRW, trading value >= 3B KRW
 # - Entry: expected return >= 0.71%, no top-ratio cutoff, fallback disabled
 # - Orderbook model: symmetric linear decay on both sides (1.0 -> 0.0)
-# - Buy flow: up to 3 new buys per scan, refill disabled until the current batch is flat
-# - Guard: previous-day rise upper bound disabled; same-day re-entry block remains available if stop-loss is re-enabled
+# - Buy flow: up to 3 new buys per scan; profit exits refill empty slots before 11:30
+# - Stop-loss slot policy: each stop-loss closes one slot only for the current trading day; next day starts from the capital-based slot count again
+# - Guard: stopped tickers cannot be re-entered on the same day
 # - Risk: no intraday fixed stop-loss, force sell at 15:15, daily loss limit 10%
 
 api:
@@ -80,8 +81,8 @@ accounting:
 # 보조 필터: 스프레드/전일 등락률/직전 스캔 급등/호가잔량 비율 필터 비활성화
 # 핵심 신호: 20호가 기반 기대수익률 0.71% 이상
 # fallback: 비활성화
-# 매수 방식: 한 배치 최대 3종목, 현재 배치가 모두 청산되기 전에는 빈 슬롯 재진입 안 함
-# 위험 관리: 고정 장중 손절 비활성화, 15:15 강제매도, 10% 일손실 제한
+# 매수 방식: 최대 3종목 슬롯 운용. 익절로 빈 슬롯은 11:30 전 재사용, 손절 슬롯은 당일만 폐쇄
+# 위험 관리: 고정 장중 손절 비활성화, 동적 기대수익 손절 슬롯은 당일 폐쇄, 15:15 강제매도, 10% 일손실 제한
 
 
 # 6/16에 봐야 할 것
