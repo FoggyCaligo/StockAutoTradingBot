@@ -25,6 +25,7 @@ strategy:
   max_buy_count: 3
   allow_refill_empty_slots: true
   min_expected_return_percent: 0.71
+  refill_min_expected_return_percent: 0.90
   min_expected_return_fallback_percents: []
   max_spread_percent: 0.0
   spread_expected_return_multiplier: 0.0
@@ -56,10 +57,12 @@ risk:
 # Intraday fixed stop-loss is disabled; dynamic expected-return stop remains available in live flow.
 # Current live summary:
 # - Universe: full KOSPI + KOSDAQ daily refresh, market cap >= 250B KRW, trading value >= 3B KRW
-# - Entry: expected return >= 0.71%, no top-ratio cutoff, fallback disabled
+# - Entry: normal expected return >= 0.71%, no top-ratio cutoff, fallback disabled
+# - Refill entry: only take-profit-returned slots use expected return >= 0.90%
+# - Refill guard: after the first dynamic expected-return stop of the day, no more take-profit-slot refills that session
 # - Orderbook model: symmetric linear decay on both sides (1.0 -> 0.0)
-# - Buy flow: up to 3 new buys per scan; profit exits refill empty slots before 11:30
-# - Stop-loss slot policy: each stop-loss closes one slot only for the current trading day; next day starts from the capital-based slot count again
+# - Buy flow: up to 3 new buys per scan; never-used slots remain available before 11:30
+# - Stop-loss slot policy: each dynamic-stop slot closes only for the current trading day; next day starts from the capital-based slot count again
 # - Guard: stopped tickers cannot be re-entered on the same day
 # - Risk: no intraday fixed stop-loss, force sell at 15:15, daily loss limit 10%
 
@@ -79,9 +82,10 @@ accounting:
 # 후보 탐색: KOSPI + KOSDAQ 전체, 시총 2,500억 이상, 거래대금 30억 이상
 # 랭킹 컷: 비활성화; 기대수익률 절대 기준으로만 진입 후보를 거른다.
 # 보조 필터: 스프레드/전일 등락률/직전 스캔 급등/호가잔량 비율 필터 비활성화
-# 핵심 신호: 20호가 기반 기대수익률 0.71% 이상
+# 핵심 신호: 최초/미사용 슬롯은 20호가 기반 기대수익률 0.71% 이상
+# 익절 재진입: 기대수익률 0.90% 이상, 단 당일 dynamic stop 발생 이후에는 재진입 금지
 # fallback: 비활성화
-# 매수 방식: 최대 3종목 슬롯 운용. 익절로 빈 슬롯은 11:30 전 재사용, 손절 슬롯은 당일만 폐쇄
+# 매수 방식: 최대 3종목 슬롯 운용. 익절 슬롯은 11:30 전 조건부 재사용, 손절 슬롯은 당일만 폐쇄
 # 위험 관리: 고정 장중 손절 비활성화, 동적 기대수익 손절 슬롯은 당일 폐쇄, 15:15 강제매도, 10% 일손실 제한
 
 
