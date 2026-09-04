@@ -58,10 +58,12 @@ risk:
 # Current live summary:
 # - Universe: full KOSPI + KOSDAQ daily refresh, market cap >= 250B KRW, trading value >= 3B KRW
 # - Entry: normal expected return >= 0.71%, no top-ratio cutoff, fallback disabled
-# - Refill entry: only take-profit-returned slots use expected return >= 0.90%
-# - Refill guard: after the first dynamic expected-return stop of the day, no more take-profit-slot refills that session
+# - Slot count: resolved from session starting capital (minimum 3, up to max_slot_count/max_position_count)
+# - Initial fill: until the current capital-based slot limit is first fully occupied, never-used slots may keep filling at 0.71%
+# - Refill entry: only slots returned by take-profit use expected return >= 0.90%
+# - Full-batch lock: once all currently effective slots are occupied, no further buys until that whole batch is flat
+# - After full batch exit: a new batch may start before 11:30 using the remaining effective slots
 # - Orderbook model: symmetric linear decay on both sides (1.0 -> 0.0)
-# - Buy flow: up to 3 new buys per scan; never-used slots remain available before 11:30
 # - Stop-loss slot policy: each dynamic-stop slot closes only for the current trading day; next day starts from the capital-based slot count again
 # - Guard: stopped tickers cannot be re-entered on the same day
 # - Risk: no intraday fixed stop-loss, force sell at 15:15, daily loss limit 10%
@@ -83,10 +85,12 @@ accounting:
 # 랭킹 컷: 비활성화; 기대수익률 절대 기준으로만 진입 후보를 거른다.
 # 보조 필터: 스프레드/전일 등락률/직전 스캔 급등/호가잔량 비율 필터 비활성화
 # 핵심 신호: 최초/미사용 슬롯은 20호가 기반 기대수익률 0.71% 이상
-# 익절 재진입: 기대수익률 0.90% 이상, 단 당일 dynamic stop 발생 이후에는 재진입 금지
+# 슬롯 수: 당일 시작자본 기준으로 계산되며 3개에 고정되지 않는다.
+# 익절 재진입: 풀배치가 아직 완성되지 않은 상태에서 익절로 반환된 슬롯만 기대수익률 0.90% 이상
+# 배치 잠금: 유효 슬롯이 한 번 모두 채워지면 전량 청산될 때까지 신규매수 금지
+# 새 배치: 전량 청산 후 11:30 이전이면 남은 유효 슬롯 기준으로 다시 시작 가능
 # fallback: 비활성화
-# 매수 방식: 최대 3종목 슬롯 운용. 익절 슬롯은 11:30 전 조건부 재사용, 손절 슬롯은 당일만 폐쇄
-# 위험 관리: 고정 장중 손절 비활성화, 동적 기대수익 손절 슬롯은 당일 폐쇄, 15:15 강제매도, 10% 일손실 제한
+# 위험 관리: 손절 슬롯은 당일만 폐쇄, 고정 장중 손절 비활성화, 15:15 강제매도, 10% 일손실 제한
 
 
 # 6/16에 봐야 할 것
