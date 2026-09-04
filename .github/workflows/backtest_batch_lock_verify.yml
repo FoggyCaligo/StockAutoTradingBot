@@ -1,0 +1,47 @@
+name: Backtest batch lock verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/backtest_batch_lock_verify.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip uninstall -y finance-datareader
+      - name: Run final batch-lock policy replay
+        run: |
+          python Daily_bot/backtest/replay_refill_threshold.py \
+            --logs-dir Daily_bot/logs \
+            --refill-min-expected-return 0.90 \
+            --out Daily_bot/backtest/results/final_batch_lock_090.csv
+      - name: Print summary
+        run: |
+          python - <<'PY'
+          import csv
+          from collections import Counter
+          from pathlib import Path
+          p=Path('Daily_bot/backtest/results/final_batch_lock_090.csv')
+          d=p.with_name(p.stem+'_daily_rev.csv')
+          with p.open(encoding='utf-8-sig',newline='') as f: trades=list(csv.DictReader(f))
+          with d.open(encoding='utf-8-sig',newline='') as f: daily=list(csv.DictReader(f))
+          wins=sum(float(r['pnl_percent'])>0 for r in trades)
+          net=sum(int(float(r['total_profit_krw'])) for r in daily)
+          rets=[float(r['total_return_percent_on_starting_capital']) for r in daily]
+          eq=peak=1.0;mdd=0.0
+          for r in rets:
+              eq*=1+r/100; peak=max(peak,eq); mdd=min(mdd,eq/peak-1)
+          print(f'FINAL trades={len(trades)} wins={wins} win_rate={(wins/len(trades)*100 if trades else 0):.4f}% net_profit_krw={net} compounded_return={(eq-1)*100:.4f}% mdd={mdd*100:.4f}% reasons={dict(Counter(r["exit_reason"] for r in trades))}')
+          for r in daily: print('DAY',r['session_date'],r['total_profit_krw'],r['total_return_percent_on_starting_capital'],r['total_buy_amount_krw'])
+          PY
