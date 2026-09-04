@@ -144,6 +144,7 @@ def install_daily_slot_closure_policy() -> DailySlotClosurePolicy:
     original_attempt_stop_loss = bot_main._attempt_stop_loss_safely
     original_resolve_empty_slots = bot_main.resolve_empty_slots
     original_filter_candidates = bot_main.filter_candidates_for_entry
+    original_get_active_tickers = bot_main._get_active_tickers
 
     current_session_limit = {"value": 0}
 
@@ -152,6 +153,12 @@ def install_daily_slot_closure_policy() -> DailySlotClosurePolicy:
         if executed:
             policy.record_stop_loss(ticker)
         return executed, error, ticker
+
+    def get_active_tickers_with_batch_tracking(positions, open_orders):
+        active = original_get_active_tickers(positions, open_orders)
+        session_limit = int(current_session_limit["value"] or 0)
+        policy.observe_active_count(len(active), session_limit if session_limit > 0 else None)
+        return active
 
     def filter_candidates_with_refill_threshold(
         calculated,
@@ -203,6 +210,7 @@ def install_daily_slot_closure_policy() -> DailySlotClosurePolicy:
         return min(baseline, allowed)
 
     bot_main._attempt_stop_loss_safely = attempt_stop_loss_with_slot_closure
+    bot_main._get_active_tickers = get_active_tickers_with_batch_tracking
     bot_main.filter_candidates_for_entry = filter_candidates_with_refill_threshold
     bot_main.resolve_empty_slots = resolve_empty_slots_with_daily_closure
     return policy
