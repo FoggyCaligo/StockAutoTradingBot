@@ -2,7 +2,7 @@ market:
   prewarm_start_time: "08:55"
   startup_clear_time: "09:10"
   start_buy_time: "09:30"
-  stop_buy_time: "12:30"
+  stop_buy_time: "11:30"
   force_sell_time: "15:15"
   reconcile_time: "15:20"
   end_time: "15:25"
@@ -60,7 +60,7 @@ risk:
 # - Entry: normal expected return >= 0.71%, no top-ratio cutoff, fallback disabled
 # - Slot count: resolved from session starting capital (minimum 3, up to max_slot_count/max_position_count)
 # - Initial fill: never-used slots may keep filling at 0.71% until the capital-based slot limit is reached
-# - Refill entry: slots returned by take-profit may be freely reused before 12:30, but require expected return >= 0.90%
+# - Refill entry: slots returned by take-profit may be freely reused before 11:30, but require expected return >= 0.90%
 # - No full-batch lock: take-profit slots can be reused repeatedly while the buy window remains open
 # - Orderbook model: symmetric linear decay on both sides (1.0 -> 0.0)
 # - Stop-loss slot policy: each dynamic-stop slot closes only for the current trading day; next day starts from the capital-based slot count again
@@ -85,7 +85,7 @@ accounting:
 # 보조 필터: 스프레드/전일 등락률/직전 스캔 급등/호가잔량 비율 필터 비활성화
 # 핵심 신호: 최초/미사용 슬롯은 20호가 기반 기대수익률 0.71% 이상
 # 슬롯 수: 당일 시작자본 기준으로 계산되며 3개에 고정되지 않는다.
-# 익절 재진입: 익절로 반환된 슬롯은 12:30 전까지 자유 재사용하되 기대수익률 0.90% 이상
+# 익절 재진입: 익절로 반환된 슬롯은 11:30 전까지 자유 재사용하되 기대수익률 0.90% 이상
 # 손절 슬롯: 당일만 폐쇄하고 다음 거래일에는 자본 기준 슬롯 수를 다시 계산
 # fallback: 비활성화
 # 위험 관리: 고정 장중 손절 비활성화, 동적 기대수익 손절 사용, 15:15 강제매도, 10% 일손실 제한
@@ -105,5 +105,5 @@ accounting:
 # → 진입 시점이나 기대수익 모델을 먼저 확인.
 # 손절 후 바로 반등한다
 # → dynamic stop debounce/threshold가 너무 민감한지 확인.
-# 12:30 이후 손실이 많다
+# 11:30 이후 손실이 많다
 # → 매수 종료 시각을 다시 비교.
