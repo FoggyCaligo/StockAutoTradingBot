@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 set -euo pipefail
-python main.py --dry-run
+python session_slot_runner.py --dry-run
