@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $botRoot = Split-Path -Parent $PSScriptRoot
 $workspaceRoot = Split-Path -Parent $botRoot
 $pythonPath = Join-Path $workspaceRoot ".venv\Scripts\python.exe"
-$mainPath = Join-Path $botRoot "main.py"
+$mainPath = Join-Path $botRoot "session_slot_runner.py"
 $logDir = Join-Path $botRoot "logs"
 $lockPath = Join-Path $logDir "run_real.lock"
 
@@ -30,7 +30,7 @@ if (!(Test-Path $pythonPath)) {
 }
 
 if (!(Test-Path $mainPath)) {
-    throw "main.py not found: $mainPath"
+    throw "session_slot_runner.py not found: $mainPath"
 }
 
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
