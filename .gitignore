@@ -7,6 +7,7 @@ Daily_bot/logs/*.tmp
 Daily_bot/logs/account_traces*.csv
 Daily_bot/logs/daily_reference_prices*.csv
 Daily_bot/logs/orders_*.csv
+Daily_bot/logs/session_closed_slots.json
 
 .aider*
 Daily_bot/backtest/results/*.csv
