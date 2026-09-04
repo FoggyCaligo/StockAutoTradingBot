@@ -1,0 +1,74 @@
+name: Backtest refill threshold sweep
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Daily_bot/backtest/replay_refill_threshold.py"
+      - ".github/workflows/backtest_refill_threshold_sweep.yml"
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip uninstall -y finance-datareader
+      - name: Run threshold sweep
+        run: |
+          for t in 0.71 0.80 0.90 1.00; do
+            label=$(echo "$t" | tr '.' '_')
+            python Daily_bot/backtest/replay_refill_threshold.py \
+              --logs-dir Daily_bot/logs \
+              --refill-min-expected-return "$t" \
+              --out "Daily_bot/backtest/results/refill_${label}.csv"
+          done
+      - name: Print comparison
+        run: |
+          python - <<'PY'
+          import csv
+          from collections import Counter
+          from pathlib import Path
+
+          root = Path('Daily_bot/backtest/results')
+          for threshold in ('0_71','0_80','0_90','1_00'):
+              trades_path = root / f'refill_{threshold}.csv'
+              daily_path = root / f'refill_{threshold}_daily_rev.csv'
+              with trades_path.open(encoding='utf-8-sig', newline='') as fp:
+                  trades = list(csv.DictReader(fp))
+              with daily_path.open(encoding='utf-8-sig', newline='') as fp:
+                  daily = list(csv.DictReader(fp))
+              wins = sum(float(r['pnl_percent']) > 0 for r in trades)
+              net = sum(int(float(r['total_profit_krw'])) for r in daily)
+              returns = [float(r['total_return_percent_on_starting_capital']) for r in daily]
+              compounded = 1.0
+              equity = 1.0
+              peak = 1.0
+              mdd = 0.0
+              for r in returns:
+                  compounded *= 1 + r / 100
+                  equity *= 1 + r / 100
+                  peak = max(peak, equity)
+                  mdd = min(mdd, equity / peak - 1)
+              reasons = Counter(r['exit_reason'] for r in trades)
+              print(
+                  f'SWEEP threshold={threshold.replace("_", ".")} '
+                  f'trades={len(trades)} wins={wins} '
+                  f'win_rate={(wins/len(trades)*100 if trades else 0):.4f}% '
+                  f'net_profit_krw={net} compounded_return={(compounded-1)*100:.4f}% '
+                  f'mdd={mdd*100:.4f}% reasons={dict(sorted(reasons.items()))}'
+              )
+              for row in daily:
+                  print('DAY', threshold, row['session_date'], row['total_profit_krw'], row['total_return_percent_on_starting_capital'], row['total_buy_amount_krw'])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: refill-threshold-sweep-results
+          path: Daily_bot/backtest/results/refill_*.csv
