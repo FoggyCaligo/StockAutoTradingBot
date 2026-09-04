@@ -21,7 +21,11 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          # Prev-day filters are disabled in both compared configurations, so
+          # skip the optional network-based previous-close backfill while rebuilding replay DB.
+          pip uninstall -y finance-datareader
 
       - name: Run pre-change policy replay
         run: |
@@ -65,7 +69,6 @@ jobs:
               reasons = Counter(row['exit_reason'] for row in trades)
               wins = sum(float(row['pnl_percent']) > 0 for row in trades)
               net = sum(int(float(row['total_profit_krw'])) for row in daily)
-              start_cap = sum(int(float(row['starting_capital_krw'])) for row in daily)
               day_returns = [float(row['total_return_percent_on_starting_capital']) for row in daily]
               compounded = 1.0
               for r in day_returns:
