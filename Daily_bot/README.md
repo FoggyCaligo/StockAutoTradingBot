@@ -1,98 +1,153 @@
 # Daily Bot
 
-문서보다 코드를 우선 진실원천으로 본다. 현재 실제 동작 기준 파일은 [settings.yaml](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/config/settings.yaml), [main.py](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/main.py), [replay_market_traces.py](/C:/Users/bigla/OneDrive/Documents/GIT/StockAutoTradingBot/Daily_bot/backtest/replay_market_traces.py)다.
+현재 전략을 빠르게 이해하기 위한 입구 문서다. **실제 동작의 진실원천은 코드와 설정**이며, 우선순위는 다음과 같다.
+
+1. `Daily_bot/config/settings.yaml`
+2. `Daily_bot/session_slot_runner.py`
+3. `Daily_bot/main.py`
+4. `Daily_bot/risk/stop_loss.py`
+5. `Daily_bot/backtest/replay_refill_threshold.py`
+
+과거 실험 기록은 `Diary.md`, `memo.txt`에 남아 있으며 현재 활성 전략과 혼동하지 않는다.
 
 ## 현재 전략 한 줄 요약
 
-데일리 봇은 당일 KOSPI&KOSDAQ 전체에서 유동성 필터를 통과한 종목만 대상으로 60초마다 호가를 다시 스캔하고, 양쪽 호가잔량에 강한 대칭 선형 감쇠를 적용한 뒤 계산한 기대수익률이 0.7% 이상인 후보만 자본 기반 슬롯 구조 안에서 즉시 매수하고 즉시 목표가 매도로 정리하는 장중 전략이다.
+KOSPI와 KOSDAQ 전체에서 유동성이 충분한 종목을 대상으로 20호가 잔량에서 단기 균형가격을 추정하고, **최초 진입은 기대수익률 0.71% 이상**, **익절로 반환된 슬롯의 재진입은 0.90% 이상**일 때만 매수한다. 슬롯은 당일 시작자본에 따라 계산되고, 익절 슬롯은 11:30 전까지 재사용할 수 있지만 dynamic stop이 발생한 슬롯은 그 거래일 동안 폐쇄된다.
 
-## 현재 운영값 요약
+## 현재 활성 운영값
 
-- 시장: `KOSPI & KOSDAQ`
-- 유니버스: 당일 조회한 KOSPI&KOSDAQ 전체 종목 중 시가총액 `2500억` 이상, 거래대금 `30억` 이상
+- 시장: `KOSPI + KOSDAQ`
+- 시가총액 하한: `2,500억 원`
+- 거래대금 하한: `30억 원`
 - 스캔 주기: `60초`
-- 기대수익률 기준: `0.71`
-- 랭킹 컷: `상위 25%`
-- fallback: `비활성화`
-- 호가 모델: `매수/매도 모두 1.0 -> 0.0 더 강한 대칭 선형 감쇠`
-- 신규 진입 시간: `09:30 ~ 11:30`
+- 신규매수 시간: `09:30 ~ 11:30`
 - 장 시작 전 이월 포지션 정리: `09:10`
-- 강제청산: `15:00`
-- 스캔당 신규 매수 상한: `3종목`
-- 총 보유 종목 하드 상한: `10종목`
-- 빈 슬롯 재매수: `허용`
-- 전일 상승 상한 필터: `10.0%`
-- 고정 장중 손절: `비활성화`
-- 동적 예상수익률 손절: `.env`의 `DYNAMIC_EXPECT_STOP_PERCENT` 사용, 기본 `-0.3%`
+- 강제청산: `15:15`
+- 체결/계좌 재정합: `15:20`
+- 종료: `15:25`
+- 최초/미사용 슬롯 기대수익률 기준: `0.71%`
+- 익절 반환 슬롯 재진입 기준: `0.90%`
+- `top_ratio = 1.0`: 랭킹 비율 컷 사실상 비활성
+- fallback: 비활성
+- 전일 등락률 필터: 비활성
+- 스프레드 필터: 비활성
+- 직전 스캔 급등 필터: 비활성
+- 매도호가 깊이 제한: 비활성
+- 스캔당 신규매수 상한: `3종목`
+- 슬롯 수: 당일 시작자본 기준, 최소 `3`, 최대 `10`
+- 슬롯 계산 단위: `500만 원`
+- 총 보유 하드 상한: `10종목`
+- 고정 장중 손절: 비활성
+- dynamic expected-return stop: 기본 `-0.1%` 이하가 `3회 연속`
 - 일손실 제한: `10%`
 
-## 중요한 해석 포인트
+## 호가 기반 예상가
 
-- `max_buy_count = 3`은 총 보유 수 제한이 아니라 한 번의 스캔에서 추가로 새로 살 수 있는 종목 수 상한이다.
-- 실제 총 보유 수는 자본 규모에서 계산된 슬롯 수와 `risk.max_position_count = 10`의 조합으로 결정된다.
-- fallback은 현재 설정에서 꺼져 있다. 즉 현재 운영은 `0.7 단일`이다.
-- 현재는 기대수익률 계산이 끝난 후보 중 상위 25%만 다음 단계로 넘긴다.
-- 재매수는 허용되어 있다. 다만 한 번의 스캔에서 새로 진입하는 수는 최대 3개로 제한된다.
-- 고정 손절은 꺼져 있지만, 동적 예상수익률 손절은 별도로 작동한다. 기본값은 현재가 대비 예상수익률 `-0.3%` 이하이며 `.env`에서 조정하거나 `off`로 끌 수 있다.
+전략의 핵심 신호는 차트 지표가 아니라 20호가 잔량이다.
 
-## 백테스트 정합성 요약
+- 현재가에 가까운 호가잔량은 크게 반영한다.
+- 멀어질수록 선형으로 가중치를 낮춘다.
+- 매수/매도 양쪽 모두 `1.0 -> 0.0` 대칭 감쇠를 사용한다.
+- 감쇠된 호가잔량으로 균형가격 `expect_price`를 다시 계산한다.
+- 실제 목표 매도가는 예상가에서 `sell_tick_offset = 1`틱을 뺀 값이다.
 
-- 리플레이는 `market_traces.raw_json`에서 호가를 다시 읽어 같은 기대수익률 계산 구조를 재현한다.
-- 백테스트 기준 DB는 `Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3`다.
-- 이 DB는 `Daily_bot/logs/market_traces_*.csv`에서 복원한 전용 replay DB이며, 실거래 DB `Daily_bot/bot.sqlite3`와 분리한다.
-- 현재 백테스트 기본값도 실코드와 동일하게 `강한 대칭 감쇠 + 고정 손절 비활성화`를 사용한다.
-- `scan_cycle_at` 배치 기준, `scan_candidate` 기준 진입, 목표가 체결가 고정, 자본 기반 조합 선택을 맞춘 상태다.
-- 여전히 60초 스캔 사이의 순간 고가/저가, 부분체결, 취소 후 재주문 세부 흐름까지 완전히 복원하는 것은 아니다.
-- `Daily_bot/backtest/results/*.csv`는 실행 결과물이다. 진단 전에 replay를 먼저 실행해 `backtest_replay.csv`를 생성해야 한다.
+즉 “중간값에서 멀수록 호가잔량의 영향력을 줄이는” 처리가 현재 활성 상태다.
 
-## 실행 예시
+## 슬롯과 재진입 정책
 
-실거래:
+현재 전략은 고정 3종목 전략이 아니다.
 
-```powershell
-.\.venv\Scripts\python.exe .\Daily_bot\main.py --real
+- 세션 시작 시 주문가능 자본을 기준으로 총 슬롯 수를 계산한다.
+- 자본이 작아도 최소 3슬롯을 유지한다.
+- 자본이 증가하면 슬롯은 늘 수 있으며 최대 10슬롯이다.
+- 한 번의 스캔에서는 최대 3종목까지만 새로 산다.
+
+빈 슬롯은 두 종류로 구분한다.
+
+### 아직 사용하지 않은 슬롯
+
+해당 세션에서 아직 채워본 적 없는 슬롯이다. 기존 진입 기준인 `0.71%`를 적용한다.
+
+### 익절로 반환된 슬롯
+
+한 번 사용했다가 `take_profit`으로 비워진 슬롯이다. 11:30 전이면 다시 사용할 수 있지만 기대수익률이 `0.90%` 이상이어야 한다.
+
+현재 **full-batch lock은 없다**. 즉 전체 슬롯이 한 번 꽉 찼더라도 익절로 자리가 비면 11:30 전까지 다시 사용할 수 있다.
+
+## 손절과 슬롯 폐쇄
+
+고정 퍼센트/틱 손절은 현재 꺼져 있다. 대신 보유 종목도 호가를 다시 읽어 예상가를 재계산한다.
+
+기본 dynamic stop 조건:
+
+```text
+expected_return <= -0.1%
+3회 연속 관측
 ```
 
-Git Bash에서 Git에 기록된 market trace 로그로 replay DB와 기본 백테스트 결과를 다시 생성:
+조건이 충족되면 기존 매도주문을 취소하고 실행 가능한 매도호가 근처로 청산한다.
+
+추가 정책:
+
+- 손절된 종목은 같은 날 재진입하지 않는다.
+- 손절이 발생한 슬롯은 **그 거래일 동안만 폐쇄**된다.
+- 다음 거래일에는 손절 슬롯 폐쇄 기록을 버리고 새 시작자본으로 슬롯 수를 다시 계산한다.
+
+## 목표가와 장마감
+
+정상 진입 후에는 즉시 목표 지정가 매도를 건다.
+
+- 목표가 도달: 익절
+- dynamic stop 발생: 조기 청산 + 당일 슬롯 폐쇄
+- 15:15까지 남은 포지션: 강제청산
+- 15:20: 브로커 체결내역과 로컬 기록 재정합
+
+## 실거래 실행
+
+권장 실행 경로는 `main.py` 직접 실행이 아니라 세션 슬롯 정책을 설치하는 `session_slot_runner.py`다.
+
+```powershell
+.\Daily_bot\scripts\run_real.ps1
+```
+
+직접 실행할 경우:
+
+```powershell
+.\.venv\Scripts\python.exe .\Daily_bot\session_slot_runner.py --real
+```
+
+## 현재 전략과 맞춘 백테스트
+
+백테스트는 `market_traces_*.csv`의 당시 호가를 다시 읽어 같은 기대수익 계산과 슬롯 정책을 최대한 재구성한다.
+
+현재 전략의 핵심 비교용 러너:
 
 ```bash
-python Daily_bot/backtest/replay_market_traces.py \
-  --db Daily_bot/rebuild_from_logs.sqlite3 \
+python -m Daily_bot.backtest.replay_refill_threshold \
+  --refill-min-expected-return 0.90 \
+  --stop-buy-time 11:30 \
   --logs-dir Daily_bot/logs
 ```
 
-위 명령의 replay DB 결과:
+실거래 슬롯 폐쇄 정책의 기본값을 포함한 러너는 `replay_dynamic_expect_debounce_reserve_stopped_slots.py`다.
 
-```text
-Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3
-```
+백테스트는 다음을 맞춘다.
 
-기본 거래 결과:
+- 20호가 감쇠 계산
+- `0.71%` 최초 진입 기준
+- `0.90%` 익절 재진입 기준
+- dynamic stop `-0.1% / 3회`
+- 손절 슬롯 당일 폐쇄
+- 손절 종목 당일 재진입 금지
+- 자본 기반 슬롯 계산
+- 11:30 신규매수 종료
 
-```text
-Daily_bot/backtest/results/backtest_replay.csv
-Daily_bot/backtest/results/backtest_replay_daily_rev.csv
-Daily_bot/backtest/results/backtest_replay_trade_fills_audit_daily.csv
-```
+다만 60초 사이 순간 체결, 브로커 내부 체결 순서, 부분체결과 취소/재주문의 모든 세부 흐름까지 완전히 복제하지는 못한다.
 
-복원된 replay DB를 사용한 일반 백테스트:
+## 관련 문서
 
-```bash
-python Daily_bot/backtest/replay_market_traces.py \
-  --db Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3
-```
-
-동적 예상수익률 진단:
-
-```bash
-python Daily_bot/backtest/diagnose_dynamic_expect_stop.py \
-  --db Daily_bot/backtest/cache/rebuild_from_logs_replay_from_logs.sqlite3 \
-  --trades Daily_bot/backtest/results/backtest_replay.csv
-```
-
-진단 결과:
-
-```text
-Daily_bot/backtest/results/dynamic_expect_stop_diagnostics.csv
-Daily_bot/backtest/results/dynamic_expect_stop_threshold_sweep.csv
-```
+- `docs/strategy_design.md`: 전략 철학과 의도
+- `docs/CURRENT_DAILY_SETTINGS.md`: 현재 설정값 요약
+- `docs/DAILY_BOT_LOGIC_REFERENCE.md`: 로직 상세 설명
+- `docs/CODEX_HANDOFF.md`: 다음 작업자를 위한 압축 메모
+- `Diary.md`: 과거 변경/실험 기록
