@@ -229,7 +229,13 @@ class Recorder:
             return default
 
     def _run_csv(self, context: str, operation) -> bool:
-        if not self._csv_enabled:
+        # Runtime CSV policy: keep only market traces and daily confirmed fills.
+        allowed = (
+            context == "save_market_trace"
+            or context == "save_fill"
+            or context.startswith("rebuild_session_fill_exports")
+        )
+        if not allowed or not self._csv_enabled:
             return False
         try:
             operation()
@@ -239,14 +245,8 @@ class Recorder:
             return False
 
     def _run_audit(self, context: str, operation) -> bool:
-        if not self._audit_enabled:
-            return False
-        try:
-            operation()
-            return True
-        except Exception as exc:
-            self._disable_audit_sink(context, exc)
-            return False
+        # Detailed audit CSV exports were retired in favor of fills_YYYYMMDD.csv.
+        return False
 
     def _ensure_table_columns(self) -> None:
         if self.conn is None:
@@ -795,23 +795,26 @@ class Recorder:
             ),
         )
         self._run_db("save_fill commit", lambda: self.conn.commit())
-        self._run_csv(
-            "save_fill",
-            lambda: self._append_csv_row(
-                self._daily_csv_path("fills"),
-                ["broker_order_id", "ticker", "side", "quantity", "price", "filled_at", "source", "raw_json"],
-                {
-                    "broker_order_id": fill.order_id,
-                    "ticker": fill.ticker,
-                    "side": side_upper,
-                    "quantity": fill.quantity,
-                    "price": fill.price,
-                    "filled_at": filled_at,
-                    "source": source,
-                    "raw_json": raw_json,
-                },
-            ),
-        )
+        # Keep the public daily fill CSV restricted to broker-confirmed executions.
+        # Reconciliation-only inferred fills remain available internally in SQLite.
+        if "reconciliation" not in str(source or "").lower():
+            self._run_csv(
+                "save_fill",
+                lambda: self._append_csv_row(
+                    self._daily_csv_path("fills"),
+                    ["broker_order_id", "ticker", "side", "quantity", "price", "filled_at", "source", "raw_json"],
+                    {
+                        "broker_order_id": fill.order_id,
+                        "ticker": fill.ticker,
+                        "side": side_upper,
+                        "quantity": fill.quantity,
+                        "price": fill.price,
+                        "filled_at": filled_at,
+                        "source": source,
+                        "raw_json": raw_json,
+                    },
+                ),
+            )
         if should_include_in_fill_audit(source):
             self._run_audit(
                 "save_fill audit append",
@@ -925,6 +928,8 @@ class Recorder:
 
         fill_fieldnames = ["broker_order_id", "ticker", "side", "quantity", "price", "filled_at", "source", "raw_json"]
         for row in fill_rows:
+            if "reconciliation" in str(row.get("source") or "").lower():
+                continue
             self._run_csv(
                 "rebuild_session_fill_exports write fills csv",
                 lambda row=row: self._append_csv_row(

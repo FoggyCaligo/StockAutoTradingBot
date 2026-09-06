@@ -119,6 +119,16 @@ expected_return <= -0.1%
 .\.venv\Scripts\python.exe .\Daily_bot\session_slot_runner.py --real
 ```
 
+## 런타임 로그 파일 정책
+
+실거래 실행 시 `Daily_bot/logs`에 지속적으로 남기는 기록은 다음 3종으로 제한한다.
+
+- `market_traces_YYYYMMDD.csv`: 백테스트/판정 재현용 시장 trace
+- `fills_YYYYMMDD.csv`: 브로커에서 실제 체결이 확인된 BUY/SELL만 기록. reconciliation 추정 fill은 CSV에서 제외
+- `run_real_YYYYMMDD_HHMMSS.log`: 해당 실거래 세션의 콘솔 실행 로그
+
+`account_traces_*`, `daily_reference_prices_*`, `orders_*`, `daily_rev.csv`, `trade_fills_audit*.csv`, `kt00001_cash_debug_*` 같은 별도 런타임 파일은 더 이상 생성하지 않는다. 필요한 내부 상태는 SQLite에 유지하므로 거래 로직 자체는 그대로 동작한다.
+
 ## 현재 전략과 맞춘 백테스트
 
 **표준 백테스트 진입점은 하나만 사용한다.**

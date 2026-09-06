@@ -277,7 +277,6 @@ class KiwoomClient:
         }
         raw = self._request("POST", self.DOMESTIC_ACCOUNT_PATH, api_id=self.TR_KT00001_CASH, json=payload)
         orderable_cash = self._extract_orderable_cash(raw)
-        self._log_orderable_cash_debug(raw, orderable_cash)
         return orderable_cash
 
     def get_open_orders(self) -> list[dict[str, Any]]:
