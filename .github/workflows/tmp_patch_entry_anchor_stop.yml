@@ -1,0 +1,81 @@
+name: Temporary patch entry anchor stop
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp_patch_entry_anchor_stop.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch replay engine
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('Daily_bot/backtest/replay_dynamic_expect_debounce.py')
+          s=p.read_text(encoding='utf-8')
+          def rep(old,new):
+              global s
+              if old not in s:
+                  raise SystemExit('missing patch target:\n'+old[:300])
+              s=s.replace(old,new,1)
+
+          rep(
+          '    dynamic_expect_stop_threshold_percent: float = 0.0,\n    dynamic_expect_stop_consecutive: int = 3,\n',
+          '    dynamic_expect_stop_threshold_percent: float = 0.0,\n    dynamic_expect_stop_consecutive: int = 3,\n    entry_anchor_stop_threshold_percent: float | None = None,\n    entry_anchor_stop_consecutive: int = 3,\n')
+
+          rep(
+          '    consecutive_required = max(1, int(dynamic_expect_stop_consecutive or 1))\n',
+          '    consecutive_required = max(1, int(dynamic_expect_stop_consecutive or 1))\n    entry_anchor_consecutive_required = max(1, int(entry_anchor_stop_consecutive or 1))\n')
+
+          rep(
+          '        dynamic_stop_counts: dict[str, int] = {}\n        blocked_reentry_tickers: set[str] = set()\n',
+          '        dynamic_stop_counts: dict[str, int] = {}\n        entry_anchor_stop_counts: dict[str, int] = {}\n        blocked_reentry_tickers: set[str] = set()\n')
+
+          # Every position close already pops the dynamic counter; mirror that for the new counter.
+          s=s.replace(
+          '                    dynamic_stop_counts.pop(ticker, None)\n                    exited_tickers_at_time.add(ticker)\n',
+          '                    dynamic_stop_counts.pop(ticker, None)\n                    entry_anchor_stop_counts.pop(ticker, None)\n                    exited_tickers_at_time.add(ticker)\n')
+
+          marker='''                if dynamic_stop_counts.get(ticker, 0) >= consecutive_required:\n                    trades.append(\n                        base.BacktestTrade(\n                            session_date=session_date,\n                            ticker=ticker,\n                            entry_time=position.entry.created_at,\n                            exit_time=current_row.created_at,\n                            quantity=position.quantity,\n                            entry_price=position.entry_price,\n                            exit_price=current_price,\n                            buy_amount_krw=position.invested_amount,\n                            sell_amount_krw=position.quantity * current_price,\n                            exit_reason="dynamic_expect_stop",\n                            pnl_percent=base._realized_pnl_percent(position.entry_price, current_price),\n                        )\n                    )\n                    available_cash += position.quantity * current_price\n                    if block_stop_loss_reentry_same_day:\n                        blocked_reentry_tickers.add(ticker)\n                    del open_positions[ticker]\n                    dynamic_stop_counts.pop(ticker, None)\n                    entry_anchor_stop_counts.pop(ticker, None)\n                    exited_tickers_at_time.add(ticker)\n                    continue\n'''
+          if marker not in s:
+              raise SystemExit('dynamic stop block not found after counter patch')
+          addition=marker+'''\n                refreshed_expected_return_vs_entry = (\n                    (refreshed_expected_sell_price - position.entry_price) / position.entry_price * 100\n                    if refreshed_expected_sell_price > 0 and position.entry_price > 0\n                    else None\n                )\n                if (\n                    entry_anchor_stop_threshold_percent is not None\n                    and refreshed_expected_return_vs_entry is not None\n                    and refreshed_expected_return_vs_entry <= entry_anchor_stop_threshold_percent\n                ):\n                    entry_anchor_stop_counts[ticker] = entry_anchor_stop_counts.get(ticker, 0) + 1\n                else:\n                    entry_anchor_stop_counts[ticker] = 0\n\n                if entry_anchor_stop_counts.get(ticker, 0) >= entry_anchor_consecutive_required:\n                    trades.append(\n                        base.BacktestTrade(\n                            session_date=session_date,\n                            ticker=ticker,\n                            entry_time=position.entry.created_at,\n                            exit_time=current_row.created_at,\n                            quantity=position.quantity,\n                            entry_price=position.entry_price,\n                            exit_price=current_price,\n                            buy_amount_krw=position.invested_amount,\n                            sell_amount_krw=position.quantity * current_price,\n                            exit_reason="entry_anchor_expect_stop",\n                            pnl_percent=base._realized_pnl_percent(position.entry_price, current_price),\n                        )\n                    )\n                    available_cash += position.quantity * current_price\n                    if block_stop_loss_reentry_same_day:\n                        blocked_reentry_tickers.add(ticker)\n                    del open_positions[ticker]\n                    dynamic_stop_counts.pop(ticker, None)\n                    entry_anchor_stop_counts.pop(ticker, None)\n                    exited_tickers_at_time.add(ticker)\n                    continue\n'''
+          s=s.replace(marker, addition, 1)
+
+          rep(
+          '                dynamic_stop_counts[candidate.ticker] = 0\n                available_cash -= estimated_cost\n',
+          '                dynamic_stop_counts[candidate.ticker] = 0\n                entry_anchor_stop_counts[candidate.ticker] = 0\n                available_cash -= estimated_cost\n')
+
+          rep(
+          '    custom_parser.add_argument("--dynamic-expect-stop-consecutive", type=int, default=3)\n',
+          '    custom_parser.add_argument("--dynamic-expect-stop-consecutive", type=int, default=3)\n    custom_parser.add_argument("--entry-anchor-stop-threshold", type=float, default=None)\n    custom_parser.add_argument("--entry-anchor-stop-consecutive", type=int, default=3)\n')
+
+          rep(
+          '        dynamic_expect_stop_consecutive=custom_args.dynamic_expect_stop_consecutive,\n',
+          '        dynamic_expect_stop_consecutive=custom_args.dynamic_expect_stop_consecutive,\n        entry_anchor_stop_threshold_percent=custom_args.entry_anchor_stop_threshold,\n        entry_anchor_stop_consecutive=custom_args.entry_anchor_stop_consecutive,\n')
+
+          rep(
+          '    print(f"wrote {report_paths[\'trades\']}")\n',
+          '    entry_anchor_stop_count = sum(trade.exit_reason == "entry_anchor_expect_stop" for trade in result)\n    print(\n        "entry_anchor_expect_stop="\n        f"threshold={custom_args.entry_anchor_stop_threshold} "\n        f"consecutive={max(1, custom_args.entry_anchor_stop_consecutive)} "\n        f"exits={entry_anchor_stop_count}"\n    )\n    print(f"wrote {report_paths[\'trades\']}")\n')
+          p.write_text(s, encoding='utf-8')
+
+          p=Path('Daily_bot/backtest/replay_dynamic_expect_debounce_reserve_stopped_slots.py')
+          s=p.read_text(encoding='utf-8')
+          old='''        if trade.exit_reason == "dynamic_expect_stop":\n            state["dynamic_stop_count"] += 1\n'''
+          new='''        if trade.exit_reason in {"dynamic_expect_stop", "entry_anchor_expect_stop"}:\n            state["dynamic_stop_count"] += 1\n'''
+          if old not in s:
+              raise SystemExit('reserve stop tracking patch target missing')
+          p.write_text(s.replace(old,new,1), encoding='utf-8')
+          PY
+          python -m py_compile Daily_bot/backtest/replay_dynamic_expect_debounce.py Daily_bot/backtest/replay_dynamic_expect_debounce_reserve_stopped_slots.py
+          git config user.name FoggyCaligo
+          git config user.email 136309172+FoggyCaligo@users.noreply.github.com
+          git add Daily_bot/backtest/replay_dynamic_expect_debounce.py Daily_bot/backtest/replay_dynamic_expect_debounce_reserve_stopped_slots.py
+          git commit -m "Add optional entry-anchored expected-return stop to replay"
+          git push origin HEAD:main
