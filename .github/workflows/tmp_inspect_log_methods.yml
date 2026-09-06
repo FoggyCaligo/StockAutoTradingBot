@@ -1,0 +1,32 @@
+name: Temporary inspect log methods
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp_inspect_log_methods.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect recorder methods and log files
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          p=Path('Daily_bot/storage/db.py')
+          s=p.read_text(encoding='utf-8')
+          tree=ast.parse(s)
+          for node in tree.body:
+              if isinstance(node, ast.ClassDef) and node.name=='Recorder':
+                  for fn in node.body:
+                      if isinstance(fn, ast.FunctionDef) and any(k in fn.name for k in ['fill','account','reference','market','revenue','audit']):
+                          lines=s.splitlines()
+                          print(f'### {fn.name} {fn.lineno}-{fn.end_lineno}')
+                          print('\n'.join(lines[fn.lineno-1:fn.end_lineno]))
+          print('### LOG FILES')
+          for x in sorted(Path('Daily_bot/logs').iterdir()):
+              if x.is_file(): print(x.name)
+          PY
