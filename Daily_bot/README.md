@@ -48,6 +48,7 @@ KOSPI와 KOSDAQ 전체에서 유동성이 충분한 종목을 대상으로 20호
 - 현재가에 가까운 호가잔량은 크게 반영한다.
 - 멀어질수록 선형으로 가중치를 낮춘다.
 - 매수/매도 양쪽 모두 `1.0 -> 0.0` 대칭 감쇠를 사용한다.
+- 가장 먼 호가 레벨은 가격 레벨 자체는 남지만 잔량 가중치가 `0`이므로 예상가 계산에 실질적으로 기여하지 않는다.
 - 감쇠된 호가잔량으로 균형가격 `expect_price`를 다시 계산한다.
 - 실제 목표 매도가는 예상가에서 `sell_tick_offset = 1`틱을 뺀 값이다.
 
@@ -93,6 +94,8 @@ expected_return <= -0.1%
 - 손절이 발생한 슬롯은 **그 거래일 동안만 폐쇄**된다.
 - 다음 거래일에는 손절 슬롯 폐쇄 기록을 버리고 새 시작자본으로 슬롯 수를 다시 계산한다.
 
+백테스트에는 실험용 `entry-anchor expected stop` 옵션도 있으나 **기본값은 비활성화(None)** 이며 실거래 전략에는 포함하지 않는다. 이 옵션은 재예측 매도가를 최초 매수가와 비교해 일정 기준 이하가 연속 발생할 때 청산하는 실험용 기능이다.
+
 ## 목표가와 장마감
 
 정상 진입 후에는 즉시 목표 지정가 매도를 건다.
@@ -118,18 +121,85 @@ expected_return <= -0.1%
 
 ## 현재 전략과 맞춘 백테스트
 
-백테스트는 `market_traces_*.csv`의 당시 호가를 다시 읽어 같은 기대수익 계산과 슬롯 정책을 최대한 재구성한다.
+**표준 백테스트 진입점은 하나만 사용한다.**
 
-현재 전략의 핵심 비교용 러너:
+```text
+Daily_bot/backtest/replay_refill_threshold.py
+```
+
+이 러너는 아래 정책을 순서대로 포함한다.
+
+1. 기본 market trace replay
+2. dynamic expected-return stop
+3. 손절 슬롯 당일 폐쇄 + 같은 종목 당일 재진입 금지
+4. 익절 반환 슬롯만 `0.90%` 이상의 더 엄격한 재진입 기준 적용
+
+현재 설정을 모두 명시한 표준 실행 예시는 다음과 같다. 아래 값들은 **현재 기본값/실거래 대응값을 일부러 전부 적어 둔 것**이므로, 실험할 때는 바꾸려는 옵션만 수정하면 된다.
 
 ```bash
 python -m Daily_bot.backtest.replay_refill_threshold \
+  --config Daily_bot/config/settings.yaml \
+  --db bot.sqlite3 \
+  --logs-dir Daily_bot/logs \
+  --min-expected-return 0.71 \
   --refill-min-expected-return 0.90 \
+  --fallback-min-expected-returns "" \
+  --max-spread 0.0 \
+  --min-prev-day-change 0.0 \
+  --max-prev-day-change 0.0 \
+  --max-intraday-jump-from-prev-scan 0.0 \
+  --top-n 0 \
+  --top-ratio 1.0 \
+  --take-profit 0.4 \
+  --stop-loss 0.0 \
+  --stop-loss-tick-count 0 \
+  --stop-loss-tick-multiplier 0.0 \
+  --sell-tick-offset 1 \
+  --start-buy-time 09:30 \
   --stop-buy-time 11:30 \
-  --logs-dir Daily_bot/logs
+  --force-sell-time 15:15 \
+  --max-hold-seconds-before-exit 0 \
+  --spread-expected-return-multiplier 0.0 \
+  --max-orderbook-ask-depth-ratio 0.0 \
+  --missing-ask-depth-policy ignore \
+  --trend-filter-disabled \
+  --starting-capital-krw 1000000 \
+  --min-slot-count 3 \
+  --max-slot-count 10 \
+  --slot-budget-unit-krw 5000000 \
+  --max-budget-per-stock-krw 0 \
+  --max-position-count 10 \
+  --max-buy-count 3 \
+  --target-budget-ratio-per-stock 0.50 \
+  --ignore-selected-signals \
+  --ignore-actual-fill-exits \
+  --allow-refill-empty-slots \
+  --refill-min-empty-fraction 0.0 \
+  --block-stop-loss-reentry-same-day \
+  --orderbook-levels-per-side 10 \
+  --orderbook-bid-linear-decay-min-weight 0.0 \
+  --orderbook-ask-linear-decay-min-weight 0.0 \
+  --dynamic-expect-stop-threshold -0.1 \
+  --dynamic-expect-stop-consecutive 3 \
+  --entry-anchor-stop-consecutive 3 \
+  --out Daily_bot/backtest/results/backtest_replay_live_slot_policy.csv
 ```
 
-실거래 슬롯 폐쇄 정책의 기본값을 포함한 러너는 `replay_dynamic_expect_debounce_reserve_stopped_slots.py`다.
+### 옵션 기본값과 주의사항
+
+- `--entry-anchor-stop-threshold`: 기본값 `None`(비활성). 이 옵션은 기본 실행 명령에 넣지 않는다. 실험할 때만 예: `--entry-anchor-stop-threshold -0.5`처럼 추가한다.
+- `--entry-anchor-stop-consecutive`: 기본 `3`. threshold가 비활성인 동안에는 결과에 영향이 없다.
+- `--fallback-min-expected-return VALUE`: 여러 번 지정할 수 있는 단일 fallback 옵션이다. 현재 기본 fallback 목록은 비어 있다.
+- `--fallback-min-expected-returns CSV`: 쉼표 구분 fallback 목록. 현재 기본값은 빈 문자열이다.
+- `--use-selected-signals` / `--ignore-selected-signals`: 기본은 `ignore`.
+- `--use-actual-fill-exits` / `--ignore-actual-fill-exits`: 기본은 `ignore`.
+- `--allow-refill-empty-slots` / `--disallow-refill-empty-slots`: 현재 기본은 `allow`.
+- `--block-stop-loss-reentry-same-day` / `--allow-stop-loss-reentry-same-day`: live-equivalent 러너는 기본적으로 `block`을 주입한다.
+- `--trend-filter-enabled` / `--trend-filter-disabled`: 현재 설정 기본은 `disabled`.
+- `--missing-ask-depth-policy`: `ignore` 또는 `skip`, 현재 기본 `ignore`.
+- `--out`: 결과 trade CSV. 같은 이름에서 `_daily_rev.csv`, `_trade_fills_audit_daily.csv`도 파생 생성된다.
+
+`take-profit=0.4`는 예상가가 유효하지 않을 때 사용하는 fallback 목표수익률이다. 정상적인 현재 전략에서는 호가 기반 `expect_price`에서 목표가를 계산하므로 일반적인 고정 TP 0.4% 전략이라는 뜻이 아니다.
 
 백테스트는 다음을 맞춘다.
 
@@ -141,8 +211,38 @@ python -m Daily_bot.backtest.replay_refill_threshold \
 - 손절 종목 당일 재진입 금지
 - 자본 기반 슬롯 계산
 - 11:30 신규매수 종료
+- 예상가 -1틱 목표매도
 
 다만 60초 사이 순간 체결, 브로커 내부 체결 순서, 부분체결과 취소/재주문의 모든 세부 흐름까지 완전히 복제하지는 못한다.
+
+### 비용 반영
+
+일별 수익 보고서(`*_daily_rev.csv`)의 `total_profit_krw`, `total_return_percent`, `total_return_percent_on_starting_capital`에는 비용이 반영된다.
+
+현재 기본 비용은:
+
+- 매수 수수료: `0.015%`
+- 매도 수수료: `0.015%`
+- 매도세: `0.18%`
+
+즉 대략적인 왕복 비용은 매매금액 기준 약 `0.21%`다.
+
+반면 trade CSV의 `pnl_percent`와 콘솔의 `avg_pnl`, `summed_pnl`, 단순 승률은 **가격 차이만 계산한 gross 지표**다. 실제 전략 평가에서는 `*_daily_rev.csv`의 비용후 성과와 별도로 계산한 net trade 통계를 함께 본다.
+
+현재 main 로그 표본에서 현재 전략의 비용후 기준 결과는 다음과 같다.
+
+- 거래 수: `44`
+- gross 승/패: `31 / 13`, gross 승률 `70.45%`
+- 비용후 승/패: `28 / 16`, 비용후 승률 `63.64%`
+- 비용후 평균 승리: `+0.7747%`
+- 비용후 평균 실패: `-0.7072%`
+- 비용후 payoff ratio: `1.095 : 1`
+- 비용후 평균 거래수익률: `+0.2358%`
+- 비용후 순이익: `+36,831원`
+- 비용후 일별 복리수익률: `+3.3244%`
+- MDD: `-1.4730%`
+
+표본은 아직 작으므로 위 수치는 현재 전략 검증용 기준선이지 장기 기대수익률의 확정치가 아니다.
 
 ## 관련 문서
 
