@@ -1,0 +1,53 @@
+name: Temporary current-main backtest diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp_current_main_backtest.yml'
+permissions:
+  contents: read
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          pip install -r requirements.txt
+          pip uninstall -y finance-datareader || true
+      - name: Run current-main live-equivalent replay
+        run: |
+          python Daily_bot/backtest/replay_refill_threshold.py \
+            --logs-dir Daily_bot/logs \
+            --refill-min-expected-return 0.90 \
+            --out Daily_bot/backtest/results/current_main.csv
+      - name: Diagnose results
+        run: |
+          python - <<'PY'
+          import csv, math
+          from collections import Counter
+          from pathlib import Path
+          root=Path('Daily_bot/backtest/results')
+          tp=root/'current_main.csv'; dp=root/'current_main_daily_rev.csv'
+          trades=list(csv.DictReader(tp.open(encoding='utf-8-sig',newline='')))
+          daily=list(csv.DictReader(dp.open(encoding='utf-8-sig',newline='')))
+          wins=sum(float(r['pnl_percent'])>0 for r in trades)
+          net=sum(int(float(r['total_profit_krw'])) for r in daily)
+          eq=peak=1.0; mdd=0.0
+          for r in daily:
+              ret=float(r['total_return_percent_on_starting_capital']); eq*=1+ret/100; peak=max(peak,eq); mdd=min(mdd,eq/peak-1)
+          print('SUMMARY', {'trades':len(trades),'wins':wins,'losses':len(trades)-wins,'win_rate':round(wins/len(trades)*100,4) if trades else 0,'net_profit_krw':net,'compounded_return_percent':round((eq-1)*100,4),'mdd_percent':round(mdd*100,4),'exit_reasons':dict(Counter(r['exit_reason'] for r in trades))})
+          print('DAILY')
+          for r in sorted(daily,key=lambda x: float(x['total_profit_krw'])):
+              print(r['session_date'], r['total_profit_krw'], r['total_return_percent_on_starting_capital'], r['total_buy_amount_krw'], r['traded_tickers'])
+          print('WORST_TRADES')
+          for r in sorted(trades,key=lambda x: float(x['pnl_percent']))[:15]:
+              print(r['session_date'], r['ticker'], r['entry_time'], r['exit_time'], r['entry_price'], r['exit_price'], r['pnl_percent'], r['exit_reason'], r['buy_amount_krw'], r['sell_amount_krw'])
+          print('BEST_TRADES')
+          for r in sorted(trades,key=lambda x: float(x['pnl_percent']), reverse=True)[:10]:
+              print(r['session_date'], r['ticker'], r['pnl_percent'], r['exit_reason'])
+          PY
