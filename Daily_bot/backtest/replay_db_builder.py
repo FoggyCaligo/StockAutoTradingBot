@@ -268,15 +268,24 @@ def build_replay_db_from_logs(logs_dir: Path, out_db_path: Path) -> Path:
 def resolve_replay_db_path(db_path: Path, logs_dir: Path | None = None) -> Path:
     requested_db_path = Path(db_path)
 
+    # An explicitly supplied logs directory means the caller wants the replay to
+    # reflect the current CSV set. Rebuild from every market_traces_*.csv instead
+    # of trusting a potentially stale cache from an earlier run.
+    if logs_dir is not None:
+        resolved_logs_dir = Path(logs_dir)
+        if requested_db_path in LEGACY_REPLAY_DB_PATHS:
+            return build_replay_db_from_logs(resolved_logs_dir, CANONICAL_REPLAY_DB_PATH)
+        cache_db_path = resolved_logs_dir.parent / "backtest" / "cache" / f"{requested_db_path.stem}_replay_from_logs.sqlite3"
+        return build_replay_db_from_logs(resolved_logs_dir, cache_db_path)
+
     if requested_db_path in LEGACY_REPLAY_DB_PATHS:
         if has_replay_source_data(CANONICAL_REPLAY_DB_PATH):
             return CANONICAL_REPLAY_DB_PATH
-        resolved_logs_dir = Path(logs_dir) if logs_dir is not None else DEFAULT_REPLAY_LOGS_DIR
-        return build_replay_db_from_logs(resolved_logs_dir, CANONICAL_REPLAY_DB_PATH)
+        return build_replay_db_from_logs(DEFAULT_REPLAY_LOGS_DIR, CANONICAL_REPLAY_DB_PATH)
 
     if has_replay_source_data(requested_db_path):
         return requested_db_path
 
-    resolved_logs_dir = Path(logs_dir) if logs_dir is not None else requested_db_path.parent / "logs"
+    resolved_logs_dir = requested_db_path.parent / "logs"
     cache_db_path = resolved_logs_dir.parent / "backtest" / "cache" / f"{requested_db_path.stem}_replay_from_logs.sqlite3"
     return build_replay_db_from_logs(resolved_logs_dir, cache_db_path)

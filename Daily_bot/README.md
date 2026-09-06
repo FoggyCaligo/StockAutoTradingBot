@@ -136,6 +136,8 @@ Daily_bot/backtest/replay_refill_threshold.py
 
 현재 설정을 모두 명시한 표준 실행 예시는 다음과 같다. 아래 값들은 **현재 기본값/실거래 대응값을 일부러 전부 적어 둔 것**이므로, 실험할 때는 바꾸려는 옵션만 수정하면 된다.
 
+`--logs-dir Daily_bot/logs`를 명시하면 백테스트 시작 시 기존 replay cache를 재사용하지 않고, 그 시점에 존재하는 `market_traces_*.csv` 전체를 다시 읽어 replay DB를 재생성한다. 따라서 이후 거래일의 market trace 파일이 추가되어도 아래 표준 커맨드를 그대로 다시 실행하면 새 로그까지 자동 포함된다. 별도로 cache DB를 삭제할 필요는 없다.
+
 ```bash
 python -m Daily_bot.backtest.replay_refill_threshold \
   --config Daily_bot/config/settings.yaml \
