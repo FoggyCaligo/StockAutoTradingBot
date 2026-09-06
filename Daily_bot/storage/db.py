@@ -752,6 +752,30 @@ class Recorder:
     def replace_fill(self, fill: Fill, side: str, source: str = "broker") -> None:
         self._persist_fill(fill, side=side, source=source, replace_existing=True)
 
+    @staticmethod
+    def _resolve_fill_name(fill: Fill) -> str:
+        raw = fill.raw if isinstance(fill.raw, dict) else {}
+        candidates = []
+        latest = raw.get("latest_row") if isinstance(raw, dict) else None
+        if isinstance(latest, dict):
+            candidates.append(latest)
+        rows = raw.get("rows") if isinstance(raw, dict) else None
+        if isinstance(rows, list):
+            candidates.extend(row for row in rows if isinstance(row, dict))
+        nested = raw.get("raw") if isinstance(raw, dict) else None
+        if isinstance(nested, dict):
+            nested_latest = nested.get("latest_row")
+            if isinstance(nested_latest, dict):
+                candidates.append(nested_latest)
+            nested_rows = nested.get("rows")
+            if isinstance(nested_rows, list):
+                candidates.extend(row for row in nested_rows if isinstance(row, dict))
+        for row in candidates:
+            name = str(row.get("stk_nm") or row.get("name") or "").strip()
+            if name:
+                return name
+        return ""
+
     def _persist_fill(
         self,
         fill: Fill,
@@ -802,10 +826,11 @@ class Recorder:
                 "save_fill",
                 lambda: self._append_csv_row(
                     self._daily_csv_path("fills"),
-                    ["broker_order_id", "ticker", "side", "quantity", "price", "filled_at", "source", "raw_json"],
+                    ["broker_order_id", "ticker", "name", "side", "quantity", "price", "filled_at", "source", "raw_json"],
                     {
                         "broker_order_id": fill.order_id,
                         "ticker": fill.ticker,
+                        "name": self._resolve_fill_name(fill),
                         "side": side_upper,
                         "quantity": fill.quantity,
                         "price": fill.price,
@@ -926,7 +951,7 @@ class Recorder:
         if fills_csv_path.exists():
             self._run_csv("rebuild_session_fill_exports unlink fills csv", lambda: fills_csv_path.unlink())
 
-        fill_fieldnames = ["broker_order_id", "ticker", "side", "quantity", "price", "filled_at", "source", "raw_json"]
+        fill_fieldnames = ["broker_order_id", "ticker", "name", "side", "quantity", "price", "filled_at", "source", "raw_json"]
         for row in fill_rows:
             if "reconciliation" in str(row.get("source") or "").lower():
                 continue
@@ -938,6 +963,7 @@ class Recorder:
                     {
                         "broker_order_id": row["broker_order_id"],
                         "ticker": row["ticker"],
+                        "name": self._resolve_fill_name(Fill(order_id=str(row["broker_order_id"] or ""), ticker=str(row["ticker"] or ""), quantity=int(row["quantity"] or 0), price=int(row["price"] or 0), filled_at=datetime.fromisoformat(str(row["filled_at"])), raw=json.loads(row["raw_json"]) if row["raw_json"] else None)),
                         "side": row["side"],
                         "quantity": row["quantity"],
                         "price": row["price"],
