@@ -1,0 +1,40 @@
+name: Temporary trace 092200
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp_trace_092200.yml'
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          pip install -r requirements.txt
+          pip uninstall -y finance-datareader || true
+      - name: Trace 092200 dynamic-stop inputs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from Daily_bot.backtest.replay_db_builder import resolve_replay_db_path
+          from Daily_bot.backtest import replay_market_traces as base
+          db=resolve_replay_db_path(Path('bot.sqlite3'), Path('Daily_bot/logs'))
+          rows=base.load_traces(db)
+          rows=base.apply_orderbook_level_limit(rows,10,1,0.0,0.0)
+          streak=0
+          for r in rows:
+              if r.session_date!='2026-06-15' or str(r.ticker)!='092200':
+                  continue
+              cp=r.current_price or r.price
+              target=base.calc_target_sell_price(r.expect_price,1) if r.expect_price>0 else 0
+              er=((target-cp)/cp*100) if target>0 and cp>0 else None
+              if r.created_at>'2026-06-15 09:41:59':
+                  streak = streak+1 if er is not None and er<=-0.1 else 0
+              print('TRACE',r.created_at,r.phase,'cp=',cp,'expect=',r.expect_price,'target=',target,'er=',None if er is None else round(er,4),'streak=',streak)
+          PY
