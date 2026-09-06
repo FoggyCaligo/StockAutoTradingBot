@@ -1,0 +1,37 @@
+﻿Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 1048013
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=0.25538191481579753
+Universe warm-up started
+Universe warm-up completed. prev_close_count=402 session_capital_basis=1048013 session_slot_count=3 slot_budget_per_stock=349337 position_limit=3
+Startup carryover liquidation completed. Proceeding with normal session flow.
+Planned 2 affordable targets out of desired 3 due to cash constraints.
+FILL BUY 376900 qty=14 price=24900 filled_at=2026-09-04T09:31:27 source=wait_buy_filled order_id=0110666
+Submitting limit sell for 376900: target_price=25200 stop_loss_price=0 decision_fill_price=24900 raw_fill={'rows': [{'ord_no': '0110666', 'stk_nm': '로킷헬스케어', 'io_tp_nm': '+매수', 'ord_pric': '24900', 'ord_qty': '14', 'cntr_pric': '24900', 'cntr_qty': '14', 'oso_qty': '0', 'tdy_trde_cmsn': '50', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093127', 'stk_cd': '376900', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0110666', 'stk_nm': '로킷헬스케어', 'io_tp_nm': '+매수', 'ord_pric': '24900', 'ord_qty': '14', 'cntr_pric': '24900', 'cntr_qty': '14', 'oso_qty': '0', 'tdy_trde_cmsn': '50', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093127', 'stk_cd': '376900', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL BUY 171090 qty=5 price=64500 filled_at=2026-09-04T09:31:39 source=wait_buy_filled order_id=0110916
+Submitting limit sell for 171090: target_price=65000 stop_loss_price=0 decision_fill_price=64500 raw_fill={'rows': [{'ord_no': '0110916', 'stk_nm': '선익시스템', 'io_tp_nm': '+매수', 'ord_pric': '64500', 'ord_qty': '5', 'cntr_pric': '64500', 'cntr_qty': '5', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093139', 'stk_cd': '171090', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0110916', 'stk_nm': '선익시스템', 'io_tp_nm': '+매수', 'ord_pric': '64500', 'ord_qty': '5', 'cntr_pric': '64500', 'cntr_qty': '5', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093139', 'stk_cd': '171090', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+Dynamic expected-return stop sample: 171090 current=64000 expect_price=63500 expected_return=-0.9375% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 171090 current=63900 expect_price=63400 expected_return=-0.9390% threshold=-0.1000% consecutive=2/3
+FILL SELL 171090 qty=5 price=65000 filled_at=2026-09-04T09:31:39 source=poll order_id=0110929
+Dynamic expected-return stop sample: 376900 current=24950 expect_price=24650 expected_return=-1.4028% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 376900 current=24950 expect_price=24800 expected_return=-0.8016% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 376900 current=24900 expect_price=24850 expected_return=-0.4016% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 376900 current=25050 expect_price=25050 expected_return=-0.1996% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 376900 current=25000 expect_price=24750 expected_return=-1.2000% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 376900 current=25000 expect_price=24750 expected_return=-1.2000% threshold=-0.1000% consecutive=3/3
+Dynamic expected-return stop triggered: 376900 expected_return=-1.2000% threshold=-0.1000% consecutive=3 limit_price=24900
+FILL SELL 376900 qty=9 price=24900 filled_at=2026-09-04T11:19:08 source=dynamic_expect_stop order_id=0212996
+Dynamic expected-return stop disabled new buys for the rest of the session.
+Blocking same-day re-entry after stop-loss for 376900. blocked_tickers=['376900']
+FILL SELL 376900 qty=5 price=24900 filled_at=2026-09-04T11:19:08 source=poll order_id=0212996
+FILL SELL 376900 qty=14 price=25200 filled_at=2026-09-04T11:19:31.095610 source=sell_reconciliation order_id=0110678
+Recorder DB sink disabled after save_market_trace failed: database or disk is full
+Recorder CSV sink disabled after save_market_trace failed: [Errno 28] No space left on device
+Force sell completed. Waiting for end-of-day reconciliation.
+FILL BUY 376900 qty=14 price=24900 filled_at=2026-09-04T09:31:27 source=eod_reconciliation order_id=0110666
+FILL BUY 171090 qty=5 price=64500 filled_at=2026-09-04T09:31:39 source=eod_reconciliation order_id=0110916
+FILL SELL 171090 qty=5 price=65000 filled_at=2026-09-04T09:31:39 source=eod_reconciliation order_id=0110929
+FILL SELL 376900 qty=14 price=24900 filled_at=2026-09-04T11:19:08 source=eod_reconciliation order_id=0212996
+End-of-day reconciliation completed: broker_fills=4 updated=4
