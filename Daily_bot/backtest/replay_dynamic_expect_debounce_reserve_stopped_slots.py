@@ -114,7 +114,7 @@ def main() -> None:
 
     def tracked_backtest_trade(*args, **kwargs):
         trade = original_backtest_trade(*args, **kwargs)
-        if trade.exit_reason == "dynamic_expect_stop":
+        if trade.exit_reason in {"dynamic_expect_stop", "entry_anchor_expect_stop"}:
             state["dynamic_stop_count"] += 1
         return trade
 

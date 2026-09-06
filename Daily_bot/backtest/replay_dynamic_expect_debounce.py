@@ -15,6 +15,8 @@ def run_backtest_dynamic_expect_debounce(
     stop_loss_percent: float,
     dynamic_expect_stop_threshold_percent: float = 0.0,
     dynamic_expect_stop_consecutive: int = 3,
+    entry_anchor_stop_threshold_percent: float | None = None,
+    entry_anchor_stop_consecutive: int = 3,
     min_prev_day_change_percent: float = 0.0,
     max_prev_day_change_percent: float = 0.0,
     stop_loss_tick_count: int = 0,
@@ -65,6 +67,7 @@ def run_backtest_dynamic_expect_debounce(
     """
 
     consecutive_required = max(1, int(dynamic_expect_stop_consecutive or 1))
+    entry_anchor_consecutive_required = max(1, int(entry_anchor_stop_consecutive or 1))
     traces = base.load_traces(db_path)
     traces = base.apply_orderbook_level_limit(
         traces,
@@ -114,6 +117,7 @@ def run_backtest_dynamic_expect_debounce(
 
         open_positions: dict[str, base.ReplayPosition] = {}
         dynamic_stop_counts: dict[str, int] = {}
+        entry_anchor_stop_counts: dict[str, int] = {}
         blocked_reentry_tickers: set[str] = set()
         previous_scan_prices: dict[str, int] = {}
         trend_allowed_tickers = None
@@ -148,6 +152,7 @@ def run_backtest_dynamic_expect_debounce(
                     available_cash += position.quantity * exit_price
                     del open_positions[ticker]
                     dynamic_stop_counts.pop(ticker, None)
+                    entry_anchor_stop_counts.pop(ticker, None)
                     exited_tickers_at_time.add(ticker)
                     continue
                 if actual_exit_override is not None:
@@ -179,6 +184,7 @@ def run_backtest_dynamic_expect_debounce(
                     available_cash += position.quantity * current_price
                     del open_positions[ticker]
                     dynamic_stop_counts.pop(ticker, None)
+                    entry_anchor_stop_counts.pop(ticker, None)
                     exited_tickers_at_time.add(ticker)
                     continue
 
@@ -230,6 +236,7 @@ def run_backtest_dynamic_expect_debounce(
                         blocked_reentry_tickers.add(ticker)
                     del open_positions[ticker]
                     dynamic_stop_counts.pop(ticker, None)
+                    entry_anchor_stop_counts.pop(ticker, None)
                     exited_tickers_at_time.add(ticker)
                     continue
 
@@ -253,6 +260,7 @@ def run_backtest_dynamic_expect_debounce(
                     available_cash += position.quantity * exit_price
                     del open_positions[ticker]
                     dynamic_stop_counts.pop(ticker, None)
+                    entry_anchor_stop_counts.pop(ticker, None)
                     exited_tickers_at_time.add(ticker)
                     continue
 
@@ -292,6 +300,46 @@ def run_backtest_dynamic_expect_debounce(
                         blocked_reentry_tickers.add(ticker)
                     del open_positions[ticker]
                     dynamic_stop_counts.pop(ticker, None)
+                    entry_anchor_stop_counts.pop(ticker, None)
+                    exited_tickers_at_time.add(ticker)
+                    continue
+
+                refreshed_expected_return_vs_entry = (
+                    (refreshed_expected_sell_price - position.entry_price) / position.entry_price * 100
+                    if refreshed_expected_sell_price > 0 and position.entry_price > 0
+                    else None
+                )
+                if (
+                    entry_anchor_stop_threshold_percent is not None
+                    and refreshed_expected_return_vs_entry is not None
+                    and refreshed_expected_return_vs_entry <= entry_anchor_stop_threshold_percent
+                ):
+                    entry_anchor_stop_counts[ticker] = entry_anchor_stop_counts.get(ticker, 0) + 1
+                else:
+                    entry_anchor_stop_counts[ticker] = 0
+
+                if entry_anchor_stop_counts.get(ticker, 0) >= entry_anchor_consecutive_required:
+                    trades.append(
+                        base.BacktestTrade(
+                            session_date=session_date,
+                            ticker=ticker,
+                            entry_time=position.entry.created_at,
+                            exit_time=current_row.created_at,
+                            quantity=position.quantity,
+                            entry_price=position.entry_price,
+                            exit_price=current_price,
+                            buy_amount_krw=position.invested_amount,
+                            sell_amount_krw=position.quantity * current_price,
+                            exit_reason="entry_anchor_expect_stop",
+                            pnl_percent=base._realized_pnl_percent(position.entry_price, current_price),
+                        )
+                    )
+                    available_cash += position.quantity * current_price
+                    if block_stop_loss_reentry_same_day:
+                        blocked_reentry_tickers.add(ticker)
+                    del open_positions[ticker]
+                    dynamic_stop_counts.pop(ticker, None)
+                    entry_anchor_stop_counts.pop(ticker, None)
                     exited_tickers_at_time.add(ticker)
                     continue
 
@@ -466,6 +514,7 @@ def run_backtest_dynamic_expect_debounce(
                     ),
                 )
                 dynamic_stop_counts[candidate.ticker] = 0
+                entry_anchor_stop_counts[candidate.ticker] = 0
                 available_cash -= estimated_cost
                 setattr(candidate_model, "planned_budget_krw", 0)
 
@@ -495,6 +544,8 @@ def main() -> None:
     custom_parser = argparse.ArgumentParser(add_help=False)
     custom_parser.add_argument("--dynamic-expect-stop-threshold", type=float, default=0.0)
     custom_parser.add_argument("--dynamic-expect-stop-consecutive", type=int, default=3)
+    custom_parser.add_argument("--entry-anchor-stop-threshold", type=float, default=None)
+    custom_parser.add_argument("--entry-anchor-stop-consecutive", type=int, default=3)
     custom_args, remaining = custom_parser.parse_known_args()
 
     original_argv = sys.argv
@@ -551,6 +602,8 @@ def main() -> None:
         stop_loss_percent=args.stop_loss,
         dynamic_expect_stop_threshold_percent=custom_args.dynamic_expect_stop_threshold,
         dynamic_expect_stop_consecutive=custom_args.dynamic_expect_stop_consecutive,
+        entry_anchor_stop_threshold_percent=custom_args.entry_anchor_stop_threshold,
+        entry_anchor_stop_consecutive=custom_args.entry_anchor_stop_consecutive,
         stop_loss_tick_count=args.stop_loss_tick_count,
         stop_loss_tick_multiplier=args.stop_loss_tick_multiplier,
         use_selected_signals=args.use_selected_signals,
@@ -607,6 +660,13 @@ def main() -> None:
         f"threshold={custom_args.dynamic_expect_stop_threshold:.4f}% "
         f"consecutive={max(1, custom_args.dynamic_expect_stop_consecutive)} "
         f"exits={dynamic_stop_count}"
+    )
+    entry_anchor_stop_count = sum(trade.exit_reason == "entry_anchor_expect_stop" for trade in result)
+    print(
+        "entry_anchor_expect_stop="
+        f"threshold={custom_args.entry_anchor_stop_threshold} "
+        f"consecutive={max(1, custom_args.entry_anchor_stop_consecutive)} "
+        f"exits={entry_anchor_stop_count}"
     )
     print(f"wrote {report_paths['trades']}")
     print(f"wrote {report_paths['daily_rev']}")
