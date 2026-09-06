@@ -35,7 +35,7 @@ jobs:
             --out Daily_bot/backtest/results/entry_anchor_variant.csv
 
           python - <<'PY'
-          import csv, math, statistics
+          import csv
           from collections import Counter
           from pathlib import Path
           FEE=0.00015
@@ -62,7 +62,7 @@ jobs:
               nw=[x for x in net if x>0]
               nl=[x for x in net if x<=0]
               drows=load_csv(dp)
-              daily=[float(r['capital_return_percent']) for r in drows]
+              daily=[float(r['total_return_percent_on_starting_capital']) for r in drows]
               equity=1.0; peak=1.0; mdd=0.0
               for x in daily:
                   equity*=1+x/100
@@ -82,7 +82,7 @@ jobs:
                   'net_avg_loss':sum(nl)/len(nl) if nl else 0,
                   'net_payoff':(sum(nw)/len(nw))/abs(sum(nl)/len(nl)) if nw and nl and sum(nl) else 0,
                   'net_avg_trade':sum(net)/len(net) if net else 0,
-                  'net_profit_krw':round(sum(net_amt)),
+                  'net_profit_krw':round(sum(float(r['total_profit_krw']) for r in drows)),
                   'compounded_daily_return':(equity-1)*100,
                   'mdd':mdd,
                   'exit_reasons':dict(Counter(r['exit_reason'] for r in rows)),
