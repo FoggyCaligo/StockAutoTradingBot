@@ -8,8 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-REPLAY_SCRIPT = ROOT / "replay_market_traces.py"
+REPLAY_SCRIPT = ROOT / "replay_refill_threshold.py"
 DEFAULT_OUT_DIR = ROOT / "results" / "sell_tick_offset_ab"
+DEFAULT_REFILL_MIN_EXPECTED_RETURN = 0.90
 
 
 @dataclass
@@ -32,10 +33,14 @@ def _strip_conflicting_args(args: list[str]) -> list[str]:
         if skip_next:
             skip_next = False
             continue
-        if arg in {"--sell-tick-offset", "--out"}:
+        if arg in {"--sell-tick-offset", "--out", "--refill-min-expected-return"}:
             skip_next = True
             continue
-        if arg.startswith("--sell-tick-offset=") or arg.startswith("--out="):
+        if (
+            arg.startswith("--sell-tick-offset=")
+            or arg.startswith("--out=")
+            or arg.startswith("--refill-min-expected-return=")
+        ):
             continue
         cleaned.append(arg)
     return cleaned
@@ -83,12 +88,19 @@ def _parse_summary(offset: int, stdout: str) -> ReplaySummary:
     )
 
 
-def _run_replay(offset: int, passthrough_args: list[str], out_dir: Path) -> ReplaySummary:
+def _run_replay(
+    offset: int,
+    passthrough_args: list[str],
+    out_dir: Path,
+    refill_min_expected_return: float,
+) -> ReplaySummary:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"backtest_sell_tick_offset_{offset}.csv"
     command = [
         sys.executable,
         str(REPLAY_SCRIPT),
+        "--refill-min-expected-return",
+        str(refill_min_expected_return),
         *passthrough_args,
         "--sell-tick-offset",
         str(offset),
@@ -115,7 +127,7 @@ def _fmt_delta(value: float, digits: int = 4) -> str:
 
 
 def _print_comparison(baseline: ReplaySummary, exact: ReplaySummary) -> None:
-    print("\n=== Sell target A/B comparison ===")
+    print("\n=== Sell target A/B comparison (live-equivalent replay) ===")
     print("baseline: sell_tick_offset=1 (predicted price - 1 tick)")
     print("variant : sell_tick_offset=0 (predicted price)")
     print()
@@ -169,7 +181,7 @@ def _print_comparison(baseline: ReplaySummary, exact: ReplaySummary) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Run replay_market_traces.py twice with identical settings and compare "
+            "Run the live-equivalent refill replay twice with identical settings and compare "
             "sell_tick_offset=1 (predicted price - 1 tick) vs 0 (predicted price)."
         ),
         add_help=True,
@@ -180,6 +192,12 @@ def main() -> None:
         help="Directory for the two replay CSV result sets.",
     )
     parser.add_argument(
+        "--refill-min-expected-return",
+        type=float,
+        default=DEFAULT_REFILL_MIN_EXPECTED_RETURN,
+        help="Expected-return threshold for slots returned by take-profit.",
+    )
+    parser.add_argument(
         "--show-raw",
         action="store_true",
         help="Print the full stdout from both replay runs before the comparison table.",
@@ -187,8 +205,18 @@ def main() -> None:
     known, passthrough = parser.parse_known_args()
     passthrough = _strip_conflicting_args(passthrough)
 
-    baseline = _run_replay(1, passthrough, Path(known.ab_out_dir))
-    exact = _run_replay(0, passthrough, Path(known.ab_out_dir))
+    baseline = _run_replay(
+        1,
+        passthrough,
+        Path(known.ab_out_dir),
+        known.refill_min_expected_return,
+    )
+    exact = _run_replay(
+        0,
+        passthrough,
+        Path(known.ab_out_dir),
+        known.refill_min_expected_return,
+    )
 
     if known.show_raw:
         print("=== raw: sell_tick_offset=1 ===")
