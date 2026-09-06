@@ -1,0 +1,44 @@
+name: Temporary win loss stats
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp_win_loss_stats.yml'
+permissions:
+  contents: read
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          pip install -r requirements.txt
+          pip uninstall -y finance-datareader || true
+      - name: Run current baseline and stats
+        run: |
+          python Daily_bot/backtest/replay_refill_threshold.py \
+            --logs-dir Daily_bot/logs \
+            --refill-min-expected-return 0.90 \
+            --sell-tick-offset 1 \
+            --out Daily_bot/backtest/results/tmp_stats.csv
+          python - <<'PY'
+          import csv, statistics
+          from pathlib import Path
+          p=Path('Daily_bot/backtest/results/tmp_stats.csv')
+          rows=list(csv.DictReader(p.open(encoding='utf-8-sig',newline='')))
+          wins=[float(r['pnl_percent']) for r in rows if float(r['pnl_percent'])>0]
+          losses=[float(r['pnl_percent']) for r in rows if float(r['pnl_percent'])<=0]
+          print('WINLOSS', {
+            'wins':len(wins), 'losses':len(losses),
+            'avg_win':sum(wins)/len(wins), 'median_win':statistics.median(wins),
+            'avg_loss':sum(losses)/len(losses), 'median_loss':statistics.median(losses),
+            'payoff_ratio':(sum(wins)/len(wins))/abs(sum(losses)/len(losses)),
+          })
+          for r in rows:
+            if r['session_date']=='2026-06-15':
+              print('JUN15', r['ticker'], r['entry_time'], r['exit_time'], r['entry_price'], r['exit_price'], r['pnl_percent'], r['exit_reason'], r['buy_amount_krw'], r['sell_amount_krw'])
+          PY
