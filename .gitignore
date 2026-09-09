@@ -11,3 +11,6 @@ Daily_bot/logs/session_closed_slots.json
 
 .aider*
 Daily_bot/backtest/results/*.csv
+Daily_bot/backtest/*.sqlite3
+Daily_bot/backtest/**/*.sqlite3
+Daily_bot/backtest/cache/
