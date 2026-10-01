@@ -3,6 +3,33 @@ from Daily_bot.broker.kiwoom_client import KiwoomClient
 import requests
 
 
+def test_trade_requests_are_blocked_when_is_real_trade_false(monkeypatch):
+    monkeypatch.setenv("is_real_trade", "false")
+    client = KiwoomClient(base_url="https://example.com")
+    request_calls = []
+
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: request_calls.append((args, kwargs)))
+
+    buy_order = client.buy_limit("005930", 3, 70_000)
+    sell_order = client.sell_limit("005930", 3, 71_000)
+    client.cancel_order("ORDER-1", ticker="005930", quantity=3)
+
+    assert buy_order.status == "BLOCKED_BY_IS_REAL_TRADE"
+    assert sell_order.status == "BLOCKED_BY_IS_REAL_TRADE"
+    assert request_calls == []
+
+
+def test_trade_requests_are_allowed_when_is_real_trade_true(monkeypatch):
+    monkeypatch.setenv("is_real_trade", "true")
+    client = KiwoomClient(base_url="https://example.com")
+    monkeypatch.setattr(client, "_request", lambda *args, **kwargs: {"ord_no": "BUY-1"})
+
+    order = client.buy_limit("005930", 3, 70_000)
+
+    assert order.order_id == "BUY-1"
+    assert order.status == "SUBMITTED"
+
+
 def test_get_orderable_cash_prefers_stock_buying_power(monkeypatch):
     client = KiwoomClient(base_url="https://example.com")
     response = {

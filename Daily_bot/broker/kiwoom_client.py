@@ -49,6 +49,36 @@ class KiwoomClient:
         self.session = requests.Session()
         self._limiter = RateLimiter(int(os.getenv("KIWOOM_RATE_LIMIT_PER_SECOND", "5")))
         self._last_orderable_cash_log_signature = ""
+        self.is_real_trade = self._parse_bool_env("is_real_trade", default=False)
+
+    @staticmethod
+    def _parse_bool_env(name: str, default: bool = False) -> bool:
+        raw = os.getenv(name)
+        if raw is None:
+            return default
+        normalized = raw.strip().lower()
+        if normalized in {"1", "true", "yes", "y", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "n", "off", ""}:
+            return False
+        print(f"Invalid {name}={raw!r}; using default {default}.")
+        return default
+
+    def _trade_blocked_order(self, ticker: str, side: str, quantity: int, price: int | None = None) -> OrderResult:
+        order_id = f"BLOCKED-{side}-{ticker}-{int(time.time() * 1000)}"
+        print(
+            "Real trade API request blocked by is_real_trade=false: "
+            f"side={side} ticker={ticker} quantity={quantity} price={price or 0}"
+        )
+        return OrderResult(
+            order_id=order_id,
+            ticker=ticker,
+            side=side,
+            quantity=quantity,
+            price=price,
+            status="BLOCKED_BY_IS_REAL_TRADE",
+            raw={"is_real_trade": False, "blocked": True},
+        )
 
     def auth(self) -> str:
         if not self.app_key or not self.app_secret:
@@ -204,6 +234,8 @@ class KiwoomClient:
         )
 
     def buy_limit(self, ticker: str, quantity: int, price: int) -> OrderResult:
+        if not self.is_real_trade:
+            return self._trade_blocked_order(ticker, "BUY", quantity, price)
         payload = {
             "dmst_stex_tp": self.default_dmst_stex_tp,
             "stk_cd": ticker,
@@ -216,6 +248,8 @@ class KiwoomClient:
         return self._parse_order_result(raw, ticker=ticker, side="BUY", quantity=quantity, price=price)
 
     def buy_market(self, ticker: str, quantity: int) -> OrderResult:
+        if not self.is_real_trade:
+            return self._trade_blocked_order(ticker, "BUY", quantity, 0)
         payload = {
             "dmst_stex_tp": self.default_dmst_stex_tp,
             "stk_cd": ticker,
@@ -228,6 +262,8 @@ class KiwoomClient:
         return self._parse_order_result(raw, ticker=ticker, side="BUY", quantity=quantity, price=0)
 
     def sell_limit(self, ticker: str, quantity: int, price: int) -> OrderResult:
+        if not self.is_real_trade:
+            return self._trade_blocked_order(ticker, "SELL", quantity, price)
         payload = {
             "dmst_stex_tp": self.default_dmst_stex_tp,
             "stk_cd": ticker,
@@ -240,6 +276,8 @@ class KiwoomClient:
         return self._parse_order_result(raw, ticker=ticker, side="SELL", quantity=quantity, price=price)
 
     def sell_market(self, ticker: str, quantity: int) -> OrderResult:
+        if not self.is_real_trade:
+            return self._trade_blocked_order(ticker, "SELL", quantity, 0)
         payload = {
             "dmst_stex_tp": self.default_dmst_stex_tp,
             "stk_cd": ticker,
@@ -253,6 +291,12 @@ class KiwoomClient:
 
     def cancel_order(self, order_id: str, ticker: str = "", quantity: int = 0) -> None:
         if not order_id:
+            return
+        if not self.is_real_trade:
+            print(
+                "Real cancel API request blocked by is_real_trade=false: "
+                f"order_id={order_id} ticker={ticker} quantity={quantity}"
+            )
             return
         payload = {
             "dmst_stex_tp": self.default_dmst_stex_tp,
