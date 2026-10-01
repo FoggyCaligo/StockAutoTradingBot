@@ -1,0 +1,6 @@
+﻿Daily slot policy active: capital-based slot limit; unused slots use 0.71%; take-profit returned slots freely refill at 0.90% before stop-buy time; stop-loss slots stay closed for 2026-09-09. restored_closed_slots=0 restored_peak_active=0
+Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 1040476
+Bot startup: loading KOSPI change percent
