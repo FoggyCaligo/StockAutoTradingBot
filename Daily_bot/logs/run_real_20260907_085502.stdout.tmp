@@ -1,0 +1,72 @@
+Daily slot policy active: capital-based slot limit; unused slots use 0.71%; take-profit returned slots freely refill at 0.90% before stop-buy time; stop-loss slots stay closed for 2026-09-07. restored_closed_slots=0 restored_peak_active=0
+Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 1048986
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=1.6373634390559813
+Universe warm-up started
+Universe warm-up completed. prev_close_count=384 session_capital_basis=1048986 session_slot_count=3 slot_budget_per_stock=349662 position_limit=3
+Startup carryover liquidation completed. Proceeding with normal session flow.
+Planned 1 affordable targets out of desired 3 due to cash constraints.
+FILL BUY 174900 qty=16 price=21500 filled_at=2026-09-07T09:31:25 source=wait_buy_filled order_id=0125037
+Submitting limit sell for 174900: target_price=21750 stop_loss_price=0 decision_fill_price=21500 raw_fill={'rows': [{'ord_no': '0125037', 'stk_nm': '앱클론', 'io_tp_nm': '+매수', 'ord_pric': '21500', 'ord_qty': '16', 'cntr_pric': '21500', 'cntr_qty': '16', 'oso_qty': '0', 'tdy_trde_cmsn': '50', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093125', 'stk_cd': '174900', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0125037', 'stk_nm': '앱클론', 'io_tp_nm': '+매수', 'ord_pric': '21500', 'ord_qty': '16', 'cntr_pric': '21500', 'cntr_qty': '16', 'oso_qty': '0', 'tdy_trde_cmsn': '50', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093125', 'stk_cd': '174900', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL BUY 200470 qty=56 price=6200 filled_at=2026-09-07T09:34:08 source=wait_buy_filled order_id=0129728
+Submitting limit sell for 200470: target_price=6250 stop_loss_price=0 decision_fill_price=6200 raw_fill={'rows': [{'ord_no': '0129728', 'stk_nm': '에이팩트', 'io_tp_nm': '+매수', 'ord_pric': '6200', 'ord_qty': '56', 'cntr_pric': '6200', 'cntr_qty': '56', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093408', 'stk_cd': '200470', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0129728', 'stk_nm': '에이팩트', 'io_tp_nm': '+매수', 'ord_pric': '6200', 'ord_qty': '56', 'cntr_pric': '6200', 'cntr_qty': '56', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093408', 'stk_cd': '200470', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL BUY 159010 qty=13 price=25150 filled_at=2026-09-07T09:34:27 source=wait_buy_filled order_id=0130290
+Submitting limit sell for 159010: target_price=25400 stop_loss_price=0 decision_fill_price=25150 raw_fill={'rows': [{'ord_no': '0130290', 'stk_nm': '아스플로', 'io_tp_nm': '+매수', 'ord_pric': '25200', 'ord_qty': '13', 'cntr_pric': '25150', 'cntr_qty': '13', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093427', 'stk_cd': '159010', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0130290', 'stk_nm': '아스플로', 'io_tp_nm': '+매수', 'ord_pric': '25200', 'ord_qty': '13', 'cntr_pric': '25150', 'cntr_qty': '13', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093427', 'stk_cd': '159010', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+Dynamic expected-return stop sample: 174900 current=21650 expect_price=21500 expected_return=-0.9238% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 174900 current=21650 expect_price=21500 expected_return=-0.9238% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 174900 current=21650 expect_price=21450 expected_return=-1.1547% threshold=-0.1000% consecutive=3/3
+Dynamic expected-return stop triggered: 174900 expected_return=-1.1547% threshold=-0.1000% consecutive=3 limit_price=21550
+FILL SELL 174900 qty=12 price=21550 filled_at=2026-09-07T09:35:59 source=dynamic_expect_stop order_id=0132883
+Dynamic expected-return stop disabled new buys for the rest of the session.
+Closing one slot for the rest of 2026-09-07 after stop-loss: ticker=174900 closed_slots_today=1
+Blocking same-day re-entry after stop-loss for 174900. blocked_tickers=['174900']
+FILL SELL 174900 qty=4 price=21550 filled_at=2026-09-07T09:35:59 source=poll order_id=0132883
+FILL SELL 174900 qty=16 price=21750 filled_at=2026-09-07T09:36:21.046391 source=sell_reconciliation order_id=0125059
+Dynamic expected-return stop sample: 159010 current=25050 expect_price=25000 expected_return=-0.3992% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 159010 current=25050 expect_price=25000 expected_return=-0.3992% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 159010 current=24750 expect_price=24700 expected_return=-0.4040% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 159010 current=24700 expect_price=24650 expected_return=-0.4049% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 159010 current=24750 expect_price=24700 expected_return=-0.4040% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 159010 current=24750 expect_price=24500 expected_return=-1.2121% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 159010 current=24700 expect_price=24500 expected_return=-1.0121% threshold=-0.1000% consecutive=3/3
+Dynamic expected-return stop triggered: 159010 expected_return=-1.0121% threshold=-0.1000% consecutive=3 limit_price=24650
+FILL SELL 159010 qty=13 price=24650 filled_at=2026-09-07T09:54:22 source=dynamic_expect_stop order_id=0157087
+Dynamic expected-return stop disabled new buys for the rest of the session.
+Closing one slot for the rest of 2026-09-07 after stop-loss: ticker=159010 closed_slots_today=2
+Blocking same-day re-entry after stop-loss for 159010. blocked_tickers=['159010', '174900']
+FILL SELL 174900 qty=16 price=21750 filled_at=2026-09-07T09:58:45.114203 source=sell_reconciliation order_id=0125059
+Dynamic expected-return stop sample: 200470 current=6200 expect_price=6170 expected_return=-0.6452% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 200470 current=6190 expect_price=6190 expected_return=-0.1616% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 200470 current=6190 expect_price=6190 expected_return=-0.1616% threshold=-0.1000% consecutive=3/3
+Dynamic expected-return stop triggered: 200470 expected_return=-0.1616% threshold=-0.1000% consecutive=3 limit_price=6180
+FILL SELL 200470 qty=56 price=6180 filled_at=2026-09-07T10:22:35 source=dynamic_expect_stop order_id=0188910
+Dynamic expected-return stop disabled new buys for the rest of the session.
+Closing one slot for the rest of 2026-09-07 after stop-loss: ticker=200470 closed_slots_today=3
+Blocking same-day re-entry after stop-loss for 200470. blocked_tickers=['159010', '174900', '200470']
+Recorder DB sink disabled after save_market_trace failed: database or disk is full
+Recorder CSV sink disabled after save_market_trace failed: [Errno 28] No space left on device
+Dynamic expected-return stop sample: 383220 current=65200 expect_price=65200 expected_return=-0.1534% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 383220 current=65300 expect_price=65300 expected_return=-0.1531% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 383220 current=65300 expect_price=65300 expected_return=-0.1531% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 383220 current=65400 expect_price=65400 expected_return=-0.1529% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 383220 current=65400 expect_price=65400 expected_return=-0.1529% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 383220 current=65400 expect_price=65400 expected_return=-0.1529% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 383220 current=65400 expect_price=65400 expected_return=-0.1529% threshold=-0.1000% consecutive=3/3
+Dynamic expected-return stop triggered: 383220 expected_return=-0.1529% threshold=-0.1000% consecutive=3 limit_price=65200
+FILL SELL 383220 qty=3 price=65200 filled_at=2026-09-07T13:50:09 source=dynamic_expect_stop order_id=0323555
+Dynamic expected-return stop disabled new buys for the rest of the session.
+Closing one slot for the rest of 2026-09-07 after stop-loss: ticker=383220 closed_slots_today=4
+Blocking same-day re-entry after stop-loss for 383220. blocked_tickers=['159010', '174900', '200470', '383220']
+Force sell completed. Waiting for end-of-day reconciliation.
+FILL BUY 174900 qty=16 price=21500 filled_at=2026-09-07T09:31:25 source=eod_reconciliation order_id=0125037
+FILL BUY 200470 qty=56 price=6200 filled_at=2026-09-07T09:34:08 source=eod_reconciliation order_id=0129728
+FILL BUY 159010 qty=13 price=25150 filled_at=2026-09-07T09:34:27 source=eod_reconciliation order_id=0130290
+FILL SELL 174900 qty=16 price=21550 filled_at=2026-09-07T09:35:59 source=eod_reconciliation order_id=0132883
+FILL SELL 159010 qty=13 price=24650 filled_at=2026-09-07T09:54:22 source=eod_reconciliation order_id=0157087
+FILL SELL 200470 qty=56 price=6180 filled_at=2026-09-07T10:22:35 source=eod_reconciliation order_id=0188910
+FILL BUY 383220 qty=3 price=64800 filled_at=2026-09-07T11:46:48 source=eod_reconciliation order_id=0246733
+FILL SELL 383220 qty=3 price=65200 filled_at=2026-09-07T13:50:09 source=eod_reconciliation order_id=0323555
+End-of-day reconciliation completed: broker_fills=8 updated=8

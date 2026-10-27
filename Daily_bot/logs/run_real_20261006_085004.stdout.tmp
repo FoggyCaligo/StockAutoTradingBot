@@ -1,0 +1,1064 @@
+Daily slot policy active: capital-based slot limit; unused slots use 0.71%; take-profit returned slots freely refill at 0.90% before stop-buy time; stop-loss slots stay closed for 2026-10-06. restored_closed_slots=0 restored_peak_active=0
+Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 2170649
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=None
+Universe warm-up started
+Universe warm-up completed. prev_close_count=446 session_capital_basis=124469 session_slot_count=3 slot_budget_per_stock=41489 position_limit=3
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0178137 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0181076 ticker=204620 quantity=18
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0177631 ticker=002990 quantity=8
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182866 ticker=041190 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0182046 ticker=003350 quantity=6
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0179058 ticker=028670 quantity=16
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Startup carryover liquidation failed: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=17 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:16:24.300595 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791172391221
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:16:47.586167 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791172229631
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:16:55.395883 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791172198080
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:16:57.966672 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791172187603
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:17:21.338991 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791172025547
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:17:29.367390 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791171994027
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:17:31.984490 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791171983568
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:17:55.589302 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791171821386
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:18:03.575830 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791171789989
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:18:05.994620 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791171779529
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:18:30.285373 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791171617060
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:18:38.462035 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791171585465
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:18:41.217100 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791171574995
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:19:05.459576 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791171413260
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:19:13.678936 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791171381922
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:19:16.268418 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791171371378
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:19:40.158493 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791171209552
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:19:48.129108 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791171178217
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:19:50.844051 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791171167780
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:20:14.433145 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791171005979
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:20:22.324395 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791170974575
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:20:24.992602 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791170964122
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:20:48.645560 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791170801673
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:20:56.539513 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791170770287
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:20:59.159274 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791170759814
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:21:22.558897 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791170597997
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:21:30.424258 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791170566532
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:21:33.104935 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791170556085
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:21:57.239422 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791170394327
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:22:05.505378 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791170362912
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:22:08.164577 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791170352398
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:22:32.449840 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791170190577
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:22:40.181586 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791170159202
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:22:42.756370 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791170148741
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:23:06.157548 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791169984148
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:23:13.928765 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791169952225
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:23:16.533367 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791169941685
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:23:39.834938 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791169779830
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:23:47.594161 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791169748417
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:23:50.172317 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791169737984
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:24:13.420192 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791169576403
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:24:21.497262 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791169544910
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:24:24.131081 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791169534472
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:24:47.689511 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791169372384
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:24:55.529932 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791169340997
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:24:58.152226 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791169330533
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=17 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:33:11.634099 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791169168450
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:33:19.398004 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791169137007
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:33:21.968539 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791169126460
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:33:45.110317 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791168964887
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:33:52.924025 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791168933552
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:33:55.498693 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791168923104
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:34:18.698620 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791168761151
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:34:26.405272 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791168729669
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:34:29.032736 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791168719203
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:34:52.326778 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791168557428
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=17 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+FILL SELL 009420 qty=2 price=0 filled_at=2026-10-06T15:44:21.473735 source=sell_reconciliation order_id=BLOCKED-SELL-009420-1791168525867
+FILL SELL 005290 qty=2 price=0 filled_at=2026-10-06T15:44:24.155237 source=sell_reconciliation order_id=BLOCKED-SELL-005290-1791168515222
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=17 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+FILL SELL 032190 qty=5 price=0 filled_at=2026-10-06T15:54:28.168138 source=sell_reconciliation order_id=BLOCKED-SELL-032190-1791168353090
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=17 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=17 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=17 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=17 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0077891 ticker=035760 quantity=2
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=17 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.

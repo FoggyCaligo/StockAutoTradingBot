@@ -1,0 +1,12 @@
+Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 1049106
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=0.9555489187410103
+Submitting market force sell for 219130: quantity=5
+FILL SELL 219130 qty=5 price=60600 filled_at=2026-09-03T11:25:53 source=force_sell order_id=0212397
+Startup carryover liquidation completed. Proceeding with normal session flow.
+Recorder CSV sink disabled after save_daily_reference_prices failed: [Errno 22] Invalid argument: 'C:\\Users\\bigla\\Documents\\Git\\StockAutoTradingBot\\Daily_bot\\logs\\daily_reference_prices_20260903.csv'
+Session slot plan initialized without prewarm. prev_close_count=401 session_capital_basis=1047955 session_slot_count=3 slot_budget_per_stock=349318 position_limit=3
+FILL SELL 445680 qty=7 price=47950 filled_at=2026-09-03T09:50:59 source=poll order_id=0134918

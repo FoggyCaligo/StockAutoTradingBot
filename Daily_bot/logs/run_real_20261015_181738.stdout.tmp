@@ -1,0 +1,99 @@
+Daily slot policy active: capital-based slot limit; unused slots use 0.71%; take-profit returned slots freely refill at 0.90% before stop-buy time; stop-loss slots stay closed for 2026-10-15. restored_closed_slots=0 restored_peak_active=0
+Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 1991582
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=-7.5653914835050555
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:18:49.796485 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791982649254
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:19:28.423696 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791981906747
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:20:07.218777 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791981166265
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:20:45.887145 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791980426701
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:21:25.034715 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791979688145
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:22:03.906815 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791978948733
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:22:42.761678 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791978209230
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:23:21.488055 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791977469761
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:24:00.745650 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791976728997
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:24:39.651620 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791975987873
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:25:18.623005 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791975246456
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:25:57.196468 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791974503381
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:26:35.986474 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791973760316
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:27:14.674911 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791973017132
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+FILL SELL 257720 qty=2 price=0 filled_at=2026-10-15T18:37:02.390621 source=sell_reconciliation order_id=BLOCKED-SELL-257720-1791972269154
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.
+Force sell did not complete cleanly. New buys remain blocked and the next loop will retry.
+Real cancel API request blocked by is_real_trade=false: order_id=0045358 ticker=003540 quantity=6
+Force-sell handling error: Open orders still remain after cancellation timeout. Refusing force sell to avoid order conflict.
+Force-sell recovery: pausing new buys and retrying next loop. positions=14 open_orders=1
+Force-sell recovery: positions still remain after recovery attempt.
+Force-sell recovery: open orders still remain after recovery attempt.

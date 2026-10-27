@@ -1,0 +1,8 @@
+C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\strategy\universe.py:196: UserWarning: Daily universe refresh failed; falling back to local CSV/cache. reason=FinanceDataReader failed to load source=KOSPI
+  warnings.warn(
+C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\strategy\universe.py:196: UserWarning: Daily universe refresh failed; falling back to local CSV/cache. reason=FinanceDataReader failed to load source=KOSPI
+  warnings.warn(
+C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\strategy\universe.py:196: UserWarning: Daily universe refresh failed; falling back to local CSV/cache. reason=FinanceDataReader failed to load source=KOSPI
+  warnings.warn(
+C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\strategy\universe.py:196: UserWarning: Daily universe refresh failed; falling back to local CSV/cache. reason=FinanceDataReader failed to load source=KOSPI
+  warnings.warn(

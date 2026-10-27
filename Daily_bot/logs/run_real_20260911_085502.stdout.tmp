@@ -1,0 +1,35 @@
+Daily slot policy active: capital-based slot limit; unused slots use 0.71%; take-profit returned slots freely refill at 0.90% before stop-buy time; stop-loss slots stay closed for 2026-09-11. restored_closed_slots=0 restored_peak_active=0
+Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 5074710
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=-0.2512890618352646
+Universe warm-up started
+Universe warm-up completed. prev_close_count=425 session_capital_basis=4867430 session_slot_count=3 slot_budget_per_stock=1622476 position_limit=3
+Submitting market force sell for 005950: quantity=10
+FILL SELL 005950 qty=10 price=11580 filled_at=2026-09-11T09:10:05 source=force_sell order_id=0088759
+Submitting market force sell for 019210: quantity=7
+FILL SELL 019210 qty=7 price=12860 filled_at=2026-09-11T09:10:06 source=force_sell order_id=0088786
+Startup carryover liquidation completed. Proceeding with normal session flow.
+FILL SELL 171090 qty=14 price=67200 filled_at=2026-09-11T09:30:04.767893 source=sell_reconciliation order_id=0140066
+Planned 1 affordable targets out of desired 3 due to cash constraints.
+Planned 1 affordable targets out of desired 3 due to cash constraints.
+Planned 2 affordable targets out of desired 3 due to cash constraints.
+Planned 2 affordable targets out of desired 3 due to cash constraints.
+FILL BUY 006650 qty=16 price=101200 filled_at=2026-09-11T09:42:07 source=wait_buy_filled order_id=0145508
+Submitting limit sell for 006650: target_price=102500 stop_loss_price=0 decision_fill_price=101200 raw_fill={'rows': [{'ord_no': '0145508', 'stk_nm': '대한유화', 'io_tp_nm': '+매수', 'ord_pric': '101400', 'ord_qty': '16', 'cntr_pric': '101200', 'cntr_qty': '16', 'oso_qty': '0', 'tdy_trde_cmsn': '240', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '094207', 'stk_cd': '006650', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0145508', 'stk_nm': '대한유화', 'io_tp_nm': '+매수', 'ord_pric': '101400', 'ord_qty': '16', 'cntr_pric': '101200', 'cntr_qty': '16', 'oso_qty': '0', 'tdy_trde_cmsn': '240', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '094207', 'stk_cd': '006650', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+Dynamic expected-return stop sample: 006650 current=101100 expect_price=101500 expected_return=-0.3087% threshold=-0.1000% consecutive=1/3
+Daily loss limit reached: initial=5074710 current=3639935 adjusted_current=3639935 external_cash_flow=0 loss_percent=28.27% limit=10.00%. Blocking new buys only.
+Daily loss limit reached: initial=5074710 current=3631935 adjusted_current=3631935 external_cash_flow=0 loss_percent=28.43% limit=10.00%. Blocking new buys only.
+Dynamic expected-return stop sample: 006650 current=100500 expect_price=101000 expected_return=-0.2100% threshold=-0.1000% consecutive=1/3
+Daily loss limit reached: initial=5074710 current=3631935 adjusted_current=3631935 external_cash_flow=0 loss_percent=28.43% limit=10.00%. Blocking new buys only.
+Dynamic expected-return stop sample: 006650 current=100500 expect_price=101000 expected_return=-0.2100% threshold=-0.1000% consecutive=2/3
+Daily loss limit reached: initial=5074710 current=3631935 adjusted_current=3631935 external_cash_flow=0 loss_percent=28.43% limit=10.00%. Blocking new buys only.
+Dynamic expected-return stop sample: 006650 current=100500 expect_price=101000 expected_return=-0.2100% threshold=-0.1000% consecutive=3/3
+Dynamic expected-return stop triggered: 006650 expected_return=-0.2100% threshold=-0.1000% consecutive=3 limit_price=100400
+FILL SELL 006650 qty=16 price=100400 filled_at=2026-09-11T09:45:33 source=dynamic_expect_stop order_id=0150466
+Dynamic expected-return stop disabled new buys for the rest of the session.
+Closing one slot for the rest of 2026-09-11 after stop-loss: ticker=006650 closed_slots_today=1
+Blocking same-day re-entry after stop-loss for 006650. blocked_tickers=['006650']
+Retry fill lookup failed for order_id=0135629 ticker=219130: HTTPSConnectionPool(host='api.kiwoom.com', port=443): Max retries exceeded with url: /api/dostk/acnt (Caused by NameResolutionError("HTTPSConnection(host='api.kiwoom.com', port=443): Failed to resolve 'api.kiwoom.com' ([Errno 11001] getaddrinfo failed)"))

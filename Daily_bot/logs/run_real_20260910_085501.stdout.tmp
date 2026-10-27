@@ -1,0 +1,21 @@
+Daily slot policy active: capital-based slot limit; unused slots use 0.71%; take-profit returned slots freely refill at 0.90% before stop-buy time; stop-loss slots stay closed for 2026-09-10. restored_closed_slots=0 restored_peak_active=0
+Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 3355770
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=4.6084989106069685
+Universe warm-up started
+Universe warm-up completed. prev_close_count=384 session_capital_basis=2882960 session_slot_count=3 slot_budget_per_stock=960986 position_limit=3
+Submitting market force sell for 073240: quantity=14
+FILL SELL 073240 qty=14 price=7020 filled_at=2026-09-10T09:10:05 source=force_sell order_id=0093736
+Submitting market force sell for 085620: quantity=5
+FILL SELL 085620 qty=5 price=19100 filled_at=2026-09-10T09:10:05 source=force_sell order_id=0093755
+Submitting market force sell for 096530: quantity=7
+FILL SELL 096530 qty=7 price=30500 filled_at=2026-09-10T09:10:06 source=force_sell order_id=0093768
+Submitting market force sell for 383220: quantity=1
+FILL SELL 383220 qty=1 price=64100 filled_at=2026-09-10T09:10:06 source=force_sell order_id=0093793
+Startup carryover liquidation completed. Proceeding with normal session flow.
+Planned 1 affordable targets out of desired 3 due to cash constraints.
+FILL BUY 171090 qty=14 price=66500 filled_at=2026-09-10T09:31:48 source=wait_buy_filled order_id=0140057
+Submitting limit sell for 171090: target_price=67200 stop_loss_price=0 decision_fill_price=66500 raw_fill={'rows': [{'ord_no': '0140057', 'stk_nm': '선익시스템', 'io_tp_nm': '+매수', 'ord_pric': '66500', 'ord_qty': '14', 'cntr_pric': '66500', 'cntr_qty': '14', 'oso_qty': '0', 'tdy_trde_cmsn': '130', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093148', 'stk_cd': '171090', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0140057', 'stk_nm': '선익시스템', 'io_tp_nm': '+매수', 'ord_pric': '66500', 'ord_qty': '14', 'cntr_pric': '66500', 'cntr_qty': '14', 'oso_qty': '0', 'tdy_trde_cmsn': '130', 'tdy_trde_tax': '0', 'ord_stt': '체결', 'trde_tp': '보통', 'orig_ord_no': '0000000', 'ord_tm': '093148', 'stk_cd': '171090', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}

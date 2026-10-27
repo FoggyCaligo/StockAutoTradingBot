@@ -1,0 +1,2178 @@
+Daily slot policy active: capital-based slot limit; unused slots use 0.71%; take-profit returned slots freely refill at 0.90% before stop-buy time; stop-loss slots stay closed for 2026-10-10. restored_closed_slots=0 restored_peak_active=0
+Bot startup: dry_run=False config=C:\Users\bigla\Documents\Git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 2138163
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=None
+Universe warm-up started
+Universe warm-up completed. prev_close_count=447 session_capital_basis=6228 session_slot_count=3 slot_budget_per_stock=2076 position_limit=3
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
+Startup carryover liquidation failed: Positions still remain after market force-sell timeout: 000670:2, 001200:24, 001800:8, 002990:16, 003470:23, 003540:6, 003690:6, 004020:9, 012630:16, 023590:2, 032820:8, 035760:2, 041830:2, 092190:12, 092790:2, 214150:3, 257720:2
+Submitting market force sell for 000670: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=000670 quantity=2 price=0
+Submitting market force sell for 001200: quantity=24
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001200 quantity=24 price=0
+Submitting market force sell for 001800: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=001800 quantity=8 price=0
+Submitting market force sell for 002990: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=002990 quantity=16 price=0
+Submitting market force sell for 003470: quantity=23
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003470 quantity=23 price=0
+Submitting market force sell for 003540: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003540 quantity=6 price=0
+Submitting market force sell for 003690: quantity=6
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=003690 quantity=6 price=0
+Submitting market force sell for 004020: quantity=9
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=004020 quantity=9 price=0
+Submitting market force sell for 012630: quantity=16
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=012630 quantity=16 price=0
+Submitting market force sell for 023590: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=023590 quantity=2 price=0
+Submitting market force sell for 032820: quantity=8
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=032820 quantity=8 price=0
+Submitting market force sell for 035760: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=035760 quantity=2 price=0
+Submitting market force sell for 041830: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=041830 quantity=2 price=0
+Submitting market force sell for 092190: quantity=12
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092190 quantity=12 price=0
+Submitting market force sell for 092790: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=092790 quantity=2 price=0
+Submitting market force sell for 214150: quantity=3
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=214150 quantity=3 price=0
+Submitting market force sell for 257720: quantity=2
+Real trade API request blocked by is_real_trade=false: side=SELL ticker=257720 quantity=2 price=0
