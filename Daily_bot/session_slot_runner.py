@@ -191,6 +191,16 @@ def install_daily_slot_closure_policy() -> DailySlotClosurePolicy:
 
 
 def main() -> None:
+    # Quote-only mode must bypass all position, order and force-sell logic.
+    # Preserve --real for Kiwoom read-only quotes; is_real_trade controls execution.
+    args = bot_main.parse_args()
+    probe_client = bot_main.build_client(args.dry_run)
+    if not getattr(probe_client, "is_real_trade", False):
+        from Daily_bot.market_trace_collector import run as run_quote_collector
+        print("Live order execution disabled: switching to quote-only market trace collector", flush=True)
+        run_quote_collector(args.config, dry_run=args.dry_run)
+        return
+
     policy = install_daily_slot_closure_policy()
     print(
         "Daily slot policy active: capital-based slot limit; unused slots use 0.71%; "
