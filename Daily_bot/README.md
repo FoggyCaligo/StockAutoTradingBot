@@ -263,3 +263,25 @@ python -m Daily_bot.backtest.replay_refill_threshold \
 - `docs/DAILY_BOT_LOGIC_REFERENCE.md`: 로직 상세 설명
 - `docs/CODEX_HANDOFF.md`: 다음 작업자를 위한 압축 메모
 - `Diary.md`: 과거 변경/실험 기록
+
+
+## 시장 데이터 수집 전용 운영
+
+`Daily_bot/.env`에 `is_real_trade=false`인 경우, 기존 `scripts/run_real.ps1` 실행은 자동으로 **시장 데이터 수집 전용 루프**로 전환한다. `--real`은 실시간 키움 시세 API 사용을 지정할 뿐, 매매 주문을 허용하지 않는다. 이 모드에서는 주문·취소·강제매도·체결 재정합·포지션 슬롯 제한을 실행하지 않는다.
+
+장중 적격 종목 전체의 20호가와 기대수익률을 읽어 기존 `market_traces` 테이블과 `logs/market_traces_YYYYMMDD.csv`에 `phase=scan_candidate`로 저장한다. 시장 종료 후 루프를 정상 종료하면 `run_real_YYYYMMDD_HHMMSS.log`가 정리된다. 기존 `run_real.ps1`가 실행 중인 동안에는 `*.stdout.tmp`가 유지될 수 있다.
+
+선택 설정 예시 (`config/settings.yaml`):
+
+```yaml
+market_trace_collection:
+  start_time: "09:30"
+  end_time: "15:25"
+  interval_seconds: 60
+```
+
+위 항목이 없으면 시작 시각은 `market.start_buy_time`, 종료 시각은 `market.end_time`, 반복 간격은 `strategy.scan_interval_seconds`를 사용한다. **반복 간격은 한 번의 전체 스캔이 끝난 다음 대기하는 시간**이므로 전체 시장을 반드시 60초마다 수집한다는 뜻은 아니다. API 요청 제한은 `api.quote_rate_limit_per_second`를 따른다.
+
+수집 중 DB/CSV 저장 기능이 비활성화되면 조용히 계속 진행하지 않고 프로세스를 실패 종료한다. 수집 실패나 인증 실패는 로그로 확인한다. 이 모드는 실계좌 포지션을 정리하지 않으므로 이전 보유 종목은 직접 확인해야 한다.
+
+**전환 전 주의:** 코드 갱신 전에 시작한 예전 Python 프로세스는 자동으로 새 모드로 전환되지 않는다. 실계좌 보유·미체결을 먼저 확인하고 기존 실행 프로세스 및 Windows 작업 스케줄러의 중복 실행 여부를 확인한 뒤, 새 버전으로 시작한다.
