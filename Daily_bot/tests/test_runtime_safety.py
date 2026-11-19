@@ -288,6 +288,47 @@ def test_run_retries_main_loop_after_transient_account_state_failure(monkeypatch
     assert fetch_attempts["count"] == 2
 
 
+def test_startup_liquidation_failure_still_records_positions(monkeypatch, tmp_path):
+    from Daily_bot.models import Position
+    from Daily_bot.storage.db import Recorder
+    from unittest.mock import Mock
+
+    class StopLoop(Exception):
+        pass
+
+    cfg = {
+        "risk": {"dry_run": True},
+        "market": {"start_buy_time": "09:30", "stop_buy_time": "11:30", "force_sell_time": "15:15"},
+        "strategy": {"scan_interval_seconds": 60, "sell_tick_offset": 1},
+        "api": {"quote_rate_limit_per_second": 1000},
+    }
+    recorder = Recorder(tmp_path / "bot.sqlite3")
+    client = _ClientStub()
+    client.auth = lambda: "mock-token"
+    liquidation = Mock(side_effect=[(False, True), StopLoop()])
+    entry = Mock(side_effect=AssertionError("New entry while liquidation is pending"))
+    monkeypatch.setattr(main, "load_yaml", lambda _: cfg)
+    monkeypatch.setattr(main, "build_client", lambda *_args, **_kwargs: client)
+    monkeypatch.setattr(main, "Recorder", lambda *_args, **_kwargs: recorder)
+    monkeypatch.setattr(main, "estimate_account_value", lambda _: 2_000_000)
+    monkeypatch.setattr(main, "resolve_kospi_change_percent", lambda: None)
+    monkeypatch.setattr(main, "is_between_now", lambda *_: False)
+    monkeypatch.setattr(main, "is_after_now", lambda value: value != "15:15")
+    monkeypatch.setattr(main, "_attempt_startup_carryover_liquidation_safely", liquidation)
+    monkeypatch.setattr(main, "_fetch_account_state_safely", lambda *_: ([Position("005930", 1, 10_000)], []))
+    monkeypatch.setattr(main, "activate_buy", entry)
+    monkeypatch.setattr(main.time, "sleep", lambda _: None)
+    try:
+        with pytest.raises(StopLoop):
+            main.run("ignored.yaml", dry_run_override=True)
+        row = recorder.conn.execute("SELECT ticker, phase FROM market_traces").fetchone()
+        assert (row["ticker"], row["phase"]) == ("005930", "active_position")
+        assert list(recorder.log_dir.glob("market_traces_*.csv"))
+        entry.assert_not_called()
+    finally:
+        recorder.conn.close()
+
+
 def test_filter_candidates_for_entry_uses_fallback_threshold_when_batch_is_flat():
     calculated = [
         Candidate(

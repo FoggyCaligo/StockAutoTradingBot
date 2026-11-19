@@ -1,3 +1,5 @@
+param([switch]$CollectOnly)
+
 $ErrorActionPreference = "Stop"
 
 $botRoot = Split-Path -Parent $PSScriptRoot
@@ -14,12 +16,18 @@ function Test-BotPythonRunning {
     )
 
     $normalizedBotRoot = [System.IO.Path]::GetFullPath($BotRootPath)
-    $normalizedEntry = [System.IO.Path]::GetFullPath($EntryPath)
+    $entryPaths = @(
+        [System.IO.Path]::GetFullPath($EntryPath),
+        (Join-Path $normalizedBotRoot "market_trace_collector.py"),
+        (Join-Path $normalizedBotRoot "session_slot_runner.py")
+    )
     $processes = Get-CimInstance Win32_Process -Filter "Name = 'python.exe' OR Name = 'pythonw.exe'"
     foreach ($process in $processes) {
         $commandLine = [string]$process.CommandLine
-        if ($commandLine -and $commandLine.Contains($normalizedBotRoot) -and $commandLine.Contains($normalizedEntry)) {
-            return $true
+        foreach ($entry in $entryPaths) {
+            if ($commandLine -and $commandLine.Contains($entry)) {
+                return $true
+            }
         }
     }
     return $false
@@ -35,11 +43,12 @@ if (!(Test-Path $mainPath)) {
 
 New-Item -ItemType Directory -Path $logDir -Force | Out-Null
 
+if (Test-BotPythonRunning -BotRootPath $botRoot -EntryPath $mainPath) {
+    Write-Output "Daily_bot trading or market trace collection is already running. Skip duplicate start."
+    exit 0
+}
+
 if (Test-Path $lockPath) {
-    if (Test-BotPythonRunning -BotRootPath $botRoot -EntryPath $mainPath) {
-        Write-Output "Daily_bot is already running. Skip duplicate start."
-        exit 0
-    }
     Remove-Item $lockPath -Force
 }
 
@@ -51,9 +60,16 @@ $stderrPath = Join-Path $logDir "run_real_$timestamp.stderr.tmp"
 
 Push-Location $botRoot
 try {
+    $botArguments = @("-u", $mainPath, "--real")
+    if ($CollectOnly) {
+        $botArguments = @("-u", (Join-Path $botRoot "market_trace_collector.py"), "--real")
+    }
+    else {
+        $botArguments += "--enable-trading"
+    }
     $process = Start-Process `
         -FilePath $pythonPath `
-        -ArgumentList @("-u", $mainPath, "--real") `
+        -ArgumentList ($botArguments | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) `
         -WorkingDirectory $botRoot `
         -WindowStyle Hidden `
         -RedirectStandardOutput $stdoutPath `

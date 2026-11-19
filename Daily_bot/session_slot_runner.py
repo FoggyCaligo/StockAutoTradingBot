@@ -192,13 +192,17 @@ def install_daily_slot_closure_policy() -> DailySlotClosurePolicy:
 
 def main() -> None:
     # Quote-only mode must bypass all position, order and force-sell logic.
-    # Preserve --real for Kiwoom read-only quotes; is_real_trade controls execution.
+    # --real selects Kiwoom. Explicit --enable-trading overrides the environment
+    # for this process; otherwise is_real_trade still controls order permission.
     args = bot_main.parse_args()
-    probe_client = bot_main.build_client(args.dry_run)
-    if not getattr(probe_client, "is_real_trade", False):
+    cfg = bot_main.load_yaml(args.config)
+    dry_run = True if args.dry_run else False if args.real else cfg["risk"]["dry_run"]
+    enable_trading = True if args.enable_trading else None
+    probe_client = bot_main.build_client(dry_run, enable_trading=enable_trading)
+    if not dry_run and not getattr(probe_client, "is_real_trade", False):
         from Daily_bot.market_trace_collector import run as run_quote_collector
         print("Live order execution disabled: switching to quote-only market trace collector", flush=True)
-        run_quote_collector(args.config, dry_run=args.dry_run)
+        run_quote_collector(args.config, dry_run=False)
         return
 
     policy = install_daily_slot_closure_policy()
@@ -209,9 +213,8 @@ def main() -> None:
         f"restored_closed_slots={policy.closed_slot_count} "
         f"restored_peak_active={policy.peak_active_count}"
     )
-    args = bot_main.parse_args()
     override = True if args.dry_run else False if args.real else None
-    bot_main.run(args.config, override)
+    bot_main.run(args.config, override, enable_trading=enable_trading)
 
 
 if __name__ == "__main__":

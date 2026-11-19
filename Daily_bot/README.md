@@ -119,6 +119,14 @@ expected_return <= -0.1%
 .\.venv\Scripts\python.exe .\Daily_bot\session_slot_runner.py --real
 ```
 
+`run_real.ps1`는 `--real --enable-trading`을 전달하여 **해당 실행 프로세스의 실제 주문을 명시적으로 허용**한다. `.env`의 `is_real_trade=false`를 수정하지 않아도 이 스크립트로 시작한 세션은 주문할 수 있다. 위 직접 실행 예시는 환경변수의 주문 허용값을 따르며, 동일하게 실거래를 명시하려면 다음 명령을 사용한다.
+
+```powershell
+.\.venv\Scripts\python.exe .\Daily_bot\session_slot_runner.py --real --enable-trading
+```
+
+API 키·계좌·접속 설정은 기존 `Daily_bot/.env`에서 읽는다. 기존 09:10 이월 포지션 정리와 15:15 강제청산 정책도 실행되므로, 이 명령으로 시작하면 기존 보유 종목에 대한 청산 주문도 발생할 수 있다. 코드 갱신만으로 실행 중인 PC의 프로세스가 재시작되지는 않는다. `--dry-run`은 모의 브로커 매매를 실행하며 `--real` 또는 `--enable-trading`과 함께 사용할 수 없다.
+
 ## 런타임 로그 파일 정책
 
 실거래 실행 시 `Daily_bot/logs`에 지속적으로 남기는 기록은 다음 3종으로 제한한다.
@@ -267,7 +275,13 @@ python -m Daily_bot.backtest.replay_refill_threshold \
 
 ## 시장 데이터 수집 전용 운영
 
-`Daily_bot/.env`에 `is_real_trade=false`인 경우, 기존 `scripts/run_real.ps1` 실행은 자동으로 **시장 데이터 수집 전용 루프**로 전환한다. `--real`은 실시간 키움 시세 API 사용을 지정할 뿐, 매매 주문을 허용하지 않는다. 이 모드에서는 주문·취소·강제매도·체결 재정합·포지션 슬롯 제한을 실행하지 않는다.
+수집만 하려면 아래 명령을 사용한다. `-CollectOnly`는 환경변수 `is_real_trade=true`가 있어도 주문 권한을 끈 별도 클라이언트로 수집한다. 이 모드에서는 주문·취소·강제매도·체결 재정합·포지션 슬롯 제한을 실행하지 않는다.
+
+```powershell
+.\Daily_bot\scripts\run_real.ps1 -CollectOnly
+```
+
+`session_slot_runner.py --real` 또는 `main.py --real`을 직접 실행하면, `--enable-trading`이 없고 `is_real_trade=false`일 때 수집 전용 루프로 전환한다. `--real`만으로는 환경변수의 주문 차단을 해제하지 않는다.
 
 장중 적격 종목 전체의 20호가와 기대수익률을 읽어 기존 `market_traces` 테이블과 `logs/market_traces_YYYYMMDD.csv`에 `phase=scan_candidate`로 저장한다. 시장 종료 후 루프를 정상 종료하면 `run_real_YYYYMMDD_HHMMSS.log`가 정리된다. 기존 `run_real.ps1`가 실행 중인 동안에는 `*.stdout.tmp`가 유지될 수 있다.
 
@@ -283,5 +297,9 @@ market_trace_collection:
 위 항목이 없으면 시작 시각은 `market.start_buy_time`, 종료 시각은 `market.end_time`, 반복 간격은 `strategy.scan_interval_seconds`를 사용한다. **반복 간격은 한 번의 전체 스캔이 끝난 다음 대기하는 시간**이므로 전체 시장을 반드시 60초마다 수집한다는 뜻은 아니다. API 요청 제한은 `api.quote_rate_limit_per_second`를 따른다.
 
 수집 중 DB/CSV 저장 기능이 비활성화되면 조용히 계속 진행하지 않고 프로세스를 실패 종료한다. 수집 실패나 인증 실패는 로그로 확인한다. 이 모드는 실계좌 포지션을 정리하지 않으므로 이전 보유 종목은 직접 확인해야 한다.
+
+종목 목록 조회의 일시적 오류 또는 빈 목록은 다음 주기에 다시 조회한다. 한 주기에 저장된 종목이 0개이면 경고를 출력하고 목록을 재조회한다. 시작 로그의 `Market trace output`에 DB와 CSV의 절대 경로가 표시되며, 수집 주기마다 `saved=... errors=...`가 표시된다. 파일은 GitHub로 자동 업로드되지 않으므로 실제 운영 PC의 해당 경로에서 갱신 시각을 확인한다.
+
+실거래 루프는 후보 스캔뿐 아니라 보유·관심 종목 trace도 기록한다. 이월 포지션 청산이 실패하는 동안에도 보유 종목 trace를 남기지만 신규매수는 계속 차단한다. 전체 유니버스 스캔은 신규매수 시간과 슬롯 여유 등 기존 진입 조건을 따르므로 수집 전용 모드와 기록 빈도가 같지는 않다.
 
 **전환 전 주의:** 코드 갱신 전에 시작한 예전 Python 프로세스는 자동으로 새 모드로 전환되지 않는다. 실계좌 보유·미체결을 먼저 확인하고 기존 실행 프로세스 및 Windows 작업 스케줄러의 중복 실행 여부를 확인한 뒤, 새 버전으로 시작한다.
