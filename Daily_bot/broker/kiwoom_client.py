@@ -8,6 +8,7 @@ from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -47,7 +48,9 @@ class KiwoomClient:
 
         self.access_token: str | None = None
         self.session = requests.Session()
-        self._limiter = RateLimiter(int(os.getenv("KIWOOM_RATE_LIMIT_PER_SECOND", "5")))
+        self._limiter = RateLimiter(min(5, int(os.getenv("KIWOOM_RATE_LIMIT_PER_SECOND", "5"))))
+        self._is_mock_server = urlparse(self.base_url).hostname == "mockapi.kiwoom.com"
+        self._last_tr_request_at: dict[str, float] = {}
         self._last_orderable_cash_log_signature = ""
         self.is_real_trade = (
             self._parse_bool_env("is_real_trade", default=False)
@@ -171,7 +174,13 @@ class KiwoomClient:
         url = self._build_url(path)
         last_exc: Exception | None = None
         for attempt in range(1, self.REQUEST_MAX_ATTEMPTS + 1):
-            self._limiter.wait()
+            # Official TR-specific exceptions also apply to pagination/retries.
+            # kt00018: 1/sec; mock server: each domestic TR is limited to 1/sec.
+            interval = 1.0 if self._is_mock_server or api_id == self.TR_KT00018_POSITIONS else 0.0
+            previous = self._last_tr_request_at.get(api_id)
+            not_before = previous + interval if previous is not None and interval else None
+            self._limiter.wait(not_before=not_before)
+            self._last_tr_request_at[api_id] = time.monotonic()
             try:
                 response = self.session.request(
                     method,

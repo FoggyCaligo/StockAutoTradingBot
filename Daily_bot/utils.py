@@ -37,10 +37,13 @@ class RateLimiter:
         self.interval = 1.0 / max(per_second, 1)
         self._last_call = 0.0
 
-    def wait(self) -> None:
-        elapsed = time.monotonic() - self._last_call
-        if elapsed < self.interval:
-            time.sleep(self.interval - elapsed)
+    def wait(self, *, not_before: float | None = None) -> None:
+        now = time.monotonic()
+        ready_at = self._last_call + self.interval
+        if not_before is not None:
+            ready_at = max(ready_at, not_before)
+        if ready_at > now:
+            time.sleep(ready_at - now)
         self._last_call = time.monotonic()
 
 
