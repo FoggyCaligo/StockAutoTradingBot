@@ -35,7 +35,7 @@ class KiwoomClient:
     REQUEST_MAX_ATTEMPTS = 4
     AUTH_MAX_ATTEMPTS = 3
 
-    def __init__(self, base_url: str | None = None):
+    def __init__(self, base_url: str | None = None, *, is_real_trade: bool | None = None):
         load_dotenv()
         self.base_url = base_url or os.getenv("KIWOOM_BASE_URL", "https://api.kiwoom.com")
         self.app_key = os.environ.get("KIWOOM_APP_KEY", "")
@@ -49,7 +49,10 @@ class KiwoomClient:
         self.session = requests.Session()
         self._limiter = RateLimiter(int(os.getenv("KIWOOM_RATE_LIMIT_PER_SECOND", "5")))
         self._last_orderable_cash_log_signature = ""
-        self.is_real_trade = self._parse_bool_env("is_real_trade", default=False)
+        self.is_real_trade = (
+            self._parse_bool_env("is_real_trade", default=False)
+            if is_real_trade is None else is_real_trade
+        )
 
     @staticmethod
     def _parse_bool_env(name: str, default: bool = False) -> bool:

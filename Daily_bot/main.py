@@ -41,8 +41,8 @@ from Daily_bot.utils import (
 load_dotenv()
 
 
-def build_client(dry_run: bool):
-    return MockKiwoomClient() if dry_run else KiwoomClient()
+def build_client(dry_run: bool, *, enable_trading: bool | None = None):
+    return MockKiwoomClient() if dry_run else KiwoomClient(is_real_trade=enable_trading)
 
 
 def build_universe_config(cfg: dict) -> UniverseConfig:
@@ -284,6 +284,7 @@ def scan_and_rank(
     candidates = apply_recorded_prev_close_prices(candidates, prev_close_prices or {})
     limiter = RateLimiter(cfg["api"]["quote_rate_limit_per_second"])
     calculated: list[Candidate] = []
+    failed = 0
     scan_cycle_at = datetime.now()
     for ticker, candidate in candidates.items():
         try:
@@ -303,7 +304,11 @@ def scan_and_rank(
             )
             calculated.append(candidate)
         except Exception as exc:
+            failed += 1
             print(f"Skipping {ticker} during scan due to error: {exc}")
+    print(f"Market trace scan completed: scanned={len(candidates)} calculated={len(calculated)} errors={failed}", flush=True)
+    if not calculated:
+        print("WARNING: no market traces collected during this scan", flush=True)
     return calculated
 
 
@@ -1350,12 +1355,22 @@ def activate_buy(
             return
 
 
-def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
+def run(
+    cfg_path: str,
+    dry_run_override: bool | None = None,
+    *,
+    enable_trading: bool | None = None,
+) -> None:
     cfg = load_yaml(cfg_path)
     dry_run = cfg["risk"]["dry_run"] if dry_run_override is None else dry_run_override
-    client = build_client(dry_run)
+    client = build_client(dry_run, enable_trading=enable_trading)
+    if not dry_run and not client.is_real_trade:
+        from Daily_bot.market_trace_collector import run as run_quote_collector
+        run_quote_collector(cfg_path, dry_run=False)
+        return
     recorder = Recorder(BOT_DB_PATH, log_dir=BOT_LOG_DIR)
-    print(f"Bot startup: dry_run={dry_run} config={cfg_path}")
+    print(f"Bot startup: dry_run={dry_run} orders_enabled={getattr(client, 'is_real_trade', False)} config={cfg_path}")
+    print(f"Market trace output: db={BOT_DB_PATH} csv_dir={BOT_LOG_DIR}", flush=True)
     while not _authenticate_client_safely(client):
         time.sleep(5)
     print("Bot startup: authentication completed")
@@ -1455,6 +1470,18 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
                 state = BotState.NO_POSITION
                 print("Startup carryover liquidation completed. Proceeding with normal session flow.")
             elif startup_carryover_error:
+                # Keep trace evidence even when startup liquidation cannot finish.
+                # New entry remains blocked until the normal liquidation guard clears.
+                carryover_positions, _ = _fetch_account_state_safely(client, "Startup trace")
+                if carryover_positions:
+                    trace_active_positions(
+                        client=client,
+                        recorder=recorder,
+                        positions=carryover_positions,
+                        quote_rate_limit_per_second=cfg["api"]["quote_rate_limit_per_second"],
+                        kospi_change_percent=kospi_change_percent,
+                        strategy_cfg=cfg["strategy"],
+                    )
                 time.sleep(5)
             continue
 
@@ -1646,12 +1673,17 @@ def run(cfg_path: str, dry_run_override: bool | None = None) -> None:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default=str(ROOT / "config/settings.yaml"))
-    parser.add_argument("--dry-run", action="store_true", help="Use mock broker and do not send real orders")
-    parser.add_argument("--real", action="store_true", help="Use real Kiwoom client. Requires implementation and credentials")
-    return parser.parse_args()
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="Use mock broker and do not send real orders")
+    mode.add_argument("--real", action="store_true", help="Use Kiwoom; order permission otherwise follows is_real_trade")
+    parser.add_argument("--enable-trading", action="store_true", help="With --real, explicitly enable broker orders for this process")
+    args = parser.parse_args()
+    if args.enable_trading and not args.real:
+        parser.error("--enable-trading requires --real")
+    return args
 
 
 if __name__ == "__main__":
     args = parse_args()
     override = True if args.dry_run else False if args.real else None
-    run(args.config, override)
+    run(args.config, override, enable_trading=True if args.enable_trading else None)

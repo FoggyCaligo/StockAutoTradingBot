@@ -12,7 +12,6 @@ if str(ROOT.parent) not in sys.path:
 
 from Daily_bot import main as bot_main
 from Daily_bot.storage.db import Recorder
-from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import calc_expected_return
 from Daily_bot.strategy.universe import get_candidates
 from Daily_bot.utils import RateLimiter, load_yaml
@@ -50,13 +49,15 @@ def collect_cycle(client, recorder, candidates, cfg, kospi_change_percent=None) 
 
 def run(cfg_path: str, *, dry_run: bool = False) -> None:
     cfg = load_yaml(cfg_path)
-    client = bot_main.build_client(dry_run)
+    # Explicitly read-only, including when the account environment enables trading.
+    client = bot_main.build_client(dry_run, enable_trading=False)
     if getattr(client, "is_real_trade", False):
         raise RuntimeError("Quote-only collector requires is_real_trade=false")
     recorder = Recorder(bot_main.BOT_DB_PATH, log_dir=bot_main.BOT_LOG_DIR)
     if not recorder._db_enabled or not recorder._csv_enabled:
         raise RuntimeError("Market trace recorder initialization failed")
     print("Quote-only market trace mode: trade/order/cancel/force-sell APIs disabled", flush=True)
+    print(f"Market trace output: db={recorder.path} csv_dir={recorder.log_dir}", flush=True)
     try:
         while not bot_main._authenticate_client_safely(client):
             time.sleep(5)
@@ -81,11 +82,14 @@ def run(cfg_path: str, *, dry_run: bool = False) -> None:
                     raise RuntimeError("No eligible tickers in the market universe")
                 count, failures = collect_cycle(client, recorder, candidates, cfg)
                 print(f"Market trace cycle completed: saved={count} errors={failures}", flush=True)
+                if count == 0:
+                    print("WARNING: no market traces saved; retrying universe and quotes next cycle", flush=True)
+                    candidates = None
             except (KeyboardInterrupt, SystemExit):
                 raise
-            except RuntimeError:
-                raise
             except Exception as exc:
+                if not recorder._db_enabled or not recorder._csv_enabled:
+                    raise RuntimeError("Market trace recording stopped: DB/CSV write failure") from exc
                 print(f"Market trace cycle error: {exc}", flush=True)
                 candidates = None
             time.sleep(interval)
@@ -97,4 +101,6 @@ def run(cfg_path: str, *, dry_run: bool = False) -> None:
 
 if __name__ == "__main__":
     args = bot_main.parse_args()
+    if args.enable_trading:
+        raise SystemExit("The market trace collector cannot enable trading")
     run(args.config, dry_run=args.dry_run)
