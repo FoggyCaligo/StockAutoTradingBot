@@ -2,6 +2,8 @@
 
 이 문서는 **현재 실거래 전략과 백테스트가 어떻게 맞물려 동작하는지 설명하는 기준 문서**다.
 
+2026-11-20에 코드와 대조한 현재 운영 과정은 [CURRENT_OPERATION_FLOW.md](CURRENT_OPERATION_FLOW.md)에 정리했다. 표준 백테스트에는 실거래의 dynamic stop 후 전체 신규매수 차단이 포함되지 않으므로, 두 경로를 완전히 동일하게 해석하지 않는다.
+
 최종 진실원천 우선순위:
 
 1. `Daily_bot/config/settings.yaml`

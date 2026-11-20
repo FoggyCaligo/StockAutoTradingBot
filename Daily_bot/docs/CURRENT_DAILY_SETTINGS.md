@@ -2,6 +2,8 @@
 
 이 문서는 **현재 활성 설정만 빠르게 확인하기 위한 스냅샷**이다. 값이 충돌하면 `Daily_bot/config/settings.yaml`과 실코드를 우선한다.
 
+2026-11-20 확인한 실행 순서·설정의 실제 적용 조건은 [CURRENT_OPERATION_FLOW.md](CURRENT_OPERATION_FLOW.md)를 참조한다. 동적 손절 후 전체 신규매수 차단, 실행 중 시각 판정과 실제 종료 조건도 그 문서에 명시했다.
+
 ## Market
 
 ```yaml

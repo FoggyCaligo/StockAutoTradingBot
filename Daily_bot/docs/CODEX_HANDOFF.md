@@ -2,10 +2,12 @@
 
 이 문서는 다음 작업자가 현재 운영 상태를 빠르게 이어받기 위한 압축 메모다. 과거 실험값보다 **현재 실코드와 설정을 우선**한다.
 
+2026-11-20 운영 과정 대조본은 [CURRENT_OPERATION_FLOW.md](CURRENT_OPERATION_FLOW.md)다. 특히 실제 주문 허용 옵션, dynamic stop 후 전체 신규매수 차단, 재시작 상태와 표준 백테스트의 차이는 해당 문서를 함께 읽는다. 아래 과거 성과 수치는 최신 실행 결과로 간주하지 않는다.
+
 ## Current Runtime
 
 - 실거래 권장 진입점: `Daily_bot/scripts/run_real.ps1`
-- 실제 실행 모듈: `Daily_bot/session_slot_runner.py --real`
+- 실제 실거래 스크립트의 실행 인자: `Daily_bot/session_slot_runner.py --real --enable-trading` (`--real`만 지정하면 환경변수의 주문 허용 여부를 따름)
 - 핵심 루프: `Daily_bot/main.py`
 - 기본 설정: `Daily_bot/config/settings.yaml`
 - dynamic stop: `Daily_bot/risk/stop_loss.py`
