@@ -152,6 +152,10 @@ API 키·계좌·접속 설정은 기존 `Daily_bot/.env`에서 읽는다. 기�
 
 `account_traces_*`, `daily_reference_prices_*`, `orders_*`, `daily_rev.csv`, `trade_fills_audit*.csv`, `kt00001_cash_debug_*` 같은 별도 런타임 파일은 더 이상 생성하지 않는다. 필요한 내부 상태는 SQLite에 유지하므로 거래 로직 자체는 그대로 동작한다.
 
+## 가상 호가 시장 백테스트
+
+표준 러너에 `--market-source fake`를 추가하면 난수 시드로 재현 가능한 가상 주문장을 생성하여 같은 전략으로 replay한다. 실제 기록은 기본 `--market-source real`이며 기존 명령을 그대로 쓴다. `x/n/a~d` 변동 설정, 틱 단위 CSV와 하루 그래프·호가 재생은 [가상 시장 사용법](docs/FAKE_MARKET_BACKTEST.md)을 참조한다.
+
 ## 현재 전략과 맞춘 백테스트
 
 **표준 백테스트 진입점은 하나만 사용한다.**

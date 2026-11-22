@@ -14,3 +14,6 @@ Daily_bot/backtest/results/*.csv
 Daily_bot/backtest/*.sqlite3
 Daily_bot/backtest/**/*.sqlite3
 Daily_bot/backtest/cache/
+
+# Per-run synthetic traces, databases and playback files.
+Daily_bot/backtest/results/fake_market/
