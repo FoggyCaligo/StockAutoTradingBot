@@ -1,0 +1,8 @@
+{
+  "complete": false,
+  "expected_archives": 15,
+  "expected_rows": 23233200,
+  "original_bytes": 5505923673,
+  "uploaded_archives": 0,
+  "note": "Binary fragments are uploaded in archive-sized commits; this flag changes after remote blob verification."
+}
