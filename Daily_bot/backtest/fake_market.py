@@ -12,7 +12,7 @@ import json
 import math
 import random
 from collections import deque
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
@@ -145,8 +145,13 @@ class MarketConfig:
     cancellation_probability: float = .45
     market_order_scale: float = 4.0
     scan_interval_seconds: float = 60.0
+    market_order_probability: float = 1.0
+    max_market_order_levels: int = 0  # 0 = legacy uncapped aggressive orders
+    profile: str = "legacy"
 
     def validate(self) -> None:
+        if self.profile not in {"legacy", "ordinary-bull"}:
+            raise ValueError("profile must be legacy or ordinary-bull")
         date.fromisoformat(self.start_date)
         if self.days < 1 or self.ticks_per_day < 2 or self.ticks_per_day > 22800000:
             raise ValueError("days >= 1; 2 <= ticks_per_day <= 22800000")
@@ -154,7 +159,7 @@ class MarketConfig:
             raise ValueError("stocks must be 0 (random 5..10), or 5..10")
         if any(not math.isfinite(v) for v in (self.x, self.n, self.a, self.b, self.c, self.d,
                                               self.scan_interval_seconds, self.cancellation_probability,
-                                              self.market_order_scale)):
+                                              self.market_order_scale, self.market_order_probability)):
             raise ValueError("parameters must be finite")
         if self.x <= -10000 or self.n < 0 or not 0 <= self.a <= self.b or not 0 <= self.c <= self.d:
             raise ValueError("x > -10000 bps; n >= 0; 0 <= a <= b; 0 <= c <= d")
@@ -162,16 +167,40 @@ class MarketConfig:
             raise ValueError("base_quantity > 0; cancellation_probability in [0,1]")
         if self.market_order_scale < 0 or self.scan_interval_seconds <= 0:
             raise ValueError("market_order_scale >= 0; scan_interval_seconds > 0")
+        if not 0 <= self.market_order_probability <= 1:
+            raise ValueError("market_order_probability must be in [0,1]")
+        if not isinstance(self.max_market_order_levels, int) or self.max_market_order_levels < 0:
+            raise ValueError("max_market_order_levels must be a nonnegative integer")
+
+
+def ordinary_bull_config(**overrides) -> MarketConfig:
+    """Approximate moderate uptrend; measured quote targets, not a fitted tick tape.
+
+    +7bp/session is approximately +19.3% over 252 sessions. n=1.6 gives
+    approximately 1.47% reference tick-noise SD over 22,800 one-second steps.
+    These are scenario design targets, not forecasts or guaranteed returns.
+    """
+    cfg = MarketConfig(profile="ordinary-bull", x=7.0, n=1.6, a=1.0, b=3.0, base_quantity=15,
+                       cancellation_probability=.20, market_order_scale=1.0,
+                       market_order_probability=.50, max_market_order_levels=1)
+    return replace(cfg, **overrides)
 
 
 def signed_uniform(rng: random.Random, lo: float, hi: float) -> float:
     return rng.choice((-1, 1)) * rng.uniform(lo, hi)
 
 
-def _quote_prices(book: OrderBook, depth: int = 10) -> tuple[list[int], list[int]]:
+def _quote_prices(book: OrderBook, depth: int = 10, reference: float | None = None) -> tuple[list[int], list[int]]:
     # Persistent levels are never moved. New liquidity arrives around last trade.
     bid = min(book.last_price, min(book.asks) - tick_size(min(book.asks) - 1)) if book.asks else book.last_price
     ask = max(adjacent(book.last_price, 1), adjacent(max(book.bids), 1)) if book.bids else adjacent(book.last_price, 1)
+    if reference is not None:
+        # Replenishing bids at the last sell price but asks one tick above the
+        # last buy price creates a mechanical upward ratchet. Normal-profile
+        # participants quote around their noisy valuation instead. A newly
+        # marketable limit still matches resting orders at their prices.
+        bid = floor_price(reference)
+        ask = adjacent(bid, 1)
     bids, asks = [], []
     for _ in range(depth):
         if book.lower <= bid <= book.upper:
@@ -195,7 +224,7 @@ def advance_book(book: OrderBook, reference: float, rng: random.Random, cfg: Mar
         for price in list(levels):
             if abs(price - book.last_price) > 60 * tick_size(book.last_price):
                 book.cancel(side, price, sum(o.quantity for o in levels[price]))
-    bids, asks = _quote_prices(book)
+    bids, asks = _quote_prices(book, reference=reference if cfg.profile == "ordinary-bull" else None)
     submissions = [("buy", p) for p in bids] + [("sell", p) for p in asks]
     rng.shuffle(submissions)  # no deterministic buy-first ordering
     fills = []
@@ -207,8 +236,13 @@ def advance_book(book: OrderBook, reference: float, rng: random.Random, cfg: Mar
     aggressors = ["buy", "sell"]
     rng.shuffle(aggressors)
     for side in aggressors:
+        if cfg.market_order_probability < 1 and rng.random() >= cfg.market_order_probability:
+            continue
         bias = pressure if side == "buy" else -pressure
         quantity = int(cfg.base_quantity * cfg.market_order_scale * rng.random() * math.exp(2 * bias))
+        if cfg.max_market_order_levels:
+            opposite = book.snapshot("sell" if side == "buy" else "buy", cfg.max_market_order_levels)
+            quantity = min(quantity, sum(q for _, q in opposite))
         if quantity:
             fills.extend(book.submit(side, quantity))
     return fills
@@ -235,10 +269,12 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
     if any(out_dir.iterdir()):
         raise FileExistsError(f"Use an empty directory for a synthetic run: {out_dir}")
     rng = random.Random(cfg.seed)
+    selection_rng = random.Random(cfg.seed) if cfg.profile == "ordinary-bull" else rng
     previous = {f"FAKE{i:02d}": floor_price(p) for i, p in enumerate(
         [1500, 3500, 7500, 15000, 25000, 45000, 75000, 150000, 250000, 550000], 1)}
     current_day = date.fromisoformat(cfg.start_date)
-    manifest = {"model_version": MODEL_VERSION, "synthetic": True, "config": asdict(cfg),
+    manifest = {"model_version": 2 if cfg.profile == "ordinary-bull" else MODEL_VERSION,
+                "synthetic": True, "config": asdict(cfg),
                 "session": "09:00:00 <= Asia/Seoul time < 15:20:00; weekdays, holidays ignored",
                 "limitations": ["assumed opening reference; no opening/closing call auction, VI or halts",
                                 "random model is not calibrated to real market distributions",
@@ -247,11 +283,17 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
     for day_index in range(cfg.days):
         while current_day.weekday() >= 5:
             current_day += timedelta(days=1)
-        count = cfg.stocks or rng.randint(5, 10)
-        tickers = rng.sample(list(previous), count)
-        books = {ticker: OrderBook(previous[ticker]) for ticker in tickers}
+        count = cfg.stocks or selection_rng.randint(5, 10)
+        tickers = selection_rng.sample(list(previous), count)
+        simulated_tickers = list(previous) if cfg.profile == "ordinary-bull" else tickers
+        recorded_tickers = set(tickers)
+        # Exogenous reference draws must not change when execution-flow settings change.
+        noise_rngs = {ticker: random.Random(int.from_bytes(hashlib.sha256(
+            f"ordinary-bull-reference:{cfg.seed}:{current_day}:{ticker}".encode()).digest()[:8], "big"))
+            for ticker in simulated_tickers} if cfg.profile == "ordinary-bull" else {}
+        books = {ticker: OrderBook(previous[ticker]) for ticker in simulated_tickers}
         hourly = {}
-        noise = dict.fromkeys(tickers, 0.0)
+        noise = dict.fromkeys(simulated_tickers, 0.0)
         series = {ticker: [] for ticker in tickers} if viewer else None
         path = out_dir / f"fake_market_traces_{current_day:%Y%m%d}.csv"
         start = datetime.combine(current_day, time(9))
@@ -267,18 +309,24 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
                 phase = "scan_candidate" if bucket != scan_bucket else "watch"
                 scan_bucket = bucket
                 stamp = now.isoformat(sep=" ", timespec="microseconds")
-                for ticker in tickers:
+                for ticker in simulated_tickers:
                     book = books[ticker]
+                    ref_rng = noise_rngs.get(ticker, rng)
                     hour = int(elapsed // 3600)
                     if (ticker, hour) not in hourly:
-                        hourly[ticker, hour] = signed_uniform(rng, cfg.a, cfg.b) * cfg.n
+                        hourly[ticker, hour] = signed_uniform(ref_rng, cfg.a, cfg.b) * cfg.n
                     if index:
                         noise[ticker] += hourly[ticker, hour] * dt / 3600
-                        noise[ticker] += signed_uniform(rng, cfg.c, cfg.d) * cfg.n
+                        scale = math.sqrt(dt) if cfg.profile == "ordinary-bull" else 1.0
+                        noise[ticker] += signed_uniform(ref_rng, cfg.c, cfg.d) * cfg.n * scale
                     reference = previous[ticker] * (1 + (cfg.x * elapsed / 22800 + noise[ticker]) / 10000)
                     reference = max(book.lower, min(book.upper, reference))
                     fills = advance_book(book, reference, rng, cfg)
+                    if ticker not in recorded_tickers:
+                        continue
                     raw = _raw(book, ticker, reference, fills)
+                    if cfg.profile == "ordinary-bull":
+                        raw.update(model_version=2, market_profile=cfg.profile)
                     bids, asks = book.snapshot("buy"), book.snapshot("sell")
                     snapshot = HogaSnapshot(ticker, book.last_price,
                                             [HogaLevel(*v) for v in bids], [HogaLevel(*v) for v in asks])
@@ -299,7 +347,8 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
                     if series is not None:
                         series[ticker].append([round(elapsed, 6), book.last_price, round(reference, 4),
                                                bids, asks, raw["tick_volume"]])
-        for ticker in tickers:
+        previous_closes = {ticker: previous[ticker] for ticker in simulated_tickers}
+        for ticker in simulated_tickers:
             previous[ticker] = books[ticker].last_price
         digest = hashlib.sha256()
         with path.open("rb") as fp:
@@ -307,6 +356,9 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
                 digest.update(chunk)
         manifest["files"].append({"path": path.name, "sha256": digest.hexdigest(),
                                   "rows": count * cfg.ticks_per_day, "tickers": tickers})
+        if cfg.profile == "ordinary-bull":
+            manifest["files"][-1].update(previous_close_by_ticker=previous_closes,
+                                         closing_price_by_ticker=dict(previous))
         if series is not None:
             from Daily_bot.backtest.fake_market_viewer import write_viewer
             write_viewer(out_dir / f"market_{current_day:%Y%m%d}.html", series, asdict(cfg), str(current_day))
@@ -320,6 +372,8 @@ def add_market_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--market-source", choices=("real", "fake"), default="real",
                         help="real: existing recorded traces; fake: generate an isolated synthetic run")
     parser.add_argument("--fake-output-dir", default="", help="empty destination directory; default is a unique run")
+    parser.add_argument("--fake-profile", choices=("ordinary-bull", "legacy"), default="ordinary-bull",
+                        help="ordinary-bull: moderate uptrend and bounded aggressive flow; legacy: original model")
     for name, default, kind, help_text in [
         ("seed", 42, int, "reproducible RNG seed"), ("days", 1, int, "synthetic weekday sessions"),
         ("start-date", "2026-11-23", str, "first date (KST)"),
@@ -334,14 +388,22 @@ def add_market_arguments(parser: argparse.ArgumentParser) -> None:
         ("base-quantity", 100, int, "base shares per passive order"),
         ("cancellation-probability", .45, float, "independent cancellation probability per level"),
         ("market-order-scale", 4., float, "aggressive order size multiplier"),
+        ("market-order-probability", 1., float, "per-side aggressive order arrival probability per tick"),
+        ("max-market-order-levels", 0, int, "maximum book levels consumed per aggressive order; 0=uncapped"),
         ("scan-interval-seconds", 60., float, "strategy entry scan cadence, separate from tick cadence"),
     ]:
-        parser.add_argument("--fake-" + name, default=default, type=kind, help=help_text)
+        profiled = {"x", "n", "a", "b", "c", "d", "base-quantity", "cancellation-probability",
+                    "market-order-scale", "market-order-probability", "max-market-order-levels"}
+        parser.add_argument("--fake-" + name, default=None if name in profiled else default,
+                            type=kind, help=help_text)
     parser.add_argument("--fake-no-viewer", action="store_true", help="omit per-day HTML viewer")
 
 
 def config_from_args(args: argparse.Namespace) -> MarketConfig:
-    return MarketConfig(**{name: getattr(args, "fake_" + name) for name in MarketConfig.__dataclass_fields__})
+    cfg = ordinary_bull_config() if args.fake_profile == "ordinary-bull" else MarketConfig()
+    overrides = {name: value for name in MarketConfig.__dataclass_fields__
+                 if name != "profile" and (value := getattr(args, "fake_" + name, None)) is not None}
+    return replace(cfg, **overrides)
 
 
 def prepare_market_args(args: argparse.Namespace, remaining: list[str]) -> list[str]:

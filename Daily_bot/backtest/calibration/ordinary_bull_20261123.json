@@ -1,0 +1,189 @@
+{
+  "profile": {
+    "seed": 42,
+    "days": 1,
+    "start_date": "2026-11-23",
+    "stocks": 0,
+    "ticks_per_day": 22800,
+    "x": 7.0,
+    "n": 1.6,
+    "a": 1.0,
+    "b": 3.0,
+    "c": 0.1,
+    "d": 1.0,
+    "base_quantity": 15,
+    "cancellation_probability": 0.2,
+    "market_order_scale": 1.0,
+    "scan_interval_seconds": 60.0,
+    "market_order_probability": 0.5,
+    "max_market_order_levels": 1,
+    "profile": "ordinary-bull"
+  },
+  "design_targets": {
+    "daily_drift_percent": 0.07,
+    "geometric_252_session_drift_percent": 19.28415153254528,
+    "geometric_66_session_drift_percent": 4.726692023765011,
+    "reference_tick_noise_daily_sd_percent": 1.4695632004102444
+  },
+  "recorded_quotes": {
+    "source": "User repository recorded market_traces; quote snapshots, not a full tick tape. 2026 dates can be unusually volatile.",
+    "files": [
+      {
+        "file": "market_traces_20260610.csv",
+        "rows": 4613
+      },
+      {
+        "file": "market_traces_20260611.csv",
+        "rows": 21263
+      },
+      {
+        "file": "market_traces_20260612.csv",
+        "rows": 12019
+      },
+      {
+        "file": "market_traces_20260615.csv",
+        "rows": 6391
+      },
+      {
+        "file": "market_traces_20260626.csv",
+        "rows": 25966
+      },
+      {
+        "file": "market_traces_20260629.csv",
+        "rows": 5542
+      },
+      {
+        "file": "market_traces_20260630.csv",
+        "rows": 4458
+      },
+      {
+        "file": "market_traces_20260701.csv",
+        "rows": 4373
+      },
+      {
+        "file": "market_traces_20260702.csv",
+        "rows": 9210
+      },
+      {
+        "file": "market_traces_20260703.csv",
+        "rows": 11626
+      },
+      {
+        "file": "market_traces_20260707.csv",
+        "rows": 663
+      },
+      {
+        "file": "market_traces_20260903.csv",
+        "rows": 1079
+      },
+      {
+        "file": "market_traces_20260904.csv",
+        "rows": 1666
+      },
+      {
+        "file": "market_traces_20260907.csv",
+        "rows": 3818
+      },
+      {
+        "file": "market_traces_20260910.csv",
+        "rows": 409
+      },
+      {
+        "file": "market_traces_20260911.csv",
+        "rows": 4561
+      }
+    ],
+    "rows": 117657,
+    "metrics": {
+      "spread_ticks": {
+        "n": 117657,
+        "p50": 1.0,
+        "p90": 3.0,
+        "p95": 3.0,
+        "p99": 6.0
+      },
+      "spread_percent": {
+        "n": 117657,
+        "p50": 0.16849199663016007,
+        "p90": 0.38022813688212925,
+        "p95": 0.4784688995215311,
+        "p99": 0.7407407407407408
+      },
+      "last_mid_gap_ticks": {
+        "n": 117657,
+        "p50": 0.5,
+        "p90": 1.5,
+        "p95": 1.5,
+        "p99": 3.0
+      },
+      "best_bid_shares": {
+        "n": 11758,
+        "p50": 91.0,
+        "p90": 996,
+        "p95": 1993,
+        "p99": 8022
+      },
+      "best_ask_shares": {
+        "n": 11758,
+        "p50": 80.0,
+        "p90": 981,
+        "p95": 1992,
+        "p99": 6804
+      }
+    }
+  },
+  "pilot": {
+    "legacy": {
+      "symbol_days": 64,
+      "daily_return_mean_percent": 0.3093750000000008,
+      "daily_return_std_percent": 2.3011496915668577,
+      "reference_return_std_percent": 1.5251976998940504,
+      "up_day_fraction": 0.59375,
+      "median_spread_ticks_p50": 24.0,
+      "median_spread_ticks_p95": 56.0,
+      "median_last_mid_gap_ticks_p50": 12.0,
+      "median_last_mid_gap_ticks_p95": 28.0,
+      "median_best_depth_shares_p50": 241.0,
+      "median_one_second_rms_return_percent": 2.125750247107829,
+      "median_changed_second_fraction": 0.5965570175438597
+    },
+    "ordinary-bull": {
+      "symbol_days": 64,
+      "daily_return_mean_percent": -0.05624999999999866,
+      "daily_return_std_percent": 1.2343821509292134,
+      "reference_return_std_percent": 1.216471365203391,
+      "up_day_fraction": 0.53125,
+      "median_spread_ticks_p50": 1.0,
+      "median_spread_ticks_p95": 1.0,
+      "median_last_mid_gap_ticks_p50": 0.5,
+      "median_last_mid_gap_ticks_p95": 0.5,
+      "median_best_depth_shares_p50": 105.0,
+      "median_one_second_rms_return_percent": 0.06321045132939174,
+      "median_changed_second_fraction": 0.39026315789473687
+    }
+  },
+  "legacy_compatibility": {
+    "seed": 42,
+    "days": 2,
+    "stocks": 5,
+    "ticks_per_day": 30,
+    "all_trace_csv_bytes_identical": true
+  },
+  "test_result": "94 passed; fake market, replay, predictor, universe, filters and guards",
+  "sources": [
+    {
+      "url": "https://www.bok.or.kr/portal/bbs/P0000596/view.do?menuNo=200071&nttId=10083282",
+      "fact": "2023 KOSPI return +18.7%"
+    },
+    {
+      "url": "https://www.bok.or.kr/portal/bbs/B0000156/view.do?menuNo=200754&nttId=11064613",
+      "fact": "Reported 2025 daily index return volatility 1.4%; 2026 Jan-Jul 4.1% not chosen as normal target"
+    }
+  ],
+  "limits": [
+    "Partial macro and quote calibration; no fitted joint distribution or full tick tape",
+    "Pilot 64 symbol-days share 16 reference paths across four price grids",
+    "No sector correlation, auction, news gaps, VI/halts, or holiday-calendar fit",
+    "No strategy performance was used to tune market parameters"
+  ]
+}

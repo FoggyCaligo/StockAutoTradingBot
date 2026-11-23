@@ -171,7 +171,7 @@ def test_cli_fake_and_recorded_paths_replay_identical_trace_equally(tmp_path):
     fake_dir = tmp_path/'fake'
     common = [sys.executable, '-m', 'Daily_bot.backtest.replay_refill_threshold',
               '--refill-min-expected-return', '0.90', '--starting-capital-krw', '1000000']
-    fake = subprocess.run(common + ['--market-source','fake','--fake-output-dir',str(fake_dir),
+    fake = subprocess.run(common + ['--market-source','fake','--fake-profile','legacy','--fake-output-dir',str(fake_dir),
                                    '--fake-stocks','5','--fake-ticks-per-day','380','--fake-no-viewer'],
                           cwd=tmp_path, env=env, capture_output=True, text=True)
     assert fake.returncode == 0, fake.stdout+fake.stderr
