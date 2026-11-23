@@ -1,0 +1,1313 @@
+{
+  "dataset_version": "six-months-v1",
+  "source_commit": "709aa91e43902a91cdca4a4d304c7ab23a94118f",
+  "period_start": "2026-11-23",
+  "period_end_exclusive": "2027-05-23",
+  "session_count": 130,
+  "seed": 42,
+  "rng": "independent per symbol; SHA256 dailybot-six-months-v1:{seed}:{ticker} first 8 bytes big-endian",
+  "selection_rng": "Python random.Random(42), randint(5,10), sample(FAKE01..FAKE10,count)",
+  "ticks_per_stock_day": 22800,
+  "tick_seconds": 1,
+  "timezone": "Asia/Seoul",
+  "session": "09:00:00 <= t < 15:20:00",
+  "x_bps_per_day": 100,
+  "n_bps": 1,
+  "a": 5,
+  "b": 20,
+  "c": 0.1,
+  "d": 1,
+  "base_quantity": 100,
+  "cancellation_probability": 0.45,
+  "market_order_scale": 4,
+  "scan_interval_seconds": 60,
+  "recording_profile": "All replay fields and visible depth retained; individual execution list omitted; tick volume/turnover retained",
+  "limitations": [
+    "weekdays only; public holidays ignored",
+    "bullish reference +1% each session, not balanced regimes",
+    "same engine; independent RNG streams differ from single shared RNG in standard CLI",
+    "not calibrated to actual market; bot orders do not participate in matching",
+    "no HTML or replay DB included"
+  ],
+  "schedule": {
+    "2026-11-23": [
+      "FAKE02",
+      "FAKE01",
+      "FAKE05",
+      "FAKE10",
+      "FAKE07",
+      "FAKE06",
+      "FAKE09",
+      "FAKE03",
+      "FAKE04",
+      "FAKE08"
+    ],
+    "2026-11-24": [
+      "FAKE01",
+      "FAKE02",
+      "FAKE04",
+      "FAKE09",
+      "FAKE05"
+    ],
+    "2026-11-25": [
+      "FAKE01",
+      "FAKE09",
+      "FAKE04",
+      "FAKE06",
+      "FAKE07",
+      "FAKE05",
+      "FAKE08",
+      "FAKE10",
+      "FAKE02"
+    ],
+    "2026-11-26": [
+      "FAKE05",
+      "FAKE01",
+      "FAKE03",
+      "FAKE06",
+      "FAKE04",
+      "FAKE08",
+      "FAKE10",
+      "FAKE09",
+      "FAKE07"
+    ],
+    "2026-11-27": [
+      "FAKE02",
+      "FAKE10",
+      "FAKE07",
+      "FAKE01",
+      "FAKE03",
+      "FAKE06",
+      "FAKE05"
+    ],
+    "2026-11-30": [
+      "FAKE08",
+      "FAKE09",
+      "FAKE02",
+      "FAKE04",
+      "FAKE01"
+    ],
+    "2026-12-01": [
+      "FAKE05",
+      "FAKE06",
+      "FAKE04",
+      "FAKE09",
+      "FAKE01",
+      "FAKE07",
+      "FAKE02",
+      "FAKE08",
+      "FAKE10"
+    ],
+    "2026-12-02": [
+      "FAKE02",
+      "FAKE07",
+      "FAKE05",
+      "FAKE04",
+      "FAKE06",
+      "FAKE03"
+    ],
+    "2026-12-03": [
+      "FAKE06",
+      "FAKE10",
+      "FAKE04",
+      "FAKE09",
+      "FAKE03",
+      "FAKE01"
+    ],
+    "2026-12-04": [
+      "FAKE03",
+      "FAKE09",
+      "FAKE04",
+      "FAKE02",
+      "FAKE08",
+      "FAKE06",
+      "FAKE10",
+      "FAKE05",
+      "FAKE01"
+    ],
+    "2026-12-07": [
+      "FAKE06",
+      "FAKE01",
+      "FAKE04",
+      "FAKE07",
+      "FAKE09",
+      "FAKE03",
+      "FAKE08",
+      "FAKE02",
+      "FAKE10",
+      "FAKE05"
+    ],
+    "2026-12-08": [
+      "FAKE06",
+      "FAKE04",
+      "FAKE08",
+      "FAKE09",
+      "FAKE10",
+      "FAKE07",
+      "FAKE02",
+      "FAKE05",
+      "FAKE01"
+    ],
+    "2026-12-09": [
+      "FAKE09",
+      "FAKE10",
+      "FAKE05",
+      "FAKE06",
+      "FAKE08",
+      "FAKE04"
+    ],
+    "2026-12-10": [
+      "FAKE07",
+      "FAKE06",
+      "FAKE04",
+      "FAKE02",
+      "FAKE05",
+      "FAKE08",
+      "FAKE01",
+      "FAKE09",
+      "FAKE03"
+    ],
+    "2026-12-11": [
+      "FAKE03",
+      "FAKE07",
+      "FAKE02",
+      "FAKE04",
+      "FAKE09",
+      "FAKE05"
+    ],
+    "2026-12-14": [
+      "FAKE09",
+      "FAKE05",
+      "FAKE01",
+      "FAKE06",
+      "FAKE07",
+      "FAKE08",
+      "FAKE03",
+      "FAKE04"
+    ],
+    "2026-12-15": [
+      "FAKE02",
+      "FAKE05",
+      "FAKE07",
+      "FAKE10",
+      "FAKE04",
+      "FAKE01",
+      "FAKE03"
+    ],
+    "2026-12-16": [
+      "FAKE03",
+      "FAKE09",
+      "FAKE02",
+      "FAKE07",
+      "FAKE06",
+      "FAKE10",
+      "FAKE08",
+      "FAKE01",
+      "FAKE04"
+    ],
+    "2026-12-17": [
+      "FAKE09",
+      "FAKE10",
+      "FAKE01",
+      "FAKE05",
+      "FAKE03",
+      "FAKE04"
+    ],
+    "2026-12-18": [
+      "FAKE02",
+      "FAKE06",
+      "FAKE05",
+      "FAKE10",
+      "FAKE01"
+    ],
+    "2026-12-21": [
+      "FAKE10",
+      "FAKE02",
+      "FAKE09",
+      "FAKE06",
+      "FAKE04",
+      "FAKE01"
+    ],
+    "2026-12-22": [
+      "FAKE03",
+      "FAKE10",
+      "FAKE08",
+      "FAKE05",
+      "FAKE02",
+      "FAKE09",
+      "FAKE04",
+      "FAKE01",
+      "FAKE07"
+    ],
+    "2026-12-23": [
+      "FAKE05",
+      "FAKE07",
+      "FAKE06",
+      "FAKE04",
+      "FAKE10",
+      "FAKE09",
+      "FAKE01",
+      "FAKE08",
+      "FAKE03",
+      "FAKE02"
+    ],
+    "2026-12-24": [
+      "FAKE01",
+      "FAKE09",
+      "FAKE04",
+      "FAKE05",
+      "FAKE02",
+      "FAKE10",
+      "FAKE07"
+    ],
+    "2026-12-25": [
+      "FAKE01",
+      "FAKE04",
+      "FAKE02",
+      "FAKE10",
+      "FAKE03",
+      "FAKE07",
+      "FAKE08",
+      "FAKE09",
+      "FAKE06",
+      "FAKE05"
+    ],
+    "2026-12-28": [
+      "FAKE03",
+      "FAKE08",
+      "FAKE04",
+      "FAKE07",
+      "FAKE09",
+      "FAKE06",
+      "FAKE02",
+      "FAKE01",
+      "FAKE10"
+    ],
+    "2026-12-29": [
+      "FAKE07",
+      "FAKE06",
+      "FAKE10",
+      "FAKE04",
+      "FAKE08",
+      "FAKE01",
+      "FAKE05",
+      "FAKE09",
+      "FAKE02",
+      "FAKE03"
+    ],
+    "2026-12-30": [
+      "FAKE04",
+      "FAKE10",
+      "FAKE09",
+      "FAKE05",
+      "FAKE08"
+    ],
+    "2026-12-31": [
+      "FAKE07",
+      "FAKE03",
+      "FAKE05",
+      "FAKE04",
+      "FAKE02",
+      "FAKE01"
+    ],
+    "2027-01-01": [
+      "FAKE09",
+      "FAKE02",
+      "FAKE01",
+      "FAKE06",
+      "FAKE05",
+      "FAKE08",
+      "FAKE07",
+      "FAKE04"
+    ],
+    "2027-01-04": [
+      "FAKE07",
+      "FAKE08",
+      "FAKE09",
+      "FAKE02",
+      "FAKE04",
+      "FAKE01"
+    ],
+    "2027-01-05": [
+      "FAKE07",
+      "FAKE01",
+      "FAKE10",
+      "FAKE03",
+      "FAKE04",
+      "FAKE08"
+    ],
+    "2027-01-06": [
+      "FAKE09",
+      "FAKE08",
+      "FAKE03",
+      "FAKE02",
+      "FAKE10",
+      "FAKE07",
+      "FAKE01",
+      "FAKE06"
+    ],
+    "2027-01-07": [
+      "FAKE09",
+      "FAKE01",
+      "FAKE06",
+      "FAKE10",
+      "FAKE07",
+      "FAKE05",
+      "FAKE04",
+      "FAKE03",
+      "FAKE08",
+      "FAKE02"
+    ],
+    "2027-01-08": [
+      "FAKE02",
+      "FAKE03",
+      "FAKE10",
+      "FAKE05",
+      "FAKE01",
+      "FAKE08",
+      "FAKE04",
+      "FAKE06",
+      "FAKE09"
+    ],
+    "2027-01-11": [
+      "FAKE10",
+      "FAKE01",
+      "FAKE02",
+      "FAKE04",
+      "FAKE06",
+      "FAKE05",
+      "FAKE03",
+      "FAKE08",
+      "FAKE09"
+    ],
+    "2027-01-12": [
+      "FAKE06",
+      "FAKE04",
+      "FAKE05",
+      "FAKE09",
+      "FAKE02",
+      "FAKE03",
+      "FAKE07",
+      "FAKE10",
+      "FAKE01",
+      "FAKE08"
+    ],
+    "2027-01-13": [
+      "FAKE10",
+      "FAKE02",
+      "FAKE09",
+      "FAKE05",
+      "FAKE08",
+      "FAKE07",
+      "FAKE03",
+      "FAKE01"
+    ],
+    "2027-01-14": [
+      "FAKE02",
+      "FAKE04",
+      "FAKE06",
+      "FAKE03",
+      "FAKE10",
+      "FAKE09",
+      "FAKE07"
+    ],
+    "2027-01-15": [
+      "FAKE09",
+      "FAKE01",
+      "FAKE05",
+      "FAKE06",
+      "FAKE10",
+      "FAKE02",
+      "FAKE03",
+      "FAKE07",
+      "FAKE04"
+    ],
+    "2027-01-18": [
+      "FAKE09",
+      "FAKE03",
+      "FAKE05",
+      "FAKE10",
+      "FAKE08",
+      "FAKE02",
+      "FAKE07",
+      "FAKE01",
+      "FAKE06",
+      "FAKE04"
+    ],
+    "2027-01-19": [
+      "FAKE01",
+      "FAKE02",
+      "FAKE07",
+      "FAKE08",
+      "FAKE03",
+      "FAKE10",
+      "FAKE05"
+    ],
+    "2027-01-20": [
+      "FAKE03",
+      "FAKE05",
+      "FAKE10",
+      "FAKE06",
+      "FAKE04",
+      "FAKE09",
+      "FAKE07"
+    ],
+    "2027-01-21": [
+      "FAKE01",
+      "FAKE02",
+      "FAKE09",
+      "FAKE06",
+      "FAKE08",
+      "FAKE05",
+      "FAKE10",
+      "FAKE07",
+      "FAKE04"
+    ],
+    "2027-01-22": [
+      "FAKE03",
+      "FAKE01",
+      "FAKE05",
+      "FAKE10",
+      "FAKE09",
+      "FAKE07",
+      "FAKE02",
+      "FAKE08"
+    ],
+    "2027-01-25": [
+      "FAKE02",
+      "FAKE06",
+      "FAKE07",
+      "FAKE05",
+      "FAKE09",
+      "FAKE10"
+    ],
+    "2027-01-26": [
+      "FAKE03",
+      "FAKE10",
+      "FAKE07",
+      "FAKE01",
+      "FAKE02",
+      "FAKE09"
+    ],
+    "2027-01-27": [
+      "FAKE04",
+      "FAKE05",
+      "FAKE03",
+      "FAKE07",
+      "FAKE06",
+      "FAKE01",
+      "FAKE10",
+      "FAKE09"
+    ],
+    "2027-01-28": [
+      "FAKE04",
+      "FAKE10",
+      "FAKE08",
+      "FAKE03",
+      "FAKE07",
+      "FAKE02",
+      "FAKE05",
+      "FAKE01"
+    ],
+    "2027-01-29": [
+      "FAKE04",
+      "FAKE07",
+      "FAKE06",
+      "FAKE03",
+      "FAKE01",
+      "FAKE09",
+      "FAKE05",
+      "FAKE10",
+      "FAKE02",
+      "FAKE08"
+    ],
+    "2027-02-01": [
+      "FAKE02",
+      "FAKE05",
+      "FAKE03",
+      "FAKE09",
+      "FAKE08"
+    ],
+    "2027-02-02": [
+      "FAKE02",
+      "FAKE07",
+      "FAKE06",
+      "FAKE08",
+      "FAKE03"
+    ],
+    "2027-02-03": [
+      "FAKE10",
+      "FAKE09",
+      "FAKE02",
+      "FAKE04",
+      "FAKE05",
+      "FAKE08",
+      "FAKE03",
+      "FAKE01"
+    ],
+    "2027-02-04": [
+      "FAKE07",
+      "FAKE01",
+      "FAKE04",
+      "FAKE03",
+      "FAKE08",
+      "FAKE09",
+      "FAKE10",
+      "FAKE06",
+      "FAKE02",
+      "FAKE05"
+    ],
+    "2027-02-05": [
+      "FAKE05",
+      "FAKE09",
+      "FAKE10",
+      "FAKE06",
+      "FAKE04",
+      "FAKE03",
+      "FAKE07",
+      "FAKE08",
+      "FAKE02",
+      "FAKE01"
+    ],
+    "2027-02-08": [
+      "FAKE07",
+      "FAKE10",
+      "FAKE03",
+      "FAKE05",
+      "FAKE09",
+      "FAKE08"
+    ],
+    "2027-02-09": [
+      "FAKE09",
+      "FAKE01",
+      "FAKE05",
+      "FAKE03",
+      "FAKE02",
+      "FAKE04",
+      "FAKE07",
+      "FAKE06"
+    ],
+    "2027-02-10": [
+      "FAKE08",
+      "FAKE04",
+      "FAKE10",
+      "FAKE07",
+      "FAKE06",
+      "FAKE02",
+      "FAKE01",
+      "FAKE05"
+    ],
+    "2027-02-11": [
+      "FAKE10",
+      "FAKE06",
+      "FAKE02",
+      "FAKE07",
+      "FAKE08",
+      "FAKE03",
+      "FAKE09",
+      "FAKE01",
+      "FAKE05"
+    ],
+    "2027-02-12": [
+      "FAKE01",
+      "FAKE04",
+      "FAKE08",
+      "FAKE05",
+      "FAKE10"
+    ],
+    "2027-02-15": [
+      "FAKE07",
+      "FAKE04",
+      "FAKE10",
+      "FAKE09",
+      "FAKE08",
+      "FAKE02",
+      "FAKE05",
+      "FAKE03"
+    ],
+    "2027-02-16": [
+      "FAKE01",
+      "FAKE02",
+      "FAKE07",
+      "FAKE09",
+      "FAKE08",
+      "FAKE05",
+      "FAKE04",
+      "FAKE10",
+      "FAKE03",
+      "FAKE06"
+    ],
+    "2027-02-17": [
+      "FAKE03",
+      "FAKE08",
+      "FAKE06",
+      "FAKE07",
+      "FAKE04",
+      "FAKE05",
+      "FAKE09",
+      "FAKE10"
+    ],
+    "2027-02-18": [
+      "FAKE03",
+      "FAKE08",
+      "FAKE09",
+      "FAKE10",
+      "FAKE02",
+      "FAKE07",
+      "FAKE04",
+      "FAKE05"
+    ],
+    "2027-02-19": [
+      "FAKE05",
+      "FAKE08",
+      "FAKE02",
+      "FAKE06",
+      "FAKE03",
+      "FAKE09"
+    ],
+    "2027-02-22": [
+      "FAKE06",
+      "FAKE10",
+      "FAKE02",
+      "FAKE08",
+      "FAKE07",
+      "FAKE09",
+      "FAKE04"
+    ],
+    "2027-02-23": [
+      "FAKE03",
+      "FAKE04",
+      "FAKE02",
+      "FAKE09",
+      "FAKE07",
+      "FAKE10",
+      "FAKE06",
+      "FAKE08",
+      "FAKE01",
+      "FAKE05"
+    ],
+    "2027-02-24": [
+      "FAKE07",
+      "FAKE01",
+      "FAKE10",
+      "FAKE04",
+      "FAKE09",
+      "FAKE03",
+      "FAKE05",
+      "FAKE02"
+    ],
+    "2027-02-25": [
+      "FAKE09",
+      "FAKE10",
+      "FAKE04",
+      "FAKE08",
+      "FAKE02",
+      "FAKE03",
+      "FAKE07",
+      "FAKE06"
+    ],
+    "2027-02-26": [
+      "FAKE07",
+      "FAKE06",
+      "FAKE10",
+      "FAKE09",
+      "FAKE02"
+    ],
+    "2027-03-01": [
+      "FAKE03",
+      "FAKE09",
+      "FAKE01",
+      "FAKE04",
+      "FAKE05",
+      "FAKE06",
+      "FAKE08",
+      "FAKE07"
+    ],
+    "2027-03-02": [
+      "FAKE07",
+      "FAKE03",
+      "FAKE08",
+      "FAKE02",
+      "FAKE01",
+      "FAKE09",
+      "FAKE04",
+      "FAKE10",
+      "FAKE06",
+      "FAKE05"
+    ],
+    "2027-03-03": [
+      "FAKE06",
+      "FAKE07",
+      "FAKE05",
+      "FAKE09",
+      "FAKE04",
+      "FAKE03",
+      "FAKE01"
+    ],
+    "2027-03-04": [
+      "FAKE01",
+      "FAKE09",
+      "FAKE10",
+      "FAKE03",
+      "FAKE02",
+      "FAKE08",
+      "FAKE05",
+      "FAKE04"
+    ],
+    "2027-03-05": [
+      "FAKE04",
+      "FAKE01",
+      "FAKE03",
+      "FAKE02",
+      "FAKE07",
+      "FAKE10"
+    ],
+    "2027-03-08": [
+      "FAKE02",
+      "FAKE04",
+      "FAKE08",
+      "FAKE06",
+      "FAKE03",
+      "FAKE07",
+      "FAKE10",
+      "FAKE05",
+      "FAKE01",
+      "FAKE09"
+    ],
+    "2027-03-09": [
+      "FAKE02",
+      "FAKE01",
+      "FAKE05",
+      "FAKE08",
+      "FAKE06",
+      "FAKE04",
+      "FAKE07"
+    ],
+    "2027-03-10": [
+      "FAKE04",
+      "FAKE02",
+      "FAKE10",
+      "FAKE01",
+      "FAKE06",
+      "FAKE03",
+      "FAKE07",
+      "FAKE05",
+      "FAKE08",
+      "FAKE09"
+    ],
+    "2027-03-11": [
+      "FAKE07",
+      "FAKE06",
+      "FAKE02",
+      "FAKE05",
+      "FAKE09",
+      "FAKE03",
+      "FAKE01",
+      "FAKE08",
+      "FAKE10"
+    ],
+    "2027-03-12": [
+      "FAKE07",
+      "FAKE06",
+      "FAKE08",
+      "FAKE09",
+      "FAKE02"
+    ],
+    "2027-03-15": [
+      "FAKE03",
+      "FAKE09",
+      "FAKE05",
+      "FAKE08",
+      "FAKE07",
+      "FAKE04",
+      "FAKE06",
+      "FAKE02"
+    ],
+    "2027-03-16": [
+      "FAKE10",
+      "FAKE05",
+      "FAKE06",
+      "FAKE07",
+      "FAKE02",
+      "FAKE01",
+      "FAKE03",
+      "FAKE08",
+      "FAKE09",
+      "FAKE04"
+    ],
+    "2027-03-17": [
+      "FAKE10",
+      "FAKE07",
+      "FAKE06",
+      "FAKE01",
+      "FAKE04",
+      "FAKE03",
+      "FAKE02",
+      "FAKE08",
+      "FAKE09"
+    ],
+    "2027-03-18": [
+      "FAKE05",
+      "FAKE06",
+      "FAKE10",
+      "FAKE08",
+      "FAKE09",
+      "FAKE03",
+      "FAKE01"
+    ],
+    "2027-03-19": [
+      "FAKE04",
+      "FAKE02",
+      "FAKE10",
+      "FAKE06",
+      "FAKE08",
+      "FAKE07",
+      "FAKE09",
+      "FAKE03",
+      "FAKE05"
+    ],
+    "2027-03-22": [
+      "FAKE08",
+      "FAKE10",
+      "FAKE01",
+      "FAKE09",
+      "FAKE03",
+      "FAKE02",
+      "FAKE04",
+      "FAKE06",
+      "FAKE07",
+      "FAKE05"
+    ],
+    "2027-03-23": [
+      "FAKE10",
+      "FAKE06",
+      "FAKE08",
+      "FAKE05",
+      "FAKE07",
+      "FAKE03",
+      "FAKE04",
+      "FAKE09",
+      "FAKE02",
+      "FAKE01"
+    ],
+    "2027-03-24": [
+      "FAKE08",
+      "FAKE05",
+      "FAKE09",
+      "FAKE03",
+      "FAKE02",
+      "FAKE01",
+      "FAKE06",
+      "FAKE04",
+      "FAKE10",
+      "FAKE07"
+    ],
+    "2027-03-25": [
+      "FAKE04",
+      "FAKE08",
+      "FAKE05",
+      "FAKE06",
+      "FAKE09",
+      "FAKE07"
+    ],
+    "2027-03-26": [
+      "FAKE05",
+      "FAKE02",
+      "FAKE04",
+      "FAKE03",
+      "FAKE09",
+      "FAKE07",
+      "FAKE06",
+      "FAKE08",
+      "FAKE01"
+    ],
+    "2027-03-29": [
+      "FAKE09",
+      "FAKE03",
+      "FAKE05",
+      "FAKE01",
+      "FAKE07",
+      "FAKE08",
+      "FAKE10",
+      "FAKE04",
+      "FAKE06",
+      "FAKE02"
+    ],
+    "2027-03-30": [
+      "FAKE01",
+      "FAKE05",
+      "FAKE08",
+      "FAKE04",
+      "FAKE07"
+    ],
+    "2027-03-31": [
+      "FAKE03",
+      "FAKE01",
+      "FAKE05",
+      "FAKE07",
+      "FAKE04",
+      "FAKE09",
+      "FAKE08"
+    ],
+    "2027-04-01": [
+      "FAKE08",
+      "FAKE02",
+      "FAKE01",
+      "FAKE09",
+      "FAKE07",
+      "FAKE05",
+      "FAKE03",
+      "FAKE10"
+    ],
+    "2027-04-02": [
+      "FAKE02",
+      "FAKE09",
+      "FAKE07",
+      "FAKE05",
+      "FAKE08",
+      "FAKE06"
+    ],
+    "2027-04-05": [
+      "FAKE09",
+      "FAKE07",
+      "FAKE08",
+      "FAKE04",
+      "FAKE03",
+      "FAKE05"
+    ],
+    "2027-04-06": [
+      "FAKE05",
+      "FAKE01",
+      "FAKE02",
+      "FAKE07",
+      "FAKE08",
+      "FAKE06",
+      "FAKE03",
+      "FAKE04"
+    ],
+    "2027-04-07": [
+      "FAKE03",
+      "FAKE04",
+      "FAKE10",
+      "FAKE05",
+      "FAKE01"
+    ],
+    "2027-04-08": [
+      "FAKE01",
+      "FAKE07",
+      "FAKE08",
+      "FAKE06",
+      "FAKE05",
+      "FAKE04"
+    ],
+    "2027-04-09": [
+      "FAKE01",
+      "FAKE04",
+      "FAKE05",
+      "FAKE06",
+      "FAKE03",
+      "FAKE09",
+      "FAKE10"
+    ],
+    "2027-04-12": [
+      "FAKE04",
+      "FAKE05",
+      "FAKE10",
+      "FAKE08",
+      "FAKE01",
+      "FAKE09",
+      "FAKE02",
+      "FAKE03",
+      "FAKE06",
+      "FAKE07"
+    ],
+    "2027-04-13": [
+      "FAKE02",
+      "FAKE01",
+      "FAKE03",
+      "FAKE07",
+      "FAKE08",
+      "FAKE05"
+    ],
+    "2027-04-14": [
+      "FAKE10",
+      "FAKE05",
+      "FAKE08",
+      "FAKE01",
+      "FAKE04",
+      "FAKE03",
+      "FAKE06",
+      "FAKE02",
+      "FAKE09",
+      "FAKE07"
+    ],
+    "2027-04-15": [
+      "FAKE10",
+      "FAKE01",
+      "FAKE07",
+      "FAKE06",
+      "FAKE03"
+    ],
+    "2027-04-16": [
+      "FAKE05",
+      "FAKE01",
+      "FAKE02",
+      "FAKE08",
+      "FAKE06",
+      "FAKE10",
+      "FAKE09",
+      "FAKE03",
+      "FAKE07"
+    ],
+    "2027-04-19": [
+      "FAKE01",
+      "FAKE03",
+      "FAKE08",
+      "FAKE05",
+      "FAKE06",
+      "FAKE04",
+      "FAKE09",
+      "FAKE10",
+      "FAKE02"
+    ],
+    "2027-04-20": [
+      "FAKE08",
+      "FAKE02",
+      "FAKE10",
+      "FAKE03",
+      "FAKE04",
+      "FAKE07",
+      "FAKE05",
+      "FAKE06",
+      "FAKE01",
+      "FAKE09"
+    ],
+    "2027-04-21": [
+      "FAKE07",
+      "FAKE08",
+      "FAKE05",
+      "FAKE06",
+      "FAKE04",
+      "FAKE09",
+      "FAKE01"
+    ],
+    "2027-04-22": [
+      "FAKE02",
+      "FAKE06",
+      "FAKE05",
+      "FAKE03",
+      "FAKE01",
+      "FAKE04",
+      "FAKE09",
+      "FAKE07"
+    ],
+    "2027-04-23": [
+      "FAKE08",
+      "FAKE07",
+      "FAKE01",
+      "FAKE02",
+      "FAKE05",
+      "FAKE03",
+      "FAKE04",
+      "FAKE06",
+      "FAKE09"
+    ],
+    "2027-04-26": [
+      "FAKE04",
+      "FAKE05",
+      "FAKE03",
+      "FAKE08",
+      "FAKE10"
+    ],
+    "2027-04-27": [
+      "FAKE08",
+      "FAKE02",
+      "FAKE01",
+      "FAKE06",
+      "FAKE05",
+      "FAKE09",
+      "FAKE07",
+      "FAKE04",
+      "FAKE10",
+      "FAKE03"
+    ],
+    "2027-04-28": [
+      "FAKE04",
+      "FAKE02",
+      "FAKE08",
+      "FAKE01",
+      "FAKE06"
+    ],
+    "2027-04-29": [
+      "FAKE08",
+      "FAKE05",
+      "FAKE09",
+      "FAKE04",
+      "FAKE07",
+      "FAKE06"
+    ],
+    "2027-04-30": [
+      "FAKE08",
+      "FAKE09",
+      "FAKE03",
+      "FAKE04",
+      "FAKE02",
+      "FAKE05"
+    ],
+    "2027-05-03": [
+      "FAKE03",
+      "FAKE02",
+      "FAKE05",
+      "FAKE07",
+      "FAKE04",
+      "FAKE10",
+      "FAKE08",
+      "FAKE01",
+      "FAKE09"
+    ],
+    "2027-05-04": [
+      "FAKE05",
+      "FAKE08",
+      "FAKE03",
+      "FAKE04",
+      "FAKE10",
+      "FAKE07",
+      "FAKE09",
+      "FAKE02",
+      "FAKE06",
+      "FAKE01"
+    ],
+    "2027-05-05": [
+      "FAKE04",
+      "FAKE10",
+      "FAKE07",
+      "FAKE02",
+      "FAKE09",
+      "FAKE01",
+      "FAKE03"
+    ],
+    "2027-05-06": [
+      "FAKE08",
+      "FAKE07",
+      "FAKE09",
+      "FAKE06",
+      "FAKE10",
+      "FAKE02",
+      "FAKE04",
+      "FAKE01",
+      "FAKE03",
+      "FAKE05"
+    ],
+    "2027-05-07": [
+      "FAKE08",
+      "FAKE02",
+      "FAKE10",
+      "FAKE01",
+      "FAKE06"
+    ],
+    "2027-05-10": [
+      "FAKE07",
+      "FAKE03",
+      "FAKE02",
+      "FAKE04",
+      "FAKE09",
+      "FAKE06"
+    ],
+    "2027-05-11": [
+      "FAKE07",
+      "FAKE02",
+      "FAKE06",
+      "FAKE10",
+      "FAKE08",
+      "FAKE05",
+      "FAKE04",
+      "FAKE09",
+      "FAKE03"
+    ],
+    "2027-05-12": [
+      "FAKE01",
+      "FAKE02",
+      "FAKE04",
+      "FAKE06",
+      "FAKE07",
+      "FAKE03",
+      "FAKE09",
+      "FAKE05",
+      "FAKE10"
+    ],
+    "2027-05-13": [
+      "FAKE02",
+      "FAKE10",
+      "FAKE08",
+      "FAKE09",
+      "FAKE06",
+      "FAKE03",
+      "FAKE01",
+      "FAKE04"
+    ],
+    "2027-05-14": [
+      "FAKE01",
+      "FAKE05",
+      "FAKE06",
+      "FAKE03",
+      "FAKE04",
+      "FAKE02",
+      "FAKE09"
+    ],
+    "2027-05-17": [
+      "FAKE07",
+      "FAKE03",
+      "FAKE09",
+      "FAKE02",
+      "FAKE01",
+      "FAKE05",
+      "FAKE04",
+      "FAKE08",
+      "FAKE06"
+    ],
+    "2027-05-18": [
+      "FAKE10",
+      "FAKE03",
+      "FAKE04",
+      "FAKE08",
+      "FAKE06",
+      "FAKE09",
+      "FAKE07",
+      "FAKE02"
+    ],
+    "2027-05-19": [
+      "FAKE01",
+      "FAKE08",
+      "FAKE05",
+      "FAKE06",
+      "FAKE09",
+      "FAKE02",
+      "FAKE10",
+      "FAKE07",
+      "FAKE03",
+      "FAKE04"
+    ],
+    "2027-05-20": [
+      "FAKE07",
+      "FAKE05",
+      "FAKE08",
+      "FAKE10",
+      "FAKE03",
+      "FAKE02",
+      "FAKE04",
+      "FAKE09",
+      "FAKE01",
+      "FAKE06"
+    ],
+    "2027-05-21": [
+      "FAKE10",
+      "FAKE06",
+      "FAKE05",
+      "FAKE09",
+      "FAKE03",
+      "FAKE01",
+      "FAKE04",
+      "FAKE02"
+    ]
+  }
+}

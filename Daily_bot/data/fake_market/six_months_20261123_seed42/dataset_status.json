@@ -1,0 +1,11 @@
+{
+  "complete": true,
+  "expected_archives": 15,
+  "expected_parts": 532,
+  "expected_rows": 23233200,
+  "original_bytes": 5505923673,
+  "uploaded_archives": 15,
+  "uploaded_parts": 532,
+  "verified_remote_tree": "cd26d889c644bb65f44ff1f0739e1319b6cff984",
+  "verification": "Every remote Git blob ID and byte size matches parts_manifest.json. The original ZIP SHA-256 values were verified against the retained source archives before splitting."
+}

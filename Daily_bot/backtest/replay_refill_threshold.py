@@ -22,8 +22,19 @@ def main() -> None:
     This module is backtest-only and does not alter live trading behavior.
     """
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--refill-min-expected-return", type=float, required=True)
+    parser.add_argument("--refill-min-expected-return", type=float,
+                        required=not any(flag in sys.argv for flag in ("--help", "-h")))
+    from Daily_bot.backtest.fake_market import add_market_arguments, prepare_market_args
+    add_market_arguments(parser)
     custom, remaining = parser.parse_known_args()
+    help_requested = any(flag in remaining for flag in ("--help", "-h"))
+    if help_requested:
+        parser.print_help()
+    try:
+        if not help_requested:
+            remaining = prepare_market_args(custom, remaining)
+    except (ValueError, FileExistsError) as exc:
+        parser.error(str(exc))
 
     base = reserve.replay.base
     state = {"take_profit_slots": 0}

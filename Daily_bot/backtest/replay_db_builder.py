@@ -149,8 +149,10 @@ def _resolve_prev_close_price_overrides(market_files: list[Path]) -> dict[tuple[
     return overrides
 
 
-def build_replay_db_from_logs(logs_dir: Path, out_db_path: Path) -> Path:
-    market_files = sorted(logs_dir.glob("market_traces_*.csv"))
+def build_replay_db_from_logs(
+    logs_dir: Path, out_db_path: Path, *, market_pattern: str = "market_traces_*.csv",
+) -> Path:
+    market_files = sorted(logs_dir.glob(market_pattern))
     if not market_files:
         raise FileNotFoundError(f"No market trace CSV files found under: {logs_dir}")
 
