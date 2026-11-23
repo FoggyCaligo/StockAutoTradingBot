@@ -1,10 +1,33 @@
 import time
+import os
+from datetime import datetime
 
 import pandas as pd
 import pytest
 
 from Daily_bot.strategy import universe
 from Daily_bot.strategy.universe import UniverseConfig, _call_with_timeout, get_candidates, get_kospi200_list
+
+
+def test_morning_cache_is_reused_after_blank_listing_recovery(tmp_path, monkeypatch):
+    cache = tmp_path / "universe.csv"
+    invalid = pd.DataFrame([{"Code": "005930", "Marcap": 0, "Amount": 0}])
+    valid = pd.DataFrame([{"Code": "005930", "Marcap": 500, "Amount": 300}])
+    invalid.to_csv(cache, index=False)
+    monkeypatch.setattr(universe, "_load_fdr_listing", lambda source: invalid)
+    monkeypatch.setattr(universe, "_load_previous_fdr_listing", lambda source: valid)
+
+    with pytest.warns(UserWarning) as warnings:
+        recovered = get_kospi200_list(cache_path=str(cache))
+
+    assert len(warnings) == 2
+    assert recovered.equals(valid)
+    morning = datetime.now(universe.KOREA_TIME).replace(hour=8, minute=55).timestamp()
+    os.utime(cache, (morning, morning))
+    assert universe._cache_is_today(cache)
+    with monkeypatch.context() as patched:
+        patched.setattr(universe, "_call_with_timeout", lambda *args: pytest.fail("Unexpected refresh"))
+        assert get_kospi200_list(cache_path=str(cache)).equals(valid)
 
 
 def test_call_with_timeout_does_not_block_startup_forever():

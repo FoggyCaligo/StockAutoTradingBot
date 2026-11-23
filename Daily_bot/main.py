@@ -242,10 +242,6 @@ def _attempt_startup_carryover_liquidation_safely(client, recorder: Recorder) ->
         return False, True
 
 
-def warm_universe(cfg: dict) -> None:
-    get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
-
-
 def record_session_prev_close_prices(recorder: Recorder, cfg: dict) -> dict[str, int]:
     candidates = get_candidates(build_universe_config(cfg), cfg["trend_filter"]["enabled"])
     recorder.save_daily_reference_prices(candidates, source="universe_startup")
@@ -1441,7 +1437,6 @@ def run(
         if is_between_now(cfg["market"].get("prewarm_start_time", cfg["market"]["start_buy_time"]), cfg["market"]["start_buy_time"]) and not warmed_session:
             try:
                 print("Universe warm-up started")
-                warm_universe(cfg)
                 prev_close_prices = record_session_prev_close_prices(recorder, cfg)
                 session_capital_basis = resolve_session_capital_basis(client)
                 session_slot_count = resolve_total_slot_count(cfg, session_capital_basis)

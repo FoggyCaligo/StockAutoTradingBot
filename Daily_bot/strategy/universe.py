@@ -4,8 +4,9 @@ import warnings
 import queue
 import threading
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, Callable, Sequence, TypeVar
 
 import pandas as pd  # type: ignore[import]
@@ -33,9 +34,19 @@ NUMERIC_COLUMNS = [
     "TradingValue",
     "market_cap",
     "trading_value",
+    "시가총액",
+    "거래대금",
 ]
 FDR_LISTING_TIMEOUT_SECONDS = 30.0
 FDR_INDEX_TIMEOUT_SECONDS = 15.0
+KOREA_TIME = timezone(timedelta(hours=9))
+FDR_DAILY_LISTING_URL = (
+    "https://raw.githubusercontent.com/FinanceData/fdr_krx_data_cache/"
+    "refs/heads/master/data/listing/krx/"
+)
+FDR_MARKET_IDS = {"KOSPI": "STK", "KOSDAQ": "KSQ", "KONEX": "KNX"}
+MARKET_CAP_COLUMNS = ("Marcap", "MarketCap", "market_cap", "시가총액")
+TRADING_VALUE_COLUMNS = ("Amount", "TradingValue", "trading_value", "거래대금")
 T = TypeVar("T")
 
 
@@ -116,13 +127,28 @@ def _load_local_universe(path: Path) -> pd.DataFrame:
 def _cache_is_today(path: Path) -> bool:
     if not path.exists():
         return False
-    modified_day = pd.Timestamp(path.stat().st_mtime, unit="s").normalize()
-    return bool(modified_day == pd.Timestamp("today").normalize())
+    modified_day = datetime.fromtimestamp(path.stat().st_mtime, KOREA_TIME).date()
+    return modified_day == datetime.now(KOREA_TIME).date()
 
 
 def _save_cache(df: pd.DataFrame, cache_path: Path) -> None:
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(cache_path, index=False)
+    with NamedTemporaryFile(dir=cache_path.parent, encoding="utf-8", delete=False, mode="w", newline="") as output:
+        temporary_path = Path(output.name)
+    try:
+        df.to_csv(temporary_path, index=False)
+        temporary_path.replace(cache_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def _validate_listing(df: pd.DataFrame, label: str) -> pd.DataFrame:
+    for columns in (MARKET_CAP_COLUMNS, TRADING_VALUE_COLUMNS):
+        if not any(column in df.columns for column in columns):
+            raise ValueError(f"{label} is missing {columns[0]}")
+    if filter_by_trading_value(filter_by_market_cap(df, 1), 1).empty:
+        raise ValueError(f"{label} has no rows with usable market cap and trading value")
+    return df
 
 
 def _load_fdr_market(source: str) -> pd.DataFrame:
@@ -140,7 +166,7 @@ def _load_fdr_market(source: str) -> pd.DataFrame:
         try:
             df = fdr.StockListing(market)
             if isinstance(df, pd.DataFrame) and not df.empty:
-                result = _coerce_numeric_columns(df)
+                result = _validate_listing(_coerce_numeric_columns(df), market)
                 if "Market" not in result.columns:
                     result["Market"] = source.upper()
                 return result
@@ -163,6 +189,10 @@ def _normalize_sources(source: str | Sequence[str]) -> list[str]:
 def _load_fdr_listing(source: str | Sequence[str]) -> pd.DataFrame:
     sources = _normalize_sources(source)
     frames = [_load_fdr_market(market) for market in sources]
+    return _combine_listings(frames)
+
+
+def _combine_listings(frames: list[pd.DataFrame]) -> pd.DataFrame:
     combined = pd.concat(frames, ignore_index=True, sort=False)
     code_column = next((column for column in ("Code", "Symbol", "code") if column in combined.columns), None)
     if code_column is not None:
@@ -170,6 +200,40 @@ def _load_fdr_listing(source: str | Sequence[str]) -> pd.DataFrame:
         combined = combined.loc[~normalized_codes.duplicated()].copy()
         combined[code_column] = normalized_codes.loc[combined.index]
     return _coerce_numeric_columns(combined).reset_index(drop=True)
+
+
+def _load_previous_fdr_listing(source: str | Sequence[str]) -> pd.DataFrame:
+    from io import BytesIO
+
+    import requests
+
+    markets = _normalize_sources(source)
+    if any(market not in FDR_MARKET_IDS for market in markets):
+        raise ValueError(f"Historical listings are unavailable for {markets}")
+
+    today = datetime.now(KOREA_TIME).date()
+    for days_back in range(1, 8):
+        listing_date = today - timedelta(days=days_back)
+        if listing_date.weekday() >= 5:
+            continue
+        response = requests.get(f"{FDR_DAILY_LISTING_URL}{listing_date}.csv", timeout=4)
+        if response.status_code == 404:
+            continue
+        response.raise_for_status()
+        listing = pd.read_csv(BytesIO(response.content), dtype=str)
+        try:
+            frames = [
+                _validate_listing(
+                    _coerce_numeric_columns(listing.loc[listing["MarketId"] == FDR_MARKET_IDS[market]]),
+                    f"{market} {listing_date}",
+                )
+                for market in markets
+            ]
+        except ValueError:
+            continue
+        warnings.warn(f"Using the FinanceDataReader listing for {listing_date}", UserWarning)
+        return _combine_listings(frames)
+    raise RuntimeError("No usable FinanceDataReader listing in the previous seven days")
 
 
 def get_kospi200_list(
@@ -182,11 +246,17 @@ def get_kospi200_list(
     cache = Path(cache_path) if cache_path else DEFAULT_UNIVERSE_CACHE
 
     if refresh_daily:
-        if _cache_is_today(cache):
-            return _load_local_universe(cache)
+        cached = None
+        if cache.exists():
+            try:
+                cached = _validate_listing(_load_local_universe(cache), str(cache))
+                if _cache_is_today(cache):
+                    return cached
+            except (OSError, ValueError) as exc:
+                warnings.warn(f"Ignoring invalid universe cache: {exc}", UserWarning)
         try:
             df = _call_with_timeout(
-                lambda: _load_fdr_listing(source),
+                lambda: _validate_listing(_load_fdr_listing(source), "FinanceDataReader listing"),
                 FDR_LISTING_TIMEOUT_SECONDS,
                 f"FDR StockListing({source})",
             )
@@ -197,6 +267,19 @@ def get_kospi200_list(
                 f"Daily universe refresh failed; falling back to local CSV/cache. reason={exc}",
                 UserWarning,
             )
+        if cached is None and fallback_path and fallback_path.exists():
+            try:
+                cached = _validate_listing(_load_local_universe(fallback_path), str(fallback_path))
+            except (OSError, ValueError) as exc:
+                warnings.warn(f"Ignoring invalid universe CSV: {exc}", UserWarning)
+        if cached is None:
+            cached = _call_with_timeout(
+                lambda: _load_previous_fdr_listing(source),
+                FDR_LISTING_TIMEOUT_SECONDS,
+                "Previous FinanceDataReader listing",
+            )
+        _save_cache(cached, cache)
+        return cached
 
     if cache.exists():
         return _load_local_universe(cache)
@@ -242,7 +325,7 @@ def get_kospi_change_percent() -> float | None:
 
 
 def filter_by_market_cap(df: pd.DataFrame, min_market_cap_krw: int) -> pd.DataFrame:
-    for col in ["Marcap", "MarketCap", "market_cap", "시가총액"]:
+    for col in MARKET_CAP_COLUMNS:
         if col in df.columns:
             result = df.loc[df[col] >= min_market_cap_krw]
             assert isinstance(result, pd.DataFrame)
@@ -251,7 +334,7 @@ def filter_by_market_cap(df: pd.DataFrame, min_market_cap_krw: int) -> pd.DataFr
 
 
 def filter_by_trading_value(df: pd.DataFrame, min_trading_value_krw: int) -> pd.DataFrame:
-    for col in ["Amount", "TradingValue", "trading_value", "거래대금"]:
+    for col in TRADING_VALUE_COLUMNS:
         if col in df.columns:
             result = df.loc[df[col] >= min_trading_value_krw]
             assert isinstance(result, pd.DataFrame)
