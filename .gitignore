@@ -17,3 +17,5 @@ Daily_bot/backtest/cache/
 
 # Per-run synthetic traces, databases and playback files.
 Daily_bot/backtest/results/fake_market/
+
+Daily_bot/data/fake_market/six_months_20261123_seed42/reconstructed/
