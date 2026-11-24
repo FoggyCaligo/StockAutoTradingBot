@@ -267,4 +267,5 @@ python -m Daily_bot.backtest.fake_market \
 현재 replay는 전체 trace를 메모리에 적재한다. 장기간·초미세 틱 실험은 여러 실행으로 나누고, 차트가 필요 없는 반복에서는 `--fake-no-viewer`를 사용한다. 동일 시장에서 전략만 바꿀 때는 DB 재사용으로 생성·저장 비용을 줄인다.
 
 
-6개월 고정 자료와 조각 파일 복원 방법은 [6개월 자료 안내](../data/fake_market/six_months_20261123_seed42/README.md)를 참조한다.
+기존 고정 가상자료는 폐기했다. 새 자료는 생성기로 재생성하며 Git에는 올리지 않는다.
+체결 방식과 신호 비교 범위는 [보수적 체결 재생](CONSERVATIVE_REPLAY.md)을 참조한다.

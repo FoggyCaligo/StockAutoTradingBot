@@ -161,7 +161,8 @@ def test_fake_mode_prepares_isolated_db_and_viewer(tmp_path):
     assert 'https://' not in viewer  # self-contained
 
 
-def test_cli_fake_and_recorded_paths_replay_identical_trace_equally(tmp_path):
+@pytest.mark.parametrize("fill_model", ["legacy", "conservative"])
+def test_cli_fake_and_recorded_paths_replay_identical_trace_equally(tmp_path, fill_model):
     import os
     import shutil
     import subprocess
@@ -170,7 +171,8 @@ def test_cli_fake_and_recorded_paths_replay_identical_trace_equally(tmp_path):
     env = dict(os.environ, PYTHONPATH=str(root))
     fake_dir = tmp_path/'fake'
     common = [sys.executable, '-m', 'Daily_bot.backtest.replay_refill_threshold',
-              '--refill-min-expected-return', '0.90', '--starting-capital-krw', '1000000']
+              '--refill-min-expected-return', '0.90', '--starting-capital-krw', '1000000',
+              '--fill-model', fill_model]
     fake = subprocess.run(common + ['--market-source','fake','--fake-profile','legacy','--fake-output-dir',str(fake_dir),
                                    '--fake-stocks','5','--fake-ticks-per-day','380','--fake-no-viewer'],
                           cwd=tmp_path, env=env, capture_output=True, text=True)
@@ -183,4 +185,8 @@ def test_cli_fake_and_recorded_paths_replay_identical_trace_equally(tmp_path):
     assert real.returncode == 0, real.stdout+real.stderr
     assert (fake_dir/'backtest_fake.csv').read_bytes() == recorded_out.read_bytes()
     assert (fake_dir/'backtest_fake_daily_rev.csv').read_bytes() == (tmp_path/'recorded_daily_rev.csv').read_bytes()
-    assert len(list(csv.DictReader(recorded_out.open(encoding='utf-8-sig')))) > 0
+    if fill_model == 'legacy':
+        assert len(list(csv.DictReader(recorded_out.open(encoding='utf-8-sig')))) > 0
+    else:
+        # Sparse 60s observations exceed the 30s buy timeout; no invented fills.
+        assert (tmp_path/'recorded_execution.json').is_file()

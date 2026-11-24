@@ -54,6 +54,7 @@ def run_backtest_dynamic_expect_debounce(
     orderbook_ask_linear_decay_min_weight: float = 1.0,
     selected_signals_override: list[base.SelectedSignal] | None = None,
     actual_exit_overrides_by_ticker: dict[tuple[str, str], list[base.ActualExitOverride]] | None = None,
+    execution_config=None,
 ) -> list[base.BacktestTrade]:
     """Replay the normal strategy with a debounced forward expected-return stop.
 
@@ -65,6 +66,10 @@ def run_backtest_dynamic_expect_debounce(
 
     This is backtest-only; live trading behavior is untouched.
     """
+
+    if execution_config is not None:
+        from Daily_bot.backtest.execution_replay import run_execution_replay
+        return run_execution_replay(locals(), execution_config)
 
     consecutive_required = max(1, int(dynamic_expect_stop_consecutive or 1))
     entry_anchor_consecutive_required = max(1, int(entry_anchor_stop_consecutive or 1))
@@ -639,6 +644,7 @@ def main() -> None:
         orderbook_ask_linear_decay_min_weight=args.orderbook_ask_linear_decay_min_weight,
         selected_signals_override=selected_signals_override,
         actual_exit_overrides_by_ticker=actual_exit_overrides_by_ticker,
+        execution_config=args.execution_config,
     )
 
     report_paths = base.write_backtest_reports(

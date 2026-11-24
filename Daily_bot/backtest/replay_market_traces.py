@@ -1257,7 +1257,11 @@ def run_backtest(
     orderbook_ask_linear_decay_min_weight: float = 1.0,
     selected_signals_override: list[SelectedSignal] | None = None,
     actual_exit_overrides_by_ticker: dict[tuple[str, str], list[ActualExitOverride]] | None = None,
+    execution_config=None,
 ) -> list[BacktestTrade]:
+    if execution_config is not None:
+        from Daily_bot.backtest.execution_replay import run_execution_replay
+        return run_execution_replay(locals(), execution_config)
     traces = load_traces(db_path)
     traces = apply_orderbook_level_limit(
         traces,
@@ -1739,6 +1743,15 @@ def write_backtest_daily_audit_csv(
     trades: list[BacktestTrade],
 ) -> None:
     audit_entries: list[tuple[Fill, str, str]] = []
+    from Daily_bot.backtest.execution_replay import ExecutionResult
+    if isinstance(trades, ExecutionResult):
+        for event in trades.execution_events:
+            if event["event"] == "fill":
+                audit_entries.append((Fill(order_id=event["time"][:10]+":"+str(event["order_id"]),ticker=event["ticker"],
+                    quantity=event["quantity"],price=event["price"],filled_at=_parse_timestamp(event["time"]),raw={}),
+                    event["side"].upper(),"conservative_replay"))
+        rewrite_fill_audit_csv(path,audit_entries,reset_by_trade_date=True)
+        return
     for trade in sorted(trades, key=lambda item: (item.session_date, item.entry_time, item.exit_time, item.ticker)):
         entry_dt = _parse_timestamp(trade.entry_time)
         exit_dt = _parse_timestamp(trade.exit_time)
@@ -1774,6 +1787,11 @@ def write_backtest_daily_audit_csv(
 
 
 def print_summary(trades: list[BacktestTrade]) -> None:
+    from Daily_bot.backtest.execution_replay import ExecutionResult
+    if isinstance(trades, ExecutionResult):
+        marked = sum(row["marked_net_pnl"] for row in trades.execution_sessions)
+        print(f"fill_model=conservative unresolved_positions={len(trades.unresolved_inventory)} "
+              f"marked_net_pnl={marked:.2f} (includes unrealized inventory; see execution.json)")
     summary = summarize_trades(trades)
     if summary.trades == 0:
         print("No trades replayed. Check market_traces data and filters.")
@@ -1842,6 +1860,8 @@ def write_backtest_reports(
     target_budget_ratio_per_stock: float,
 ) -> dict[str, Path]:
     write_csv(out_path, trades)
+    from Daily_bot.backtest.execution_replay import write_execution_report
+    write_execution_report(out_path, trades)
     session_starting_capital = _session_starting_capital_by_day(
         session_dates={trade.session_date for trade in trades},
         session_capital_by_day=session_capital_by_day,
@@ -1977,7 +1997,19 @@ def parse_args():
         type=float,
         default=float(strategy_cfg.get("orderbook_ask_linear_decay_min_weight", 1.0)),
     )
+    parser.add_argument("--fill-model", choices=("conservative", "legacy"), default="conservative")
+    parser.add_argument("--order-latency-seconds", type=float, default=1.0)
+    parser.add_argument("--buy-order-timeout-seconds", type=float, default=30.0)
+    parser.add_argument("--depth-participation", type=float, default=0.10)
+    parser.add_argument("--queue-multiplier", type=float, default=1.0)
+    parser.add_argument("--max-tape-gap-seconds", type=float, default=5.0)
+    parser.add_argument("--aggregate-trade-through", action="store_true", help="Approximate passive fills from aggregate tick volume; strict tape-only is default")
     args = parser.parse_args(remaining_argv)
+    from Daily_bot.backtest.execution_replay import config_from_args
+    try:
+        args.execution_config = config_from_args(args)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     resolved_fallback_thresholds = list(args.fallback_min_expected_returns or [])
     if args.fallback_min_expected_returns_csv:
@@ -2074,6 +2106,7 @@ if __name__ == "__main__":
         orderbook_ask_linear_decay_min_weight=args.orderbook_ask_linear_decay_min_weight,
         selected_signals_override=selected_signals_override,
         actual_exit_overrides_by_ticker=actual_exit_overrides_by_ticker,
+        execution_config=args.execution_config,
     )
     report_paths = write_backtest_reports(
         out_path=Path(args.out),
