@@ -1,0 +1,108 @@
+﻿Daily slot policy active: capital-based slot limit; unused slots use 0.71%; take-profit returned slots freely refill at 0.90% before stop-buy time; stop-loss slots stay closed for 2026-11-24. restored_closed_slots=0 restored_peak_active=0
+Bot startup: dry_run=False orders_enabled=True config=D:\媛쒖씤\媛쒕컻\git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Market trace output: db=D:\媛쒖씤\媛쒕컻\git\StockAutoTradingBot\Daily_bot\bot.sqlite3 csv_dir=D:\媛쒖씤\媛쒕컻\git\StockAutoTradingBot\Daily_bot\logs
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 1497788
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=-3.3146062801337193
+Universe warm-up started
+Universe warm-up completed. prev_close_count=347 session_capital_basis=1497788 session_slot_count=3 slot_budget_per_stock=499262 position_limit=3
+Startup carryover liquidation completed. Proceeding with normal session flow.
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Buy planning: entry_candidates=2 requested_slots=3 selected_targets=2
+FILL BUY 000640 qty=5 price=90520 filled_at=2026-11-24T09:32:04 source=wait_buy_filled order_id=0118154
+Submitting limit sell for 000640: target_price=91900 stop_loss_price=0 decision_fill_price=90520 raw_fill={'rows': [{'ord_no': '0118154', 'stk_nm': '?숈븘?쒖빟', 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '90600', 'ord_qty': '5', 'cntr_pric': '90520', 'cntr_qty': '5', 'oso_qty': '0', 'tdy_trde_cmsn': '60', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '093204', 'stk_cd': '000640', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0118154', 'stk_nm': '?숈븘?쒖빟', 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '90600', 'ord_qty': '5', 'cntr_pric': '90520', 'cntr_qty': '5', 'oso_qty': '0', 'tdy_trde_cmsn': '60', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '093204', 'stk_cd': '000640', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+Dynamic expected-return stop sample: 000640 current=90400 expect_price=89400 expected_return=-1.2168% threshold=-0.1000% consecutive=1/3
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Buy planning: entry_candidates=1 requested_slots=2 selected_targets=1
+FILL BUY 290650 qty=24 price=20750 filled_at=2026-11-24T09:36:04 source=wait_buy_filled order_id=0124367
+Submitting limit sell for 290650: target_price=20900 stop_loss_price=0 decision_fill_price=20750 raw_fill={'rows': [{'ord_no': '0124367', 'stk_nm': '?섏븻?⑤컮?댁삤', 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '20750', 'ord_qty': '24', 'cntr_pric': '20750', 'cntr_qty': '24', 'oso_qty': '0', 'tdy_trde_cmsn': '70', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '093604', 'stk_cd': '290650', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0124367', 'stk_nm': '?섏븻?⑤컮?댁삤', 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '20750', 'ord_qty': '24', 'cntr_pric': '20750', 'cntr_qty': '24', 'oso_qty': '0', 'tdy_trde_cmsn': '70', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '093604', 'stk_cd': '290650', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Buy planning: entry_candidates=1 requested_slots=1 selected_targets=1
+FILL BUY 001120 qty=15 price=31300 filled_at=2026-11-24T09:38:39 source=wait_buy_filled order_id=0127898
+Submitting limit sell for 001120: target_price=31550 stop_loss_price=0 decision_fill_price=31300 raw_fill={'rows': [{'ord_no': '0127898', 'stk_nm': 'LX?명꽣?댁뀛??, 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '31300', 'ord_qty': '15', 'cntr_pric': '31300', 'cntr_qty': '15', 'oso_qty': '0', 'tdy_trde_cmsn': '70', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '093839', 'stk_cd': '001120', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0127898', 'stk_nm': 'LX?명꽣?댁뀛??, 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '31300', 'ord_qty': '15', 'cntr_pric': '31300', 'cntr_qty': '15', 'oso_qty': '0', 'tdy_trde_cmsn': '70', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '093839', 'stk_cd': '001120', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL SELL 290650 qty=24 price=20900 filled_at=2026-11-24T09:36:04 source=poll order_id=0124380
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Applying stricter take-profit refill threshold: min_expected_return=0.90% candidates=1
+Using fallback expected-return threshold after prev-scan jump filter: 0.90 candidates=1
+Buy planning: entry_candidates=1 requested_slots=1 selected_targets=1
+FILL BUY 272450 qty=66 price=7493 filled_at=2026-11-24T09:42:24 source=wait_buy_filled order_id=0132820
+Submitting limit sell for 272450: target_price=7580 stop_loss_price=0 decision_fill_price=7493 raw_fill={'rows': [{'ord_no': '0132820', 'stk_nm': '吏꾩뿉??, 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '7500', 'ord_qty': '66', 'cntr_pric': '7493', 'cntr_qty': '66', 'oso_qty': '0', 'tdy_trde_cmsn': '60', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '094224', 'stk_cd': '272450', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0132820', 'stk_nm': '吏꾩뿉??, 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '7500', 'ord_qty': '66', 'cntr_pric': '7493', 'cntr_qty': '66', 'oso_qty': '0', 'tdy_trde_cmsn': '60', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '094224', 'stk_cd': '272450', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+FILL SELL 001120 qty=15 price=31550 filled_at=2026-11-24T09:38:39 source=poll order_id=0127905
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Applying stricter take-profit refill threshold: min_expected_return=0.90% candidates=1
+Using fallback expected-return threshold after prev-scan jump filter: 0.90 candidates=1
+Buy planning: entry_candidates=1 requested_slots=1 selected_targets=1
+FILL BUY 004170 qty=1 price=268500 filled_at=2026-11-24T09:51:14 source=wait_buy_filled order_id=0143835
+Submitting limit sell for 004170: target_price=271000 stop_loss_price=0 decision_fill_price=268500 raw_fill={'rows': [{'ord_no': '0143835', 'stk_nm': '?좎꽭怨?, 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '268500', 'ord_qty': '1', 'cntr_pric': '268500', 'cntr_qty': '1', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '095114', 'stk_cd': '004170', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}], 'latest_row': {'ord_no': '0143835', 'stk_nm': '?좎꽭怨?, 'io_tp_nm': '+留ㅼ닔', 'ord_pric': '268500', 'ord_qty': '1', 'cntr_pric': '268500', 'cntr_qty': '1', 'oso_qty': '0', 'tdy_trde_cmsn': '40', 'tdy_trde_tax': '0', 'ord_stt': '泥닿껐', 'trde_tp': '蹂댄넻', 'orig_ord_no': '0000000', 'ord_tm': '095114', 'stk_cd': '004170', 'stex_tp': '1', 'stex_tp_txt': 'KRX', 'sor_yn': 'N', 'stop_pric': '0'}}
+Dynamic expected-return stop sample: 000640 current=90300 expect_price=90000 expected_return=-0.4430% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 000640 current=90300 expect_price=90000 expected_return=-0.4430% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 000640 current=90300 expect_price=90300 expected_return=-0.1107% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 004170 current=266500 expect_price=265000 expected_return=-0.7505% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 004170 current=264500 expect_price=264500 expected_return=-0.1890% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 004170 current=264500 expect_price=264500 expected_return=-0.1890% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 000640 current=90700 expect_price=90700 expected_return=-0.1103% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 000640 current=90700 expect_price=90700 expected_return=-0.1103% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 000640 current=91400 expect_price=90800 expected_return=-0.7659% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 000640 current=91400 expect_price=91400 expected_return=-0.1094% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 000640 current=91400 expect_price=91400 expected_return=-0.1094% threshold=-0.1000% consecutive=3/3
+Dynamic expected-return stop triggered: 000640 expected_return=-0.1094% threshold=-0.1000% consecutive=3 limit_price=91300
+FILL SELL 000640 qty=3 price=91300 filled_at=2026-11-24T10:27:06 source=dynamic_expect_stop order_id=0178980
+Closing one slot for the rest of 2026-11-24 after stop-loss: ticker=000640 closed_slots_today=1
+Blocking same-day re-entry after stop-loss for 000640. blocked_tickers=['000640']
+FILL SELL 000640 qty=2 price=91300 filled_at=2026-11-24T10:27:06 source=poll order_id=0178980
+FILL SELL 000640 qty=5 price=91900 filled_at=2026-11-24T10:27:30.100473 source=sell_reconciliation order_id=0118166
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Dynamic expected-return stop sample: 272450 current=7490 expect_price=7490 expected_return=-0.1335% threshold=-0.1000% consecutive=1/3
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Dynamic expected-return stop sample: 004170 current=268000 expect_price=266500 expected_return=-0.7463% threshold=-0.1000% consecutive=1/3
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Dynamic expected-return stop sample: 004170 current=268000 expect_price=266500 expected_return=-0.7463% threshold=-0.1000% consecutive=2/3
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Dynamic expected-return stop sample: 004170 current=269500 expect_price=267000 expected_return=-1.1132% threshold=-0.1000% consecutive=3/3
+Dynamic expected-return stop triggered: 004170 expected_return=-1.1132% threshold=-0.1000% consecutive=3 limit_price=268500
+FILL SELL 004170 qty=1 price=268500 filled_at=2026-11-24T11:23:45 source=dynamic_expect_stop order_id=0216370
+Closing one slot for the rest of 2026-11-24 after stop-loss: ticker=004170 closed_slots_today=2
+Blocking same-day re-entry after stop-loss for 004170. blocked_tickers=['000640', '004170']
+Dynamic expected-return stop sample: 272450 current=7480 expect_price=7480 expected_return=-0.1337% threshold=-0.1000% consecutive=1/3
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Market trace scan completed: scanned=347 calculated=347 errors=0
+Dynamic expected-return stop sample: 272450 current=7420 expect_price=7360 expected_return=-0.9434% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 272450 current=7480 expect_price=7480 expected_return=-0.1337% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 272450 current=7480 expect_price=7480 expected_return=-0.1337% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 272450 current=7480 expect_price=7460 expected_return=-0.4011% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 272450 current=7480 expect_price=7460 expected_return=-0.4011% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 272450 current=7530 expect_price=7480 expected_return=-0.7968% threshold=-0.1000% consecutive=1/3
+Dynamic expected-return stop sample: 272450 current=7530 expect_price=7470 expected_return=-0.9296% threshold=-0.1000% consecutive=2/3
+Dynamic expected-return stop sample: 272450 current=7530 expect_price=7480 expected_return=-0.7968% threshold=-0.1000% consecutive=3/3
+Dynamic expected-return stop triggered: 272450 expected_return=-0.7968% threshold=-0.1000% consecutive=3 limit_price=7510
+FILL SELL 272450 qty=66 price=7510 filled_at=2026-11-24T12:43:19 source=dynamic_expect_stop order_id=0253964
+Closing one slot for the rest of 2026-11-24 after stop-loss: ticker=272450 closed_slots_today=3
+Blocking same-day re-entry after stop-loss for 272450. blocked_tickers=['000640', '004170', '272450']
+Force sell completed. Waiting for end-of-day reconciliation.
+FILL BUY 000640 qty=5 price=90520 filled_at=2026-11-24T09:32:04 source=eod_reconciliation order_id=0118154
+FILL BUY 290650 qty=24 price=20750 filled_at=2026-11-24T09:36:04 source=eod_reconciliation order_id=0124367
+FILL SELL 290650 qty=24 price=20900 filled_at=2026-11-24T09:36:04 source=eod_reconciliation order_id=0124380
+FILL BUY 001120 qty=15 price=31300 filled_at=2026-11-24T09:38:39 source=eod_reconciliation order_id=0127898
+FILL SELL 001120 qty=15 price=31550 filled_at=2026-11-24T09:38:39 source=eod_reconciliation order_id=0127905
+FILL BUY 272450 qty=66 price=7493 filled_at=2026-11-24T09:42:24 source=eod_reconciliation order_id=0132820
+FILL BUY 004170 qty=1 price=268500 filled_at=2026-11-24T09:51:14 source=eod_reconciliation order_id=0143835
+FILL SELL 000640 qty=5 price=91300 filled_at=2026-11-24T10:27:06 source=eod_reconciliation order_id=0178980
+FILL SELL 004170 qty=1 price=268500 filled_at=2026-11-24T11:23:45 source=eod_reconciliation order_id=0216370
+FILL SELL 272450 qty=66 price=7510 filled_at=2026-11-24T12:43:19 source=eod_reconciliation order_id=0253964
+End-of-day reconciliation completed: broker_fills=10 updated=10

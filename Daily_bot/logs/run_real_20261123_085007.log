@@ -1,0 +1,239 @@
+﻿Daily slot policy active: capital-based slot limit; unused slots use 0.71%; take-profit returned slots freely refill at 0.90% before stop-buy time; stop-loss slots stay closed for 2026-11-23. restored_closed_slots=0 restored_peak_active=0
+Bot startup: dry_run=False orders_enabled=True config=D:\媛쒖씤\媛쒕컻\git\StockAutoTradingBot\Daily_bot\config\settings.yaml
+Market trace output: db=D:\媛쒖씤\媛쒕컻\git\StockAutoTradingBot\Daily_bot\bot.sqlite3 csv_dir=D:\媛쒖씤\媛쒕컻\git\StockAutoTradingBot\Daily_bot\logs
+Bot startup: authentication completed
+Bot startup: estimating initial account value
+Initial account value estimate: 1500000
+Bot startup: loading KOSPI change percent
+Bot startup: KOSPI change lookup completed value=-5.21478661473874
+Universe warm-up started
+Universe warm-up completed. prev_close_count=347 session_capital_basis=1500000 session_slot_count=3 slot_budget_per_stock=500000 position_limit=3
+Startup carryover liquidation completed. Proceeding with normal session flow.
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
+Market trace scan completed: scanned=0 calculated=0 errors=0
+WARNING: no market traces collected during this scan
