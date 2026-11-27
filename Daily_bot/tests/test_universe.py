@@ -96,6 +96,26 @@ def test_get_candidates_uses_csv_when_refresh_daily_false(tmp_path):
     assert candidates["005930"].price == 65000
 
 
+def test_candidates_require_both_metrics_and_preserve_localized_values(tmp_path):
+    cache = tmp_path / "universe.csv"
+    pd.DataFrame(
+        [
+            {"Code": "005930", "시가총액": 500, "거래대금": 300},
+            {"Code": "000660", "시가총액": 500},
+        ]
+    ).to_csv(cache, index=False)
+    cfg = UniverseConfig(0, 0, cache_path=str(cache), refresh_daily=False)
+
+    candidates = get_candidates(cfg, trend_enabled=False)
+
+    assert list(candidates) == ["005930"]
+    assert candidates["005930"].market_cap == 500
+    assert candidates["005930"].trading_value == 300
+
+    pd.DataFrame([{"Code": "005930", "시가총액": 500}]).to_csv(cache, index=False)
+    assert get_candidates(cfg, trend_enabled=False) == {}
+
+
 def test_get_kospi200_list_prefers_daily_cache_when_refresh_enabled(tmp_path):
     fallback_csv = tmp_path / "fallback.csv"
     fallback_csv.write_text(

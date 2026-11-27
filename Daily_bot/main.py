@@ -699,9 +699,14 @@ def _attempt_stop_loss_safely(
     positions: list,
     open_orders: list[dict],
     cfg: dict,
+    *,
+    stop_all_buys_on_dynamic_stop: bool = True,
 ) -> tuple[bool, bool, str | None]:
     try:
-        stop_loss_executed, stop_loss_ticker = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+        stop_loss_executed, stop_loss_ticker = monitor_stop_loss(
+            client, recorder, positions, open_orders, cfg,
+            stop_all_buys_on_dynamic_stop=stop_all_buys_on_dynamic_stop,
+        )
         return stop_loss_executed, False, stop_loss_ticker
     except Exception as exc:
         print(f"Stop-loss handling error: {exc}")
@@ -1647,8 +1652,10 @@ def run(
             cfg["strategy"]["sell_tick_offset"],
             cfg["risk"].get("max_orderbook_ask_depth_ratio", 0.20),
         )
-        if targets and len(targets) < buy_count:
-            print(f"Planned {len(targets)} affordable targets out of desired {buy_count} due to cash constraints.")
+        print(
+            f"Buy planning: entry_candidates={len(filtered)} requested_slots={buy_count} "
+            f"selected_targets={len(targets)}"
+        )
         for target in targets:
             recorder.save_signal(target, selected=True)
         if targets:

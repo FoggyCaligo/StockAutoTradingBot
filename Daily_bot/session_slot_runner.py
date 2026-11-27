@@ -72,8 +72,9 @@ class DailySlotClosurePolicy:
 
     def observe_active_count(self, active_count: int) -> None:
         self.latest_active_count = max(0, int(active_count or 0))
-        if self.latest_active_count > self.peak_active_count:
-            self.peak_active_count = self.latest_active_count
+        used_slots = self.latest_active_count + self.closed_slot_count
+        if used_slots > self.peak_active_count:
+            self.peak_active_count = used_slots
             self._save()
 
     def record_stop_loss(self, ticker: str | None) -> None:
@@ -91,14 +92,14 @@ class DailySlotClosurePolicy:
         effective_limit = self.effective_position_limit(session_position_limit)
         if effective_limit <= 0:
             return 0
-        effective_peak = min(self.peak_active_count, effective_limit)
+        effective_peak = min(max(0, self.peak_active_count - self.closed_slot_count), effective_limit)
         return max(0, effective_limit - effective_peak)
 
     def profit_refill_slot_count(self, session_position_limit: int) -> int:
         effective_limit = self.effective_position_limit(session_position_limit)
         if effective_limit <= 0:
             return 0
-        effective_peak = min(self.peak_active_count, effective_limit)
+        effective_peak = min(max(0, self.peak_active_count - self.closed_slot_count), effective_limit)
         return max(0, effective_peak - self.latest_active_count)
 
     def allowed_empty_slots(self, session_position_limit: int) -> int:
@@ -124,7 +125,10 @@ def install_daily_slot_closure_policy() -> DailySlotClosurePolicy:
     current_session_limit = {"value": 0}
 
     def attempt_stop_loss_with_slot_closure(client, recorder, positions, open_orders, cfg):
-        executed, error, ticker = original_attempt_stop_loss(client, recorder, positions, open_orders, cfg)
+        executed, error, ticker = original_attempt_stop_loss(
+            client, recorder, positions, open_orders, cfg,
+            stop_all_buys_on_dynamic_stop=False,
+        )
         if executed:
             policy.record_stop_loss(ticker)
         return executed, error, ticker
@@ -143,6 +147,7 @@ def install_daily_slot_closure_policy() -> DailySlotClosurePolicy:
         allow_refill_empty_slots=True,
     ):
         session_limit = int(current_session_limit["value"] or 0)
+        blocked_tickers = policy.closed_tickers.union(blocked_tickers or ())
         if session_limit > 0 and policy.is_profit_refill_cycle(session_limit):
             strict_cfg = copy.deepcopy(cfg)
             refill_threshold = float(cfg["strategy"].get("refill_min_expected_return_percent", 0.90) or 0.90)

@@ -1,10 +1,22 @@
-param([switch]$CollectOnly)
+param(
+    [switch]$CollectOnly,
+    [string]$PythonPath,
+    [switch]$Scheduled
+)
 
 $ErrorActionPreference = "Stop"
 
 $botRoot = Split-Path -Parent $PSScriptRoot
 $workspaceRoot = Split-Path -Parent $botRoot
-$pythonPath = Join-Path $workspaceRoot ".venv\Scripts\python.exe"
+if ($Scheduled -and (Get-Date).DayOfWeek -in @('Saturday', 'Sunday')) {
+    exit 0
+}
+if (!$PythonPath) {
+    $PythonPath = Join-Path $workspaceRoot ".venv\Scripts\python.exe"
+}
+else {
+    $env:PYTHONPATH = Join-Path $workspaceRoot ".venv\Lib\site-packages"
+}
 $mainPath = Join-Path $botRoot "session_slot_runner.py"
 $logDir = Join-Path $botRoot "logs"
 $lockPath = Join-Path $logDir "run_real.lock"

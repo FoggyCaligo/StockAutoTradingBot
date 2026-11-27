@@ -206,7 +206,7 @@ def append_fill_audit_csv(
     )
     estimated_total_cost = estimated_fee + estimated_tax
     filled_at = fill.filled_at if fill.filled_at is not None else datetime.now()
-    trade_date = filled_at.strftime("%Y-%m-%d")
+    trade_date = filled_at.date().isoformat()
 
     rows = _read_existing_rows(path)
     state = _build_running_state(rows, ticker, trade_date=trade_date, reset_by_trade_date=reset_by_trade_date)

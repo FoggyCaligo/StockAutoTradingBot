@@ -210,6 +210,8 @@ def monitor_stop_loss(
     positions: list[Position],
     open_orders: list[dict],
     cfg: dict,
+    *,
+    stop_all_buys_on_dynamic_stop: bool = True,
 ) -> tuple[bool, str | None]:
     if not is_stop_loss_enabled(cfg):
         _dynamic_expect_stop_counts.clear()
@@ -320,7 +322,7 @@ def monitor_stop_loss(
             )
 
         _dynamic_expect_stop_counts.pop(position.ticker, None)
-        if trigger_source == "dynamic_expect_stop":
+        if trigger_source == "dynamic_expect_stop" and stop_all_buys_on_dynamic_stop:
             market_cfg = cfg.get("market", {}) if isinstance(cfg, dict) else {}
             if isinstance(market_cfg, dict):
                 market_cfg["stop_buy_time"] = "00:00"

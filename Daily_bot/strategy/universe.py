@@ -173,7 +173,8 @@ def _load_fdr_market(source: str) -> pd.DataFrame:
         except Exception as exc:  # pragma: no cover - network/data source dependent
             last_error = exc
 
-    raise RuntimeError(f"FinanceDataReader failed to load source={source}") from last_error
+    detail = str(last_error) if last_error is not None else "empty listing"
+    raise RuntimeError(f"FinanceDataReader failed to load source={source}: {detail}") from last_error
 
 
 def _normalize_sources(source: str | Sequence[str]) -> list[str]:
@@ -232,7 +233,7 @@ def _load_previous_fdr_listing(source: str | Sequence[str]) -> pd.DataFrame:
         except ValueError:
             continue
         warnings.warn(f"Using the FinanceDataReader listing for {listing_date}", UserWarning)
-        return _combine_listings(frames)
+        return _combine_listings(frames).assign(listing_date=listing_date.isoformat())
     raise RuntimeError("No usable FinanceDataReader listing in the previous seven days")
 
 
@@ -251,6 +252,9 @@ def get_kospi200_list(
             try:
                 cached = _validate_listing(_load_local_universe(cache), str(cache))
                 if _cache_is_today(cache):
+                    if "listing_date" in cached:
+                        listing_date = cached["listing_date"].iloc[0]
+                        warnings.warn(f"Using cached FinanceDataReader listing for {listing_date}", UserWarning)
                     return cached
             except (OSError, ValueError) as exc:
                 warnings.warn(f"Ignoring invalid universe cache: {exc}", UserWarning)
@@ -327,19 +331,19 @@ def get_kospi_change_percent() -> float | None:
 def filter_by_market_cap(df: pd.DataFrame, min_market_cap_krw: int) -> pd.DataFrame:
     for col in MARKET_CAP_COLUMNS:
         if col in df.columns:
-            result = df.loc[df[col] >= min_market_cap_krw]
+            result = df.loc[df[col] >= max(1, min_market_cap_krw)]
             assert isinstance(result, pd.DataFrame)
             return result
-    return df
+    return df.iloc[:0]
 
 
 def filter_by_trading_value(df: pd.DataFrame, min_trading_value_krw: int) -> pd.DataFrame:
     for col in TRADING_VALUE_COLUMNS:
         if col in df.columns:
-            result = df.loc[df[col] >= min_trading_value_krw]
+            result = df.loc[df[col] >= max(1, min_trading_value_krw)]
             assert isinstance(result, pd.DataFrame)
             return result
-    return df
+    return df.iloc[:0]
 
 
 def _trend_ok_from_series(close_series: pd.Series) -> bool:
@@ -404,6 +408,10 @@ def get_candidates(cfg: UniverseConfig, trend_enabled: bool = True) -> dict[str,
     )
     df = filter_by_market_cap(df, cfg.min_market_cap_krw)
     df = filter_by_trading_value(df, cfg.min_trading_value_krw)
+    if df.empty:
+        return {}
+    market_cap_column = next(column for column in MARKET_CAP_COLUMNS if column in df.columns)
+    trading_value_column = next(column for column in TRADING_VALUE_COLUMNS if column in df.columns)
     df = filter_by_trend(df, trend_enabled)
 
     candidates: dict[str, Candidate] = {}
@@ -413,8 +421,8 @@ def get_candidates(cfg: UniverseConfig, trend_enabled: bool = True) -> dict[str,
             continue
 
         price = _safe_int(row.get("Close") or row.get("Open") or row.get("price") or row.get("Price"))
-        market_cap = _safe_int(row.get("Marcap") or row.get("MarketCap") or row.get("market_cap"))
-        trading_value = _safe_int(row.get("Amount") or row.get("TradingValue") or row.get("trading_value"))
+        market_cap = int(row[market_cap_column])
+        trading_value = int(row[trading_value_column])
         prev_day_change_percent = _safe_float(
             row.get("ChagesRatio")
             or row.get("ChangesRatio")
