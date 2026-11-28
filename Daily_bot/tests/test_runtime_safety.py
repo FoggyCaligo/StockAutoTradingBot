@@ -183,10 +183,11 @@ def test_attempt_stop_loss_safely_recovers_instead_of_raising(monkeypatch):
     )
     monkeypatch.setattr(main, "poll_and_record_new_fills", lambda *_args, **_kwargs: None)
 
-    triggered, errored = main._attempt_stop_loss_safely(_RiskClient(), recorder, positions=[], open_orders=[], cfg={})
+    triggered, errored, ticker = main._attempt_stop_loss_safely(_RiskClient(), recorder, positions=[], open_orders=[], cfg={})
 
     assert triggered is False
     assert errored is True
+    assert ticker is None
 
 
 def test_fetch_account_state_safely_recovers_instead_of_raising():
@@ -475,3 +476,4 @@ def test_filter_candidates_for_entry_tries_multiple_fallback_thresholds_in_order
 
     assert [candidate.ticker for candidate in filtered] == ["005930"]
     assert used_threshold == 0.5
+

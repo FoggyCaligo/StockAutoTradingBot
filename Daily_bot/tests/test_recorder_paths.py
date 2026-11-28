@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import csv
 import sqlite3
 
 from Daily_bot.models import Candidate, Fill, HogaLevel, HogaSnapshot
@@ -107,7 +108,7 @@ def test_recorder_persists_scan_cycle_at_for_scan_outputs(tmp_path):
     recorder.conn.close()
 
 
-def test_recorder_persists_kospi_change_percent_for_account_and_fill_audit(tmp_path):
+def test_recorder_keeps_account_index_in_db_without_retired_account_or_audit_csv(tmp_path):
     recorder = Recorder(tmp_path / "bot.sqlite3")
     recorder.save_account_trace(
         phase="daily_loss_check",
@@ -139,12 +140,9 @@ def test_recorder_persists_kospi_change_percent_for_account_and_fill_audit(tmp_p
     assert account_row["kospi_change_percent"] == -0.87
 
     account_trace_csv = tmp_path / "logs" / f"account_traces_{datetime.now().strftime('%Y%m%d')}.csv"
-    assert "kospi_change_percent" in account_trace_csv.read_text(encoding="utf-8-sig")
-
-    audit_csv = tmp_path / "logs" / "trade_fills_audit.csv"
-    audit_text = audit_csv.read_text(encoding="utf-8-sig")
-    assert "kospi_change_percent" in audit_text
-    assert "-0.87" in audit_text
+    assert not account_trace_csv.exists()
+    assert not (tmp_path / 'logs' / 'trade_fills_audit.csv').exists()
+    assert recorder.conn.execute('SELECT COUNT(*) FROM fills').fetchone()[0] == 1
     recorder.conn.close()
 
 
@@ -189,13 +187,11 @@ def test_recorder_persists_daily_reference_prices(tmp_path):
     ]
 
     reference_csv = tmp_path / "logs" / f"daily_reference_prices_{datetime.now().strftime('%Y%m%d')}.csv"
-    reference_csv_text = reference_csv.read_text(encoding="utf-8-sig")
-    assert "prev_close_price" in reference_csv_text
-    assert "Samsung Electronics" in reference_csv_text
+    assert not reference_csv.exists()  # reference prices remain in SQLite
     recorder.conn.close()
 
 
-def test_rebuild_session_fill_exports_keeps_other_sessions_in_trade_fill_audit(tmp_path):
+def test_rebuild_session_fill_exports_keeps_other_sessions_in_confirmed_fill_files(tmp_path):
     recorder = Recorder(tmp_path / "bot.sqlite3")
     recorder.save_fill(
         Fill(
@@ -222,14 +218,16 @@ def test_rebuild_session_fill_exports_keeps_other_sessions_in_trade_fill_audit(t
 
     recorder.rebuild_session_fill_exports("2026-06-11")
 
-    audit_csv = tmp_path / "logs" / "trade_fills_audit.csv"
-    audit_text = audit_csv.read_text(encoding="utf-8-sig")
-    assert "SELL-OLD" in audit_text
-    assert "SELL-NEW" in audit_text
+    recorder.rebuild_session_fill_exports('2026-06-10')
+    old_text=(tmp_path/'logs'/'fills_20260610.csv').read_text(encoding='utf-8-sig')
+    new_text=(tmp_path/'logs'/'fills_20260611.csv').read_text(encoding='utf-8-sig')
+    assert 'SELL-OLD' in old_text and 'SELL-NEW' not in old_text
+    assert 'SELL-NEW' in new_text and 'SELL-OLD' not in new_text
+    assert not (tmp_path/'logs'/'trade_fills_audit.csv').exists()
     recorder.conn.close()
 
 
-def test_trade_fill_audit_excludes_inferred_fill_sources(tmp_path):
+def test_confirmed_fill_csv_excludes_inferred_sources_but_preserves_them_in_sqlite(tmp_path):
     recorder = Recorder(tmp_path / "bot.sqlite3")
     recorder.save_fill(
         Fill(
@@ -265,22 +263,22 @@ def test_trade_fill_audit_excludes_inferred_fill_sources(tmp_path):
         source="sell_reconciliation",
     )
 
-    audit_csv = tmp_path / "logs" / "trade_fills_audit.csv"
+    audit_csv = tmp_path/'logs'/f"fills_{datetime.now():%Y%m%d}.csv"
     audit_text = audit_csv.read_text(encoding="utf-8-sig")
     assert "BUY-REAL" in audit_text
     assert "BUY-INFERRED" not in audit_text
     assert "SELL-INFERRED" not in audit_text
 
     recorder.rebuild_session_fill_exports("2026-06-11")
-
-    rebuilt_audit_text = audit_csv.read_text(encoding="utf-8-sig")
+    rebuilt_audit_text = (tmp_path/'logs'/'fills_20260611.csv').read_text(encoding="utf-8-sig")
     assert "BUY-REAL" in rebuilt_audit_text
     assert "BUY-INFERRED" not in rebuilt_audit_text
     assert "SELL-INFERRED" not in rebuilt_audit_text
+    assert recorder.conn.execute('SELECT COUNT(*) FROM fills').fetchone()[0] == 3
     recorder.conn.close()
 
 
-def test_daily_trade_fill_audit_resets_running_state_per_trade_date(tmp_path):
+def test_confirmed_fill_exports_are_separated_by_trade_date(tmp_path):
     recorder = Recorder(tmp_path / "bot.sqlite3")
     recorder.save_fill(
         Fill(
@@ -316,16 +314,16 @@ def test_daily_trade_fill_audit_resets_running_state_per_trade_date(tmp_path):
         source="poll",
     )
 
-    daily_audit_csv = tmp_path / "logs" / "trade_fills_audit_daily.csv"
-    daily_audit_text = daily_audit_csv.read_text(encoding="utf-8-sig")
-
-    assert "BUY-D1" in daily_audit_text
-    assert "BUY-D2" in daily_audit_text
-    assert "2026-06-11,2026-06-11T09:31:00,BUY-D2,005930,BUY,2,20000,40000,6.0,0.0,6.0,poll,,,,,,,2,40000,20000.0,0,0" in daily_audit_text
+    for day in ['2026-06-10','2026-06-11']:recorder.rebuild_session_fill_exports(day)
+    with (tmp_path/'logs'/'fills_20260610.csv').open(encoding='utf-8-sig')as fp:day1=list(csv.DictReader(fp))
+    with (tmp_path/'logs'/'fills_20260611.csv').open(encoding='utf-8-sig')as fp:day2=list(csv.DictReader(fp))
+    assert [r['broker_order_id']for r in day1]==['BUY-D1','SELL-D1']
+    assert [(r['broker_order_id'],r['quantity'],r['price'])for r in day2]==[('BUY-D2','2','20000')]
+    assert not (tmp_path/'logs'/'trade_fills_audit_daily.csv').exists()
     recorder.conn.close()
 
 
-def test_write_daily_revenue_summary_upserts_single_session_row(tmp_path):
+def test_daily_revenue_can_be_computed_without_reintroducing_retired_csv(tmp_path):
     recorder = Recorder(tmp_path / "bot.sqlite3")
     recorder.save_fill(
         Fill(
@@ -355,12 +353,13 @@ def test_write_daily_revenue_summary_upserts_single_session_row(tmp_path):
     recorder.write_daily_revenue_summary("2026-06-11", starting_capital_krw=1_000_000)
     recorder.write_daily_revenue_summary("2026-06-11", starting_capital_krw=1_000_000)
 
-    daily_rev_csv = tmp_path / "logs" / "daily_rev.csv"
-    daily_rev_text = daily_rev_csv.read_text(encoding="utf-8-sig")
-    assert daily_rev_text.count("2026-06-11") == 1
-    assert "005930" in daily_rev_text
-    assert "0.7150" in daily_rev_text
-    assert "0.0143" in daily_rev_text
+    from Daily_bot.reporting.performance import summarize_daily_revenue
+    summary=summarize_daily_revenue(str(recorder.path),'2026-06-11',1000000)
+    assert summary.total_profit_krw==143
+    assert abs(summary.total_return_percent-.715)<1e-8
+    assert abs(summary.total_return_percent_on_starting_capital-.0143)<1e-8
+    assert '005930' in summary.traded_tickers
+    assert not (tmp_path/'logs'/'daily_rev.csv').exists()
     recorder.conn.close()
 
 
@@ -407,21 +406,10 @@ def test_recorder_disables_csv_sink_when_csv_write_fails(tmp_path, monkeypatch):
 
     monkeypatch.setattr(recorder, "_append_csv_row", _raise_disk_full)
 
-    recorder.save_order(
-        type(
-            "Order",
-            (),
-            {
-                "order_id": "ORDER-1",
-                "ticker": "005930",
-                "side": "BUY",
-                "quantity": 1,
-                "price": 70_000,
-                "status": "ok",
-                "raw": {},
-            },
-        )()
-    )
+    recorder.save_fill(Fill(order_id='BUY-1',ticker='005930',quantity=1,price=70000,
+                            filled_at=datetime.now()),side='BUY',source='poll')
 
     assert recorder._csv_enabled is False
+    assert recorder.conn.execute('SELECT COUNT(*) FROM fills').fetchone()[0] == 1
     recorder.conn.close()
+

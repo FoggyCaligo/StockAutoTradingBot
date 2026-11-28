@@ -30,8 +30,8 @@ def test_expected_return_uses_target_sell_price_not_raw_expect_price():
     result = calc_expected_return(candidate, snapshot, sell_tick_offset=1)
 
     assert result.expect_price == 10000
-    assert calc_target_sell_price(result.expect_price, 1) == 9950
-    assert result.expect_revenue_percent == -0.5
+    assert calc_target_sell_price(result.expect_price, 1) == 9990
+    assert result.expect_revenue_percent == -0.1
     assert result.ask_depth_5_amount_krw == 10050 * 100 + 10100 * 100
 
 
@@ -87,3 +87,4 @@ def test_calc_expected_return_uses_strategy_orderbook_decay():
     )
 
     assert adjusted.ask_depth_5_amount_krw < baseline.ask_depth_5_amount_krw
+

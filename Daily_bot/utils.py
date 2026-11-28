@@ -48,16 +48,20 @@ class RateLimiter:
 
 
 def get_tick_size(price: int) -> int:
-    # KRX 호가단위는 시장/가격대/시점에 따라 변경될 수 있으므로 실전 전 최신 기준 확인 필요.
-    if price < 1000:
+    """Unified KRX ordinary-share grid, effective since 2023-01-25.
+
+    ETF/ETN/ELW and older historical regimes require separate rules.
+    https://regulation.krx.co.kr/contents/RGL/03/03010100/RGL03010100T3.jsp
+    """
+    if price < 2000:
         return 1
     if price < 5000:
         return 5
-    if price < 10000:
+    if price < 20000:
         return 10
     if price < 50000:
         return 50
-    if price < 100000:
+    if price < 200000:
         return 100
     if price < 500000:
         return 500
@@ -102,3 +106,4 @@ def count_ticks_between_prices(start_price: int, end_price: int) -> int:
 
 def ceil_tick_count(value: float) -> int:
     return max(0, int(math.ceil(value)))
+

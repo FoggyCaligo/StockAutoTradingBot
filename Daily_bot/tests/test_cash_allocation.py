@@ -217,7 +217,7 @@ def test_activate_buy_places_exit_order_for_partial_fill_after_cancel():
     activate_buy(client, recorder, targets, _cfg())
 
     assert client.cancel_calls == [("BUY-1", "005930", 10)]
-    assert client.sell_calls == [("005930", 3, 10150)]
+    assert client.sell_calls == [("005930", 3, 10190)]
 
 
 def test_activate_buy_uses_buy_limit_price_when_partial_fill_price_is_anomalously_high():
@@ -231,7 +231,7 @@ def test_activate_buy_uses_buy_limit_price_when_partial_fill_price_is_anomalousl
     activate_buy(client, recorder, targets, _cfg())
 
     assert client.cancel_calls == [("BUY-1", "005930", 10)]
-    assert client.sell_calls == [("005930", 3, 10150)]
+    assert client.sell_calls == [("005930", 3, 10190)]
     assert client.market_sell_calls == []
 
 
@@ -272,13 +272,13 @@ def test_activate_buy_stops_new_buys_after_exception_when_position_exists():
 def test_activate_buy_records_target_exit_fill_when_sell_fill_is_available():
     client = _ClientStub(orderable_cash=120_000)
     client.fill_sequence = [Fill(order_id="BUY-1", ticker="005930", quantity=10, price=10_000)]
-    client.sell_fill_sequence = [Fill(order_id="SELL-1", ticker="005930", quantity=10, price=10_150)]
+    client.sell_fill_sequence = [Fill(order_id="SELL-1", ticker="005930", quantity=10, price=10_190)]
     recorder = _RecorderStub(orders=[], fills=[])
     targets = [Candidate(ticker="005930", price=10_000, expect_price=10_200)]
 
     activate_buy(client, recorder, targets, _cfg())
 
-    assert client.sell_calls == [("005930", 10, 10150)]
+    assert client.sell_calls == [("005930", 10, 10190)]
     assert recorder.fills is not None
     assert any(side == "SELL" and source == "target_exit" for _fill, side, source in recorder.fills)
 
@@ -293,9 +293,9 @@ def test_activate_buy_attaches_planned_stop_loss_price_to_target_exit_order():
 
     sell_order = recorder.orders[-1]
     assert sell_order.side == "SELL"
-    assert sell_order.raw["planned_profit_tick_distance"] == 4
-    assert sell_order.raw["planned_stop_loss_tick_distance"] == 8
-    assert sell_order.raw["planned_stop_loss_price"] == 9_920
+    assert sell_order.raw["planned_profit_tick_distance"] == 20
+    assert sell_order.raw["planned_stop_loss_tick_distance"] == 40
+    assert sell_order.raw["planned_stop_loss_price"] == 9_600
 
 
 def test_activate_buy_uses_session_fixed_slot_budget_per_stock():
@@ -800,3 +800,4 @@ def test_attempt_startup_carryover_liquidation_safely_force_sells_carryover_posi
     assert completed is True
     assert errored is False
     assert client.market_sell_calls == [("005930", 3)]
+

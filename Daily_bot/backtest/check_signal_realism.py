@@ -94,7 +94,9 @@ def observations(groups, horizons=(10, 60, 300), tolerance=3, spacing=60):
     output = []
     for (day, ticker), data in sorted(groups.items()):
         times = sorted(data)
-        epochs = [t.timestamp() for t in times]
+        # Relative durations avoid host timezone/DST and OS timestamp limits
+        # (notably proleptic year 0001 synthetic sessions).
+        epochs = [(t - times[0]).total_seconds() for t in times]
         previous = float('-inf')
         for i, now in enumerate(times):
             if not data[now][4] or not '09:30' <= now.strftime('%H:%M') < '11:30' or epochs[i]-previous < spacing:
@@ -166,3 +168,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

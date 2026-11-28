@@ -1,0 +1,38 @@
+{
+  "test_command": "python -m pytest -q Daily_bot/tests",
+  "passed": 296,
+  "failed": 0,
+  "warnings": 1,
+  "baseline": {
+    "passed": 235,
+    "failed": 14
+  },
+  "focused_contract_tests": 58,
+  "cli_smoke": {
+    "exit_code": 0,
+    "stocks": 20,
+    "year": "0001",
+    "model_version": 3
+  },
+  "saved_full_session_replays": [
+    {
+      "day": "0001-03-01",
+      "source_csv_sha256": "3bb4ece2d6ba2d678cc03b51e9591e2495619ae77d67b038a7b1063a81f7828f",
+      "trades": 0,
+      "net_profit_krw": 0,
+      "runner": "replay_refill_threshold",
+      "fill_model": "standard",
+      "full_session": true
+    },
+    {
+      "day": "0001-03-23",
+      "source_csv_sha256": "0f588bac4b9860a0e75b20360eb6e0d5a47c3b53dc4a8f91dc4246b40f3d8f07",
+      "trades": 1,
+      "net_profit_krw": 628.6149999999907,
+      "runner": "replay_refill_threshold",
+      "fill_model": "standard",
+      "full_session": true
+    }
+  ],
+  "note": "No live orders; unchanged strategy thresholds; new diagnostics/calibration tested with declared seeds 901/902"
+}

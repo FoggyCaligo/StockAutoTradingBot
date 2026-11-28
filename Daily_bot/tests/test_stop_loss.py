@@ -91,39 +91,39 @@ def test_build_exit_plan_metadata_uses_expected_tick_distance_times_multiplier()
     metadata = _build_exit_plan_metadata(
         candidate=candidate,
         buy_reference_price=10_000,
-        target_price=10_150,
+        target_price=10_190,
         stop_loss_tick_count=0,
         stop_loss_tick_multiplier=2.0,
     )
 
-    assert metadata["planned_profit_tick_distance"] == 4
-    assert metadata["planned_stop_loss_tick_distance"] == 8
-    assert metadata["planned_stop_loss_price"] == 9_920
+    assert metadata["planned_profit_tick_distance"] == 20
+    assert metadata["planned_stop_loss_tick_distance"] == 40
+    assert metadata["planned_stop_loss_price"] == 9_600
 
 
 def test_build_exit_plan_metadata_uses_minimum_tick_count_when_dynamic_distance_is_smaller():
-    candidate = type("Candidate", (), {"expect_price": 10_200})()
+    candidate = type("Candidate", (), {"expect_price": 10_020})()
 
     metadata = _build_exit_plan_metadata(
         candidate=candidate,
         buy_reference_price=10_000,
-        target_price=10_150,
+        target_price=10_010,
         stop_loss_tick_count=5,
         stop_loss_tick_multiplier=1.0,
     )
 
-    assert metadata["planned_profit_tick_distance"] == 4
+    assert metadata["planned_profit_tick_distance"] == 2
     assert metadata["planned_stop_loss_tick_distance"] == 5
     assert metadata["planned_stop_loss_price"] == 9_950
 
 
 def test_build_exit_plan_metadata_uses_greater_of_minimum_ticks_and_expected_distance():
-    candidate = type("Candidate", (), {"expect_price": 10_300})()
+    candidate = type("Candidate", (), {"expect_price": 10_060})()
 
     metadata = _build_exit_plan_metadata(
         candidate=candidate,
         buy_reference_price=10_000,
-        target_price=10_250,
+        target_price=10_050,
         stop_loss_tick_count=5,
         stop_loss_tick_multiplier=1.0,
     )
@@ -152,7 +152,8 @@ def test_get_planned_stop_loss_price_returns_zero_when_recorder_has_no_method():
     assert get_planned_stop_loss_price(object(), "005930") == 0
 
 
-def test_is_stop_loss_enabled_returns_false_when_all_stop_loss_controls_are_zero():
+def test_is_stop_loss_enabled_returns_false_when_all_controls_and_dynamic_stop_are_off(monkeypatch):
+    monkeypatch.setenv('DYNAMIC_EXPECT_STOP_PERCENT','off')
     cfg = {"risk": {"stop_loss_percent": 0.0, "stop_loss_tick_count": 0, "stop_loss_tick_multiplier": 0.0}}
 
     assert is_stop_loss_enabled(cfg) is False
@@ -187,16 +188,18 @@ def test_get_position_loss_percent_prefers_position_raw_profit_rate():
     assert get_position_loss_percent(position) == -5.12
 
 
-def test_monitor_stop_loss_cancels_existing_orders_then_limit_sells():
+def test_monitor_stop_loss_cancels_existing_orders_then_limit_sells(monkeypatch):
+    monkeypatch.setenv('DYNAMIC_EXPECT_STOP_PERCENT','off')
     client = _ClientStub()
     recorder = _RecorderStub(planned_stop_loss_by_ticker={"005930": 9_800})
     positions = [_Position(ticker="005930", quantity=3, avg_price=10000)]
     open_orders = client.get_open_orders()
     cfg = {"risk": {"stop_loss_percent": 2.0}}
 
-    triggered = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+    triggered, ticker = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
 
     assert triggered is True
+    assert ticker == '005930'
     assert client.cancel_calls == [("1234567", "005930", 3)]
     assert client.limit_sell_calls == [("005930", 3, 9750)]
     assert len(recorder.orders) == 1
@@ -210,7 +213,8 @@ def test_monitor_stop_loss_cancels_existing_orders_then_limit_sells():
     assert fill.price == 9800
 
 
-def test_monitor_stop_loss_triggers_on_best_bid_even_if_last_price_is_higher():
+def test_monitor_stop_loss_triggers_on_best_bid_even_if_last_price_is_higher(monkeypatch):
+    monkeypatch.setenv('DYNAMIC_EXPECT_STOP_PERCENT','off')
     client = _ClientStub()
     client.current_price = 9850
     recorder = _RecorderStub(planned_stop_loss_by_ticker={"005930": 9_790})
@@ -228,13 +232,14 @@ def test_monitor_stop_loss_triggers_on_best_bid_even_if_last_price_is_higher():
 
     client.get_20hoga = _snapshot_with_lower_bid
 
-    triggered = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+    triggered, ticker = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
 
     assert triggered is True
     assert client.limit_sell_calls == [("005930", 3, 9790)]
 
 
-def test_monitor_stop_loss_triggers_from_account_snapshot_loss_rate_without_hoga_drop():
+def test_monitor_stop_loss_triggers_from_account_snapshot_loss_rate_without_hoga_drop(monkeypatch):
+    monkeypatch.setenv('DYNAMIC_EXPECT_STOP_PERCENT','off')
     client = _ClientStub()
     client.current_price = 9990
     recorder = _RecorderStub()
@@ -243,21 +248,24 @@ def test_monitor_stop_loss_triggers_from_account_snapshot_loss_rate_without_hoga
     open_orders = client.get_open_orders()
     cfg = {"risk": {"stop_loss_percent": 4.0}}
 
-    triggered = monitor_stop_loss(client, recorder, [position], open_orders, cfg)
+    triggered, ticker = monitor_stop_loss(client, recorder, [position], open_orders, cfg)
 
     assert triggered is True
     assert client.limit_sell_calls == [("005930", 3, 9750)]
 
 
-def test_monitor_stop_loss_does_not_trigger_when_stop_loss_is_disabled():
+def test_monitor_stop_loss_does_not_trigger_when_all_stop_loss_is_disabled(monkeypatch):
+    monkeypatch.setenv('DYNAMIC_EXPECT_STOP_PERCENT','off')
     client = _ClientStub()
     recorder = _RecorderStub(planned_stop_loss_by_ticker={"005930": 9800})
     positions = [_Position(ticker="005930", quantity=3, avg_price=10000)]
     open_orders = client.get_open_orders()
     cfg = {"risk": {"stop_loss_percent": 0.0, "stop_loss_tick_count": 0, "stop_loss_tick_multiplier": 0.0}}
 
-    triggered = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
+    triggered, ticker = monitor_stop_loss(client, recorder, positions, open_orders, cfg)
 
     assert triggered is False
+    assert ticker is None
     assert client.cancel_calls == []
     assert client.limit_sell_calls == []
+

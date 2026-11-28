@@ -602,13 +602,13 @@ def test_resolve_stop_loss_price_uses_dynamic_tick_distance_before_percent_fallb
         stop_loss_percent=6.0,
         stop_loss_tick_count=0,
         stop_loss_tick_multiplier=2.0,
-    ) == 9_920.0
+    ) == 9_600.0  # 20 upward 10-won ticks * 2, then 40 downward ticks
 
 
 def test_resolve_stop_loss_price_uses_minimum_tick_count_when_dynamic_distance_is_smaller():
     assert _resolve_stop_loss_price(
         entry_price=10_000,
-        expect_price=10_200,
+        expect_price=10_020,  # two ticks, below the five-tick minimum
         stop_loss_percent=6.0,
         stop_loss_tick_count=5,
         stop_loss_tick_multiplier=1.0,
@@ -618,7 +618,7 @@ def test_resolve_stop_loss_price_uses_minimum_tick_count_when_dynamic_distance_i
 def test_resolve_stop_loss_price_uses_larger_of_minimum_ticks_and_expected_distance():
     assert _resolve_stop_loss_price(
         entry_price=10_000,
-        expect_price=10_300,
+        expect_price=10_060,  # six ticks, above the five-tick minimum
         stop_loss_percent=6.0,
         stop_loss_tick_count=5,
         stop_loss_tick_multiplier=1.0,
@@ -1925,3 +1925,4 @@ def test_run_backtest_take_profit_uses_target_price_when_trace_overshoots(tmp_pa
     assert trades[0].exit_reason == "take_profit"
     assert trades[0].entry_price == 100
     assert trades[0].exit_price == 101
+

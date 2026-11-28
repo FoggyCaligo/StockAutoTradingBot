@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 from Daily_bot.models import HogaLevel, HogaSnapshot
-from Daily_bot.utils import get_tick_size, round_to_tick
+from Daily_bot.utils import move_price_by_ticks, round_to_tick
 
 
 class TargetSellPrice(int):
@@ -121,5 +121,6 @@ def calc_ask_depth_amount(snapshot: HogaSnapshot, levels: int = 5) -> int:
 
 
 def calc_target_sell_price(expect_price: int, tick_offset: int = 1) -> int:
-    tick = get_tick_size(expect_price)
-    return TargetSellPrice(round_to_tick(expect_price - tick * tick_offset))
+    # One step below a band boundary uses the lower band's tick: 2,000 -> 1,999.
+    return TargetSellPrice(move_price_by_ticks(round_to_tick(expect_price), -tick_offset))
+

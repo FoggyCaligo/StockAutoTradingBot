@@ -107,7 +107,7 @@ def test_get_orderable_cash_uses_deposit_like_value_only_as_last_resort(monkeypa
     assert result == 211315
 
 
-def test_get_orderable_cash_writes_debug_log_once_per_unique_signature(monkeypatch, tmp_path):
+def test_get_orderable_cash_does_not_write_retired_debug_log(monkeypatch, tmp_path):
     client = KiwoomClient(base_url="https://example.com")
     response = {
         "40stk_ord_alow_amt": "000000001899472",
@@ -124,11 +124,7 @@ def test_get_orderable_cash_writes_debug_log_once_per_unique_signature(monkeypat
 
     assert first == 1_899_472
     assert second == 1_899_472
-    lines = log_path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == 1
-    assert '"resolved_orderable_cash": 1899472' in lines[0]
-    assert '"40stk_ord_alow_amt": 1899472' in lines[0]
-    assert '"ord_psbl_amt": 1250000' in lines[0]
+    assert not log_path.exists()  # runtime keeps only market traces and confirmed fills
 
 
 def test_wait_buy_filled_requires_full_quantity(monkeypatch):
@@ -284,3 +280,4 @@ def test_request_reauths_after_unauthorized_response(monkeypatch):
 
     assert body == {"return_code": 0}
     assert auth_calls == ["auth"]
+

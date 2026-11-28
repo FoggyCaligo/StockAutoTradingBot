@@ -821,7 +821,7 @@ class Recorder:
         self._run_db("save_fill commit", lambda: self.conn.commit())
         # Keep the public daily fill CSV restricted to broker-confirmed executions.
         # Reconciliation-only inferred fills remain available internally in SQLite.
-        if "reconciliation" not in str(source or "").lower():
+        if should_include_in_fill_audit(source) and "reconciliation" not in str(source or "").lower():
             self._run_csv(
                 "save_fill",
                 lambda: self._append_csv_row(
@@ -953,7 +953,7 @@ class Recorder:
 
         fill_fieldnames = ["broker_order_id", "ticker", "name", "side", "quantity", "price", "filled_at", "source", "raw_json"]
         for row in fill_rows:
-            if "reconciliation" in str(row.get("source") or "").lower():
+            if not should_include_in_fill_audit(row.get("source", "")) or "reconciliation" in str(row.get("source") or "").lower():
                 continue
             self._run_csv(
                 "rebuild_session_fill_exports write fills csv",
@@ -1156,3 +1156,4 @@ class Recorder:
             "write_daily_revenue_summary",
             lambda: self._upsert_csv_row(self.daily_revenue_csv_path, DAILY_REV_FIELDNAMES, "session_date", row),
         )
+

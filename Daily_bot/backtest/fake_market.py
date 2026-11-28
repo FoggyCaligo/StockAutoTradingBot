@@ -17,6 +17,7 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 from Daily_bot.models import HogaLevel, HogaSnapshot
+from Daily_bot.utils import get_tick_size as tick_size
 from Daily_bot.strategy.orderbook_predictor import (
     apply_orderbook_decay, calc_ask_depth_amount, calc_spread_percent,
     calc_target_sell_price, predict_price_from_hoga,
@@ -30,15 +31,6 @@ FIELDS = [
     "expect_price", "expect_revenue_percent", "spread_percent",
     "ask_depth_5_amount_krw", "prev_day_change_percent", "raw_json", "created_at",
 ]
-
-
-def tick_size(price: int) -> int:
-    """KRX ordinary-share grid (2023 unified KOSPI/KOSDAQ schedule)."""
-    for bound, step in [(2000, 1), (5000, 5), (20000, 10), (50000, 50),
-                        (200000, 100), (500000, 500)]:
-        if price < bound:
-            return step
-    return 1000
 
 
 def floor_price(price: float) -> int:
@@ -76,6 +68,8 @@ class OrderBook:
         self.bids: dict[int, deque[Order]] = {}
         self.asks: dict[int, deque[Order]] = {}
         self.sequence = 0
+        self.depth_log_bias = 0.0
+        self.depth_rng = random.Random(0)
 
     def submit(self, side: str, quantity: int, price: int | None = None) -> list[Execution]:
         if side not in {"buy", "sell"} or quantity <= 0:
@@ -148,6 +142,10 @@ class MarketConfig:
     market_order_probability: float = 1.0
     max_market_order_levels: int = 0  # 0 = legacy uncapped aggressive orders
     profile: str = "legacy"
+    # Independent zero-centered passive-liquidity shock; never a return target.
+    depth_imbalance_sigma: float = 0.0
+    depth_imbalance_persistence: float = .995  # AR correlation per simulated second
+    initial_price_samples: tuple[int, ...] = ()  # optional observed training cross-section
 
     def validate(self) -> None:
         if self.profile not in {"legacy", "ordinary-bull"}:
@@ -155,11 +153,12 @@ class MarketConfig:
         date.fromisoformat(self.start_date)
         if self.days < 1 or self.ticks_per_day < 2 or self.ticks_per_day > 22800000:
             raise ValueError("days >= 1; 2 <= ticks_per_day <= 22800000")
-        if self.stocks != 0 and not 5 <= self.stocks <= 10:
-            raise ValueError("stocks must be 0 (random 5..10), or 5..10")
+        if self.stocks != 0 and not 5 <= self.stocks <= 20:
+            raise ValueError("stocks must be 0 (random 5..10), or 5..20")
         if any(not math.isfinite(v) for v in (self.x, self.n, self.a, self.b, self.c, self.d,
                                               self.scan_interval_seconds, self.cancellation_probability,
-                                              self.market_order_scale, self.market_order_probability)):
+                                              self.market_order_scale, self.market_order_probability,
+                                              self.depth_imbalance_sigma, self.depth_imbalance_persistence)):
             raise ValueError("parameters must be finite")
         if self.x <= -10000 or self.n < 0 or not 0 <= self.a <= self.b or not 0 <= self.c <= self.d:
             raise ValueError("x > -10000 bps; n >= 0; 0 <= a <= b; 0 <= c <= d")
@@ -171,6 +170,12 @@ class MarketConfig:
             raise ValueError("market_order_probability must be in [0,1]")
         if not isinstance(self.max_market_order_levels, int) or self.max_market_order_levels < 0:
             raise ValueError("max_market_order_levels must be a nonnegative integer")
+        if not 0 <= self.depth_imbalance_sigma <= 3 or not 0 <= self.depth_imbalance_persistence < 1:
+            raise ValueError('depth sigma must be in [0,3]; persistence in [0,1)')
+        if self.depth_imbalance_sigma and self.profile != 'ordinary-bull':
+            raise ValueError('independent depth calibration requires the ordinary-bull reference model')
+        if len(self.initial_price_samples) > 10000 or any(type(p) is not int or p <= 0 for p in self.initial_price_samples):
+            raise ValueError('initial prices must be <=10000 positive integer samples')
 
 
 def ordinary_bull_config(**overrides) -> MarketConfig:
@@ -214,6 +219,12 @@ def _quote_prices(book: OrderBook, depth: int = 10, reference: float | None = No
 def advance_book(book: OrderBook, reference: float, rng: random.Random, cfg: MarketConfig) -> list[Execution]:
     gap_ticks = (reference - book.last_price) / tick_size(book.last_price)
     pressure = math.tanh(gap_ticks / 3)
+    if cfg.depth_imbalance_sigma:
+        rho = cfg.depth_imbalance_persistence ** (22800 / cfg.ticks_per_day)
+        book.depth_log_bias = (rho * book.depth_log_bias
+            + math.sqrt(1 - rho * rho) * cfg.depth_imbalance_sigma * book.depth_rng.gauss(0, 1))
+    else:
+        book.depth_log_bias = 0.0
     # Every visible level on both sides receives an independent add/cancel draw.
     for side in ("buy", "sell"):
         for price, volume in book.snapshot(side):
@@ -230,7 +241,8 @@ def advance_book(book: OrderBook, reference: float, rng: random.Random, cfg: Mar
     fills = []
     for side, price in submissions:
         bias = pressure if side == "buy" else -pressure
-        quantity = max(1, int(cfg.base_quantity * rng.uniform(.2, 1.8) * math.exp(bias)))
+        liquidity_bias = book.depth_log_bias / 2 * (1 if side == 'buy' else -1)
+        quantity = max(1, int(cfg.base_quantity * rng.uniform(.2, 1.8) * math.exp(bias + liquidity_bias)))
         fills.extend(book.submit(side, quantity, price))
     # Independently sampled aggressive orders consume actual resting liquidity.
     aggressors = ["buy", "sell"]
@@ -270,15 +282,22 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
         raise FileExistsError(f"Use an empty directory for a synthetic run: {out_dir}")
     rng = random.Random(cfg.seed)
     selection_rng = random.Random(cfg.seed) if cfg.profile == "ordinary-bull" else rng
-    previous = {f"FAKE{i:02d}": floor_price(p) for i, p in enumerate(
-        [1500, 3500, 7500, 15000, 25000, 45000, 75000, 150000, 250000, 550000], 1)}
+    initial_prices = [1500, 3500, 7500, 15000, 25000, 45000, 75000, 150000, 250000, 550000]
+    pool_size = max(10, cfg.stocks)
+    if cfg.initial_price_samples:
+        universe_rng = random.Random(f'initial-prices:{cfg.seed}')
+        initial_prices = [universe_rng.choice(cfg.initial_price_samples) for _ in range(pool_size)]
+    previous = {f"FAKE{i + 1:02d}": floor_price(initial_prices[i % len(initial_prices)])
+                for i in range(pool_size)}
     current_day = date.fromisoformat(cfg.start_date)
-    manifest = {"model_version": 2 if cfg.profile == "ordinary-bull" else MODEL_VERSION,
+    version = 3 if cfg.depth_imbalance_sigma or cfg.initial_price_samples else (2 if cfg.profile == 'ordinary-bull' else MODEL_VERSION)
+    manifest = {"model_version": version,
                 "synthetic": True, "config": asdict(cfg),
                 "session": "09:00:00 <= Asia/Seoul time < 15:20:00; weekdays, holidays ignored",
                 "limitations": ["assumed opening reference; no opening/closing call auction, VI or halts",
                                 "random model is not calibrated to real market distributions",
-                                "strategy replay remains snapshot-based with no bot market impact"],
+                                "strategy replay remains snapshot-based with no bot market impact",
+                                "optional depth calibration fits dispersion only; not a validated market or profit model"],
                 "files": []}
     for day_index in range(cfg.days):
         while current_day.weekday() >= 5:
@@ -292,10 +311,14 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
             f"ordinary-bull-reference:{cfg.seed}:{current_day}:{ticker}".encode()).digest()[:8], "big"))
             for ticker in simulated_tickers} if cfg.profile == "ordinary-bull" else {}
         books = {ticker: OrderBook(previous[ticker]) for ticker in simulated_tickers}
+        for ticker, book in books.items():
+            book.depth_rng = random.Random(int.from_bytes(hashlib.sha256(
+                f'depth-shock:{cfg.seed}:{current_day}:{ticker}'.encode()).digest()[:8], 'big'))
         hourly = {}
         noise = dict.fromkeys(simulated_tickers, 0.0)
         series = {ticker: [] for ticker in tickers} if viewer else None
-        path = out_dir / f"fake_market_traces_{current_day:%Y%m%d}.csv"
+        date_suffix = f'{current_day.year:04d}{current_day.month:02d}{current_day.day:02d}'
+        path = out_dir / f"fake_market_traces_{date_suffix}.csv"
         start = datetime.combine(current_day, time(9))
         dt = 22800 / cfg.ticks_per_day
         scan_bucket = -1
@@ -326,7 +349,9 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
                         continue
                     raw = _raw(book, ticker, reference, fills)
                     if cfg.profile == "ordinary-bull":
-                        raw.update(model_version=2, market_profile=cfg.profile)
+                        raw.update(model_version=version, market_profile=cfg.profile)
+                    if cfg.depth_imbalance_sigma:
+                        raw['passive_depth_log_bias'] = book.depth_log_bias
                     bids, asks = book.snapshot("buy"), book.snapshot("sell")
                     snapshot = HogaSnapshot(ticker, book.last_price,
                                             [HogaLevel(*v) for v in bids], [HogaLevel(*v) for v in asks])
@@ -361,7 +386,7 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
                                          closing_price_by_ticker=dict(previous))
         if series is not None:
             from Daily_bot.backtest.fake_market_viewer import write_viewer
-            write_viewer(out_dir / f"market_{current_day:%Y%m%d}.html", series, asdict(cfg), str(current_day))
+            write_viewer(out_dir / f"market_{date_suffix}.html", series, asdict(cfg), str(current_day))
         current_day += timedelta(days=1)
         print(f"Synthetic session {day_index + 1}/{cfg.days}: {path} ({count * cfg.ticks_per_day} rows)")
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -374,10 +399,12 @@ def add_market_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--fake-output-dir", default="", help="empty destination directory; default is a unique run")
     parser.add_argument("--fake-profile", choices=("ordinary-bull", "legacy"), default="ordinary-bull",
                         help="ordinary-bull: moderate uptrend and bounded aggressive flow; legacy: original model")
+    parser.add_argument('--fake-depth-calibration', default='',
+                        help='optional real-snapshot depth-dispersion JSON from diagnose_no_trades; no profit fitting')
     for name, default, kind, help_text in [
         ("seed", 42, int, "reproducible RNG seed"), ("days", 1, int, "synthetic weekday sessions"),
         ("start-date", "2026-11-23", str, "first date (KST)"),
-        ("stocks", 0, int, "0=random 5..10 per day, or fixed 5..10"),
+        ("stocks", 0, int, "0=random 5..10 per day, or fixed 5..20"),
         ("ticks-per-day", 22800, int, "t snapshots/stock/day; default one simulated second"),
         ("x", 100., float, "reference slope in bps/session (negative=down)"),
         ("n", 1., float, "reference change scale in bps"),
@@ -391,9 +418,12 @@ def add_market_arguments(parser: argparse.ArgumentParser) -> None:
         ("market-order-probability", 1., float, "per-side aggressive order arrival probability per tick"),
         ("max-market-order-levels", 0, int, "maximum book levels consumed per aggressive order; 0=uncapped"),
         ("scan-interval-seconds", 60., float, "strategy entry scan cadence, separate from tick cadence"),
+        ("depth-imbalance-sigma", 0., float, "independent passive-depth log-ratio shock SD; default off"),
+        ("depth-imbalance-persistence", .995, float, "depth-shock AR correlation per simulated second"),
     ]:
         profiled = {"x", "n", "a", "b", "c", "d", "base-quantity", "cancellation-probability",
-                    "market-order-scale", "market-order-probability", "max-market-order-levels"}
+                    "market-order-scale", "market-order-probability", "max-market-order-levels",
+                    "depth-imbalance-sigma", "depth-imbalance-persistence"}
         parser.add_argument("--fake-" + name, default=None if name in profiled else default,
                             type=kind, help=help_text)
     parser.add_argument("--fake-no-viewer", action="store_true", help="omit per-day HTML viewer")
@@ -401,9 +431,19 @@ def add_market_arguments(parser: argparse.ArgumentParser) -> None:
 
 def config_from_args(args: argparse.Namespace) -> MarketConfig:
     cfg = ordinary_bull_config() if args.fake_profile == "ordinary-bull" else MarketConfig()
+    if getattr(args, 'fake_depth_calibration', ''):
+        calibration = json.loads(Path(args.fake_depth_calibration).read_text(encoding='utf-8'))
+        if calibration.get('schema_version') != 1:
+            raise ValueError('unsupported depth calibration schema')
+        cfg = replace(cfg,
+            depth_imbalance_sigma=float(calibration['depth_imbalance_sigma']),
+            depth_imbalance_persistence=float(calibration['depth_imbalance_persistence']),
+            initial_price_samples=tuple(calibration.get('initial_price_samples', [])))
     overrides = {name: value for name in MarketConfig.__dataclass_fields__
                  if name != "profile" and (value := getattr(args, "fake_" + name, None)) is not None}
-    return replace(cfg, **overrides)
+    cfg = replace(cfg, **overrides)
+    cfg.validate()
+    return cfg
 
 
 def prepare_market_args(args: argparse.Namespace, remaining: list[str]) -> list[str]:
@@ -438,3 +478,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
