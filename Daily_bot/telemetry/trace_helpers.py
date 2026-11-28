@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from Daily_bot.models import Candidate
+from Daily_bot.models import Candidate, OrderResult
 from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.signal import calc_expected_return
 from Daily_bot.utils import RateLimiter, load_yaml
@@ -34,6 +35,37 @@ def record_scan_candidate(recorder: Recorder, candidate: Candidate, snapshot: An
         reason=reason,
         scan_cycle_at=datetime.now(),
     )
+
+
+def trace_buy_order_quote(
+    client: Any,
+    recorder: Recorder,
+    candidate: Candidate,
+    order: OrderResult,
+    submitted_at: datetime,
+    strategy_cfg: dict,
+) -> None:
+    try:
+        snapshot = client.get_20hoga(order.ticker, best_effort=True)
+        traced = calc_expected_return(
+            replace(candidate), snapshot, int(strategy_cfg.get("sell_tick_offset", 1)), strategy_cfg,
+        )
+        snapshot = replace(snapshot, raw={
+            **(snapshot.raw or {}),
+            "buy_order": {
+                "order_id": order.order_id,
+                "submitted_at": submitted_at.isoformat(),
+                "limit_price": order.price,
+                "quantity": order.quantity,
+                "expect_price": candidate.expect_price,
+            },
+        })
+        recorder.save_market_trace(
+            traced, snapshot, phase="buy_order_quote", selected=True,
+            reason="post_submit_quote", scan_cycle_at=snapshot.captured_at,
+        )
+    except Exception as exc:
+        print(f"Failed to trace buy order {order.order_id} for {order.ticker}: {exc}")
 
 
 def trace_candidate_watchlist(

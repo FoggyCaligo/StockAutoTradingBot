@@ -156,6 +156,33 @@ def test_wait_buy_filled_requires_full_quantity(monkeypatch):
     assert fill.price == 10035
 
 
+def test_pending_buy_quote_uses_existing_poll_wait(monkeypatch):
+    client = KiwoomClient(base_url="https://example.com")
+    now = 0.0
+    polls = []
+    quotes = []
+
+    def advance(seconds):
+        nonlocal now
+        now += seconds
+
+    def poll(order_id):
+        polls.append(now)
+
+    def record_quote():
+        quotes.append(now)
+        advance(0.5)
+
+    monkeypatch.setattr(client, "get_buy_fill", poll)
+    monkeypatch.setattr(kiwoom_module.time, "monotonic", lambda: now)
+    monkeypatch.setattr(kiwoom_module.time, "sleep", advance)
+
+    assert client.wait_buy_filled("BUY-1", timeout_seconds=5, on_pending=record_quote) is None
+    assert polls == [0.0, 2.0, 4.0]
+    assert quotes == [0.0, 2.0]
+    assert now == 5.0
+
+
 def test_get_buy_fill_filters_out_other_orders_in_same_response(monkeypatch):
     client = KiwoomClient(base_url="https://example.com")
     response = [

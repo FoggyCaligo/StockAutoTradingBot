@@ -22,14 +22,21 @@ class ExecutionConfig:
     queue_multiplier: float = 1.0
     max_tape_gap_seconds: float = 5.0
     aggregate_trade_through: bool = False
+    allow_signal_snapshot_buy: bool = False
+    buy_fill_poll_seconds: float = 2.0
+    replay_recorded_buy_orders: bool = False
 
     def __post_init__(self):
         values = [self.latency_seconds, self.buy_timeout_seconds, self.depth_participation,
-                  self.queue_multiplier, self.max_tape_gap_seconds]
+                  self.queue_multiplier, self.max_tape_gap_seconds, self.buy_fill_poll_seconds]
         if not all(math.isfinite(v) for v in values):
             raise ValueError('execution parameters must be finite')
         if self.latency_seconds < 0 or self.buy_timeout_seconds <= self.latency_seconds:
             raise ValueError('0 <= latency < buy timeout is required')
+        if self.buy_fill_poll_seconds <= 0:
+            raise ValueError('buy fill poll interval must be positive')
+        if self.replay_recorded_buy_orders and self.allow_signal_snapshot_buy:
+            raise ValueError('recorded buy orders require post-submission quotes')
         if not 0 < self.depth_participation <= 1 or self.queue_multiplier < 0 or self.max_tape_gap_seconds <= 0:
             raise ValueError('participation in (0,1], queue multiplier >= 0, tape gap > 0 required')
 
@@ -60,12 +67,13 @@ class SnapshotMatcher:
         self.events = []
         self.sequence = 0
 
-    def submit(self, ticker, side, quantity, price, now, reason):
+    def submit(self, ticker, side, quantity, price, now, reason, *, broker_order_id=None):
         self.sequence += 1
         order = ReplayOrder(self.sequence, ticker, side, quantity, price, now,
                             now+timedelta(seconds=self.config.latency_seconds), reason)
         self.events.append(dict(event='submit', time=now.isoformat(), ticker=ticker,
-            order_id=order.order_id, side=side, quantity=quantity, price=price, reason=reason))
+            order_id=order.order_id, side=side, quantity=quantity, price=price,
+            reason=reason, active_at=order.active_at.isoformat(), broker_order_id=broker_order_id))
         return order
 
     def frame(self, row):
@@ -116,16 +124,22 @@ class SnapshotMatcher:
 
     def match(self, order, frame):
         now = frame['now']
-        # Even zero configured latency cannot consume the decision snapshot.
-        if now <= order.submitted_at or now < order.active_at or order.remaining <= 0:
+        signal_buy = (
+            self.config.allow_signal_snapshot_buy
+            and order.side == 'buy'
+            and now == order.submitted_at
+        )
+        if order.remaining <= 0 or (
+            not signal_buy and (now <= order.submitted_at or now < order.active_at)
+        ):
             return []
         fills = []
-        if not order.joined:
+        if not signal_buy and not order.joined:
             # The interval's tape precedes this observed arrival: never reuse it.
             own = frame['levels']['bid' if order.side == 'buy' else 'ask']
             order.queue_ahead = self.config.queue_multiplier*sum(q for p,q in own if p == order.limit_price)
             order.joined = True
-        elif order.limit_price is not None:
+        elif not signal_buy and order.limit_price is not None:
             for event in frame['tape']:
                 price, qty, aggressor, evidence = event
                 qualifies = ((order.side == 'buy' and price <= order.limit_price and aggressor == 'sell')
@@ -154,7 +168,8 @@ class SnapshotMatcher:
             if quantity:
                 pool[1] -= quantity
                 order.remaining -= quantity
-                fills.append((quantity, price, 'displayed_depth'))
+                evidence = 'signal_snapshot_depth' if signal_buy else 'displayed_depth'
+                fills.append((quantity, price, evidence))
         for quantity, price, evidence in fills:
             self.events.append(dict(event='fill', time=now.isoformat(), ticker=order.ticker,
                 order_id=order.order_id, side=order.side, quantity=quantity, price=price,
@@ -165,7 +180,7 @@ class SnapshotMatcher:
     def cancel(self, order, now, reason):
         self.events.append(dict(event='cancel', time=now.isoformat(), ticker=order.ticker,
             order_id=order.order_id, side=order.side, quantity=order.remaining,
-            price=order.limit_price, reason=reason))
+            price=order.limit_price, reason=reason, observed_active_quote=order.joined))
         order.remaining = 0
 
 
@@ -189,11 +204,29 @@ class Position:
     sold: int = 0
     sell_amount: int = 0
     first_fill: str = ''
+    buy_confirm_at: datetime | None = None
     last_sell: str = ''
     sell: ReplayOrder | None = None
     dynamic_count: int = 0
     anchor_count: int = 0
     exit_reason: str = ''
+
+
+def recorded_buy_submissions(rows):
+    submissions = {}
+    for row in rows:
+        if row.phase != 'buy_order_quote':
+            continue
+        metadata = json.loads(row.raw_json).get('buy_order', {})
+        order_id = metadata.get('order_id')
+        if order_id and order_id not in submissions:
+            stamp = datetime.fromisoformat(metadata['submitted_at']).isoformat(
+                sep=' ', timespec='microseconds',
+            )
+            if stamp[:10] != row.session_date or stamp >= row.created_at:
+                raise ValueError(f'Invalid submission time for recorded buy {order_id}')
+            submissions[order_id] = (stamp, row, metadata)
+    return submissions
 
 
 def run_execution_replay(arguments, config):
@@ -202,6 +235,8 @@ def run_execution_replay(arguments, config):
     a.pop('execution_config', None)
     if a.get('actual_exit_overrides_by_ticker'):
         raise ValueError('conservative execution cannot use actual-fill exit overrides; use --ignore-actual-fill-exits')
+    if config.replay_recorded_buy_orders and a['use_selected_signals']:
+        raise ValueError('recorded buy orders require --ignore-selected-signals')
     traces = base.apply_orderbook_level_limit(base.load_traces(a['db_path']),
         levels_per_side=a['orderbook_levels_per_side'], sell_tick_offset=a['sell_tick_offset'],
         bid_linear_decay_min_weight=a['orderbook_bid_linear_decay_min_weight'],
@@ -211,6 +246,8 @@ def run_execution_replay(arguments, config):
         signals = base.load_selected_signals(a['db_path']) if a['use_selected_signals'] else []
     selected = base._selected_tickers_by_timestamp(signals)
     result = ExecutionResult(config)
+    if config.replay_recorded_buy_orders and not any(row.phase == 'buy_order_quote' for row in traces):
+        raise ValueError('no post-submission buy quotes in replay data')
     fee, tax = base.DEFAULT_FEE_RATE, base.DEFAULT_SELL_TAX_RATE
     for day, rows in base.group_by_session(traces).items():
         plan = base.resolve_session_capital_plan(**{k:a[k] for k in ['session_capital_by_day','default_starting_capital_krw',
@@ -225,7 +262,14 @@ def run_execution_replay(arguments, config):
         previous_scan = {}
         by_time = {}
         last_rows = {}
+        recorded_entries = {}
+        if config.replay_recorded_buy_orders:
+            for stamp, row, order in recorded_buy_submissions(rows).values():
+                recorded_entries.setdefault(stamp, []).append((row, order))
+                by_time[stamp] = []
         for row in rows:
+            if config.replay_recorded_buy_orders and row.phase == 'scan_candidate':
+                continue
             by_time.setdefault(row.created_at, []).append(row)
             last_rows[row.ticker] = row
         allowed_trend = None
@@ -234,6 +278,36 @@ def run_execution_replay(arguments, config):
 
         def reserved_cash():
             return sum(p.buy.remaining*p.buy.limit_price*(1+fee) for p in positions.values())
+
+        def apply_buy_fills(position, frame, stamp):
+            nonlocal cash
+            for quantity, price, _ in matcher.match(position.buy, frame):
+                position.bought += quantity
+                position.buy_amount += quantity * price
+                cash -= quantity * price * (1 + fee)
+                if not position.first_fill:
+                    position.first_fill = stamp
+            if position.buy.remaining == 0 and position.buy_confirm_at is None:
+                elapsed = (frame['now'] - position.buy.submitted_at).total_seconds()
+                poll_interval = config.buy_fill_poll_seconds
+                confirm_seconds = min(
+                    math.ceil(elapsed / poll_interval) * poll_interval,
+                    config.buy_timeout_seconds,
+                )
+                position.buy_confirm_at = position.buy.submitted_at + timedelta(seconds=confirm_seconds)
+
+        def submit_confirmed_exit(position, now):
+            if position.buy_confirm_at is None or now < position.buy_confirm_at:
+                return
+            matcher.events.append(dict(
+                event='confirm', time=position.buy_confirm_at.isoformat(),
+                ticker=position.buy.ticker, order_id=position.buy.order_id, side='buy',
+                quantity=position.bought, reason='buy_fill_confirmed',
+            ))
+            position.sell = matcher.submit(
+                position.buy.ticker, 'sell', position.bought, position.target,
+                position.buy_confirm_at, 'take_profit',
+            )
 
         def record_trade(position, reason):
             if not position.sold:
@@ -246,6 +320,21 @@ def run_execution_replay(arguments, config):
                 position.last_sell, position.sold, ep, xp, cost, position.sell_amount,
                 reason, base._realized_pnl_percent(ep, xp)))
 
+        def submit_buy(row, quantity, price, expect_price, now, broker_order_id=None):
+            target = base._resolve_target_price(expect_price, a['sell_tick_offset'], price)
+            if target <= 0:
+                target = int(price * (1 + a['take_profit_percent'] / 100))
+            stop = base._resolve_stop_loss_price(
+                price, expect_price, a['stop_loss_percent'],
+                a['stop_loss_tick_count'], a['stop_loss_tick_multiplier'],
+            )
+            order = matcher.submit(
+                row.ticker, 'buy', quantity, price, now, 'entry', broker_order_id=broker_order_id,
+            )
+            position = Position(row, order, target, stop)
+            positions[row.ticker] = position
+            return position
+
         for stamp, frame_rows in sorted(by_time.items()):
             now = base._parse_timestamp(stamp)
             frames = {r.ticker:matcher.frame(r) for r in frame_rows}
@@ -253,28 +342,22 @@ def run_execution_replay(arguments, config):
             exited = set()
             for ticker, p in list(positions.items()):
                 row = row_map.get(ticker)
-                if p.buy.remaining and (now-p.buy.submitted_at).total_seconds() >= config.buy_timeout_seconds:
-                    matcher.cancel(p.buy, now, 'buy_timeout')
-                if row is None:
-                    continue
-                if p.buy.remaining:
-                    for qty, price, _ in matcher.match(p.buy, frames[ticker]):
-                        p.bought += qty; p.buy_amount += qty*price
-                        cash -= qty*price*(1+fee)
-                        if not p.first_fill:
-                            p.first_fill = stamp
+                deadline = p.buy.submitted_at + timedelta(seconds=config.buy_timeout_seconds)
+                if p.buy.remaining and now >= deadline:
+                    matcher.cancel(p.buy, deadline, 'buy_timeout')
+                    p.buy_confirm_at = deadline
+                if p.buy.remaining and row is not None:
+                    apply_buy_fills(p, frames[ticker], stamp)
                 if not p.buy.remaining and not p.bought:
                     del positions[ticker]; exited.add(ticker)
                     continue
-                if p.buy.remaining:
+                if p.sell is None:
+                    submit_confirmed_exit(p, now)
+                if row is None or p.sell is None:
                     continue
-                remaining = p.bought-p.sold
-                if p.sell is None and remaining:
-                    p.sell = matcher.submit(ticker, 'sell', remaining, p.target, now, 'take_profit')
-                if p.sell:
-                    for qty, price, _ in matcher.match(p.sell, frames[ticker]):
-                        p.sold += qty; p.sell_amount += qty*price; p.last_sell = stamp
-                        cash += qty*price*(1-fee-tax)
+                for qty, price, _ in matcher.match(p.sell, frames[ticker]):
+                    p.sold += qty; p.sell_amount += qty*price; p.last_sell = stamp
+                    cash += qty*price*(1-fee-tax)
                 if p.sold == p.bought:
                     record_trade(p, p.exit_reason or 'take_profit')
                     del positions[ticker]; exited.add(ticker)
@@ -301,6 +384,21 @@ def run_execution_replay(arguments, config):
                     p.sell = matcher.submit(ticker, 'sell', p.bought-p.sold, None, now, reason)
                     if a['block_stop_loss_reentry_same_day'] and reason in {'stop_loss','dynamic_expect_stop','entry_anchor_expect_stop'}:
                         blocked.add(ticker)
+
+            if config.replay_recorded_buy_orders:
+                for row, order in recorded_entries.get(stamp, []):
+                    price, quantity = int(order['limit_price']), int(order['quantity'])
+                    if price <= 0 or quantity <= 0:
+                        raise ValueError(f"Invalid recorded buy order {order['order_id']}")
+                    if row.ticker in positions or quantity * price * (1 + fee) > cash - reserved_cash():
+                        matcher.events.append(dict(
+                            event='skip', time=now.isoformat(), ticker=row.ticker, side='buy',
+                            broker_order_id=order['order_id'], price=price, quantity=quantity,
+                            reason='simulated_position' if row.ticker in positions else 'insufficient_cash',
+                        ))
+                        continue
+                    submit_buy(row, quantity, price, int(order['expect_price']), now, order['order_id'])
+                continue
 
             scans = [r for r in frame_rows if r.phase == 'scan_candidate']
             if not scans:
@@ -342,12 +440,10 @@ def run_execution_replay(arguments, config):
                 qty=min(base.calc_order_quantity(model,plan.slot_budget_per_stock),
                         int(min(plan.slot_budget_per_stock,max(0,cash-reserved_cash()))/(price*(1+fee))))
                 if qty<=0: continue
-                target=base._resolve_target_price(r.expect_price,a['sell_tick_offset'],price)
-                if target<=0: target=int(price*(1+a['take_profit_percent']/100))
-                stop=base._resolve_stop_loss_price(price,r.expect_price,a['stop_loss_percent'],
-                    a['stop_loss_tick_count'],a['stop_loss_tick_multiplier'])
-                order=matcher.submit(r.ticker,'buy',qty,price,now,'entry')
-                positions[r.ticker]=Position(r,order,target,stop)
+                position = submit_buy(r, qty, price, r.expect_price, now)
+                if config.allow_signal_snapshot_buy:
+                    apply_buy_fills(position, frames[r.ticker], stamp)
+                    submit_confirmed_exit(position, now)
                 setattr(model,'planned_budget_krw',0)
 
         inventory_value=0.0
@@ -369,7 +465,7 @@ def run_execution_replay(arguments, config):
             ending_cash=cash,unresolved_inventory_mark=inventory_value,
             marked_net_pnl=cash+inventory_value-plan.session_capital_basis,
             unresolved_positions=sum(x['session_date']==day for x in result.unresolved_inventory)))
-        result.execution_events.extend(matcher.events)
+        result.execution_events.extend(sorted(matcher.events, key=lambda event: event['time']))
     return result
 
 
@@ -390,6 +486,10 @@ def write_execution_report(path: Path, result):
 
 
 def config_from_args(args):
-    if args.fill_model == 'legacy': return None
+    if args.fill_model == 'legacy':
+        if args.replay_recorded_buy_orders:
+            raise ValueError('recorded buy orders require --fill-model conservative')
+        return None
     return ExecutionConfig(args.order_latency_seconds,args.buy_order_timeout_seconds,
-        args.depth_participation,args.queue_multiplier,args.max_tape_gap_seconds,args.aggregate_trade_through)
+        args.depth_participation,args.queue_multiplier,args.max_tape_gap_seconds,args.aggregate_trade_through,
+        args.allow_signal_snapshot_buy, args.buy_fill_poll_seconds, args.replay_recorded_buy_orders)

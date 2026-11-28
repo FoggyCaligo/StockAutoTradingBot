@@ -7,6 +7,7 @@ import json
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import urlparse
 
@@ -170,10 +171,14 @@ class KiwoomClient:
         json: dict[str, Any] | None = None,
         cont_yn: str = "N",
         next_key: str = "",
+        *,
+        timeout: float = 30.0,
+        retry: bool = True,
     ) -> requests.Response:
         url = self._build_url(path)
         last_exc: Exception | None = None
-        for attempt in range(1, self.REQUEST_MAX_ATTEMPTS + 1):
+        max_attempts = self.REQUEST_MAX_ATTEMPTS if retry else 1
+        for attempt in range(1, max_attempts + 1):
             # Official TR-specific exceptions also apply to pagination/retries.
             # kt00018: 1/sec; mock server: each domestic TR is limited to 1/sec.
             interval = 1.0 if self._is_mock_server or api_id == self.TR_KT00018_POSITIONS else 0.0
@@ -188,13 +193,13 @@ class KiwoomClient:
                     headers=self._headers(api_id=api_id, cont_yn=cont_yn, next_key=next_key),
                     params=params,
                     json=json,
-                    timeout=30,
+                    timeout=timeout,
                 )
-                if response.status_code in {401, 403} and attempt < self.REQUEST_MAX_ATTEMPTS:
+                if response.status_code in {401, 403} and attempt < max_attempts:
                     self.auth()
                     time.sleep(min(3.0, 0.5 * attempt))
                     continue
-                if response.status_code in {429, 500, 502, 503, 504} and attempt < self.REQUEST_MAX_ATTEMPTS:
+                if response.status_code in {429, 500, 502, 503, 504} and attempt < max_attempts:
                     time.sleep(min(3.0, 0.5 * attempt))
                     continue
                 response.raise_for_status()
@@ -202,30 +207,30 @@ class KiwoomClient:
             except requests.exceptions.RequestException as exc:
                 last_exc = exc
                 status_code = getattr(getattr(exc, "response", None), "status_code", None)
-                if status_code in {401, 403} and attempt < self.REQUEST_MAX_ATTEMPTS:
+                if status_code in {401, 403} and attempt < max_attempts:
                     self.auth()
                     time.sleep(min(3.0, 0.5 * attempt))
                     continue
-                if attempt >= self.REQUEST_MAX_ATTEMPTS:
+                if attempt >= max_attempts:
                     raise
                 time.sleep(min(3.0, 0.5 * attempt))
             except Exception as exc:
                 last_exc = exc
-                if attempt >= self.REQUEST_MAX_ATTEMPTS:
+                if attempt >= max_attempts:
                     raise
                 time.sleep(min(3.0, 0.5 * attempt))
         if last_exc is not None:
             raise last_exc
         raise RuntimeError(f"Unknown request failure: {method} {url}")
 
-    def get_20hoga(self, ticker: str) -> HogaSnapshot:
+    def get_20hoga(self, ticker: str, *, best_effort: bool = False) -> HogaSnapshot:
         payload = {"stk_cd": ticker}
-        raw = self._request(
-            "POST",
-            self.DOMESTIC_MARKET_COND_PATH,
-            api_id=self.TR_KA10004_HOGA,
-            json=payload,
-        )
+        request_args = ("POST", self.DOMESTIC_MARKET_COND_PATH)
+        request_kwargs = {"api_id": self.TR_KA10004_HOGA, "json": payload}
+        if best_effort:
+            raw = self._request_response(*request_args, **request_kwargs, timeout=0.5, retry=False).json()
+        else:
+            raw = self._request(*request_args, **request_kwargs)
 
         bids = self._extract_hoga_levels(raw, side="bid")
         asks = self._extract_hoga_levels(raw, side="ask")
@@ -436,12 +441,20 @@ class KiwoomClient:
         order_id: str,
         expected_quantity: int | None = None,
         timeout_seconds: int = 30,
+        *,
+        on_pending: Callable[[], None] | None = None,
     ) -> Fill | None:
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline:
             fill = self.get_buy_fill(order_id)
             if fill is not None and (expected_quantity is None or fill.quantity >= expected_quantity):
                 return fill
+            if on_pending is not None:
+                next_poll = min(deadline, time.monotonic() + 2)
+                if next_poll - time.monotonic() >= 1.5:
+                    on_pending()
+                time.sleep(max(0, next_poll - time.monotonic()))
+                continue
             time.sleep(2)
         return None
 

@@ -25,7 +25,7 @@ from Daily_bot.storage.db import Recorder
 from Daily_bot.strategy.orderbook_predictor import calc_target_sell_price
 from Daily_bot.strategy.signal import calc_expected_return, final_filter, get_candidates_top
 from Daily_bot.strategy.universe import UniverseConfig, get_candidates, get_kospi_change_percent
-from Daily_bot.telemetry.trace_helpers import trace_active_positions, trace_candidate_watchlist
+from Daily_bot.telemetry.trace_helpers import trace_active_positions, trace_buy_order_quote, trace_candidate_watchlist
 from Daily_bot.utils import (
     RateLimiter,
     ceil_tick_count,
@@ -1286,11 +1286,19 @@ def activate_buy(
                 continue
 
             order_limiter.wait()
+            submitted_at = datetime.now()
             buy_order = client.buy_limit(candidate.ticker, qty, candidate.price)
             recorder.save_order(buy_order)
             remaining_cash -= estimated_cost
 
-            fill = client.wait_buy_filled(buy_order.order_id, qty)
+            if isinstance(client, KiwoomClient) and client.is_real_trade and buy_order.order_id:
+                def record_order_quote():
+                    trace_buy_order_quote(client, recorder, candidate, buy_order, submitted_at, cfg["strategy"])
+
+                fill = client.wait_buy_filled(buy_order.order_id, qty, on_pending=record_order_quote)
+            else:
+                record_order_quote = None
+                fill = client.wait_buy_filled(buy_order.order_id, qty)
             if fill is None:
                 order_limiter.wait()
                 cancel_unfilled_buy(client, buy_order, candidate, qty, recorder)
@@ -1311,6 +1319,8 @@ def activate_buy(
                         stop_loss_tick_count,
                         stop_loss_tick_multiplier,
                     )
+                    if record_order_quote is not None:
+                        record_order_quote()
                     return
                 if submit_target_exit_order_from_position_if_present(
                     client,
@@ -1340,6 +1350,8 @@ def activate_buy(
                 stop_loss_tick_count,
                 stop_loss_tick_multiplier,
             )
+            if record_order_quote is not None:
+                record_order_quote()
             if remaining_cash < candidate.price:
                 break
         except Exception as exc:

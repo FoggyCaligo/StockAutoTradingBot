@@ -188,5 +188,8 @@ def test_cli_fake_and_recorded_paths_replay_identical_trace_equally(tmp_path, fi
     if fill_model == 'legacy':
         assert len(list(csv.DictReader(recorded_out.open(encoding='utf-8-sig')))) > 0
     else:
-        # Sparse 60s observations exceed the 30s buy timeout; no invented fills.
-        assert (tmp_path/'recorded_execution.json').is_file()
+        import json
+        execution = json.loads((tmp_path/'recorded_execution.json').read_text(encoding='utf-8'))
+        assert execution['config']['buy_timeout_seconds'] == 30
+        assert execution['config']['buy_fill_poll_seconds'] == 2
+        assert execution['config']['allow_signal_snapshot_buy'] is False

@@ -8,6 +8,10 @@ import pytest
 from Daily_bot.backtest import replay_market_traces as base
 from Daily_bot.backtest import replay_dynamic_expect_debounce as dynamic
 from Daily_bot.backtest.execution_replay import ExecutionConfig, SnapshotMatcher
+from Daily_bot.backtest.replay_db_builder import build_replay_db_from_logs
+from Daily_bot.models import Candidate, HogaLevel, HogaSnapshot, OrderResult
+from Daily_bot.storage.db import Recorder
+from Daily_bot.telemetry.trace_helpers import trace_buy_order_quote
 
 
 START = datetime(2026, 11, 24, 9, 30)
@@ -31,6 +35,23 @@ def test_latency_partial_depth_and_no_reuse_of_unchanged_quote():
     assert m.match(o,m.frame(row(2,aq=10)))==[]
     assert m.match(o,m.frame(row(3,aq=10)))==[]
     assert m.match(o,m.frame(row(4,aq=16)))==[(3,1001,'displayed_depth')]
+
+
+def test_signal_snapshot_only_fills_crossing_buys_within_shared_depth():
+    matcher = SnapshotMatcher(ExecutionConfig(
+        depth_participation=0.5, allow_signal_snapshot_buy=True
+    ))
+    frame = matcher.frame(row(0, ask=1000, aq=10))
+    passive = matcher.submit("AAA", "buy", 10, 999, START, "entry")
+    first = matcher.submit("AAA", "buy", 3, 1000, START, "entry")
+    second = matcher.submit("AAA", "buy", 10, 1000, START, "entry")
+    sell = matcher.submit("AAA", "sell", 10, 999, START, "take_profit")
+    assert matcher.match(passive, frame) == []
+    assert matcher.match(sell, frame) == []
+    assert matcher.match(first, frame) == [(3, 1000, "signal_snapshot_depth")]
+    assert matcher.match(second, frame) == [(2, 1000, "signal_snapshot_depth")]
+    assert not second.joined
+    assert matcher.match(second, matcher.frame(row(1, ask=1000, aq=10))) == []
 
 
 def test_fifo_requires_volume_cancellation_and_price_touch_do_not_fill():
@@ -95,9 +116,73 @@ def test_runner_tracks_partial_buy_timeout_then_delayed_sell(monkeypatch):
     assert result[0].quantity==2
     assert result[0].entry_price==1000
     assert result[0].exit_price==1020
-    assert result[0].exit_time.endswith('09:30:32')
+    assert result[0].exit_time.endswith('09:30:31')
+    assert next(e['time'] for e in result.execution_events if e['event'] == 'cancel').endswith('09:30:30')
     assert not result.unresolved_inventory
     assert result.execution_sessions[0]['ending_cash']==pytest.approx(10035.722)
+
+
+def test_full_buy_fill_waits_for_next_broker_poll_before_target_order(monkeypatch):
+    traces = [row(0), row(1, ask=1000, aq=100), row(2, bid=1020), row(3, bid=1020)]
+    monkeypatch.setattr(base, 'load_traces', lambda _: traces)
+    monkeypatch.setattr(base, 'apply_orderbook_level_limit', lambda rows, **kwargs: rows)
+
+    result = dynamic.run_backtest_dynamic_expect_debounce(**arguments())
+
+    assert result[0].entry_time.endswith('09:30:01')
+    assert result[0].exit_time.endswith('09:30:03')
+    confirmation = next(event for event in result.execution_events if event['event'] == 'confirm')
+    assert confirmation['time'].endswith('09:30:02')
+
+
+def test_recorded_order_quotes_replay_from_sqlite_and_csv(tmp_path):
+    submitted_at = datetime.now().replace(hour=9, minute=32, second=0, microsecond=250000)
+    order = OrderResult('BROKER-1', 'AAA', 'BUY', 4, 1000)
+    candidate = Candidate(ticker='AAA', price=1000, expect_price=1020, prev_close_price=990)
+    recorder = Recorder(tmp_path / 'live.sqlite3')
+
+    class QuoteClient:
+        def get_20hoga(self, ticker, *, best_effort):
+            assert ticker == order.ticker and best_effort
+            return snapshot
+
+    for delay, bid, ask in ((0.9, 999, 1000), (1.1, 1001, 1002), (2.1, 999, 1000),
+                            (5, 1020, 1021)):
+        snapshot = HogaSnapshot(
+            'AAA', ask, [HogaLevel(bid, 100)], [HogaLevel(ask, 100)],
+            submitted_at + timedelta(seconds=delay),
+            dict(cur_prc=ask, buy_fpr_bid=bid, buy_fpr_req=100, sel_fpr_bid=ask, sel_fpr_req=100),
+        )
+        trace_buy_order_quote(QuoteClient(), recorder, candidate, order, submitted_at, {})
+    assert (candidate.price, candidate.expect_price) == (1000, 1020)
+    recorder.conn.close()
+
+    rebuilt = build_replay_db_from_logs(recorder.log_dir, tmp_path / 'rebuilt.sqlite3')
+    assert base.load_traces(rebuilt) == base.load_traces(recorder.path)
+    values = arguments()
+    values.update(db_path=rebuilt, execution_config=ExecutionConfig(replay_recorded_buy_orders=True))
+
+    result = dynamic.run_backtest_dynamic_expect_debounce(**values)
+
+    assert len(result) == 1
+    assert result[0].entry_time.endswith('09:32:02.350000')
+    assert result[0].quantity == 4
+    assert result.execution_events[0]['broker_order_id'] == 'BROKER-1'
+    assert result.execution_events[0]['time'] == submitted_at.isoformat()
+
+
+def test_runner_exits_signal_snapshot_buy_on_later_quote(monkeypatch):
+    traces = [row(0, ask=1000), row(1, bid=1020, ask=1021)]
+    monkeypatch.setattr(base, "load_traces", lambda _: traces)
+    monkeypatch.setattr(base, "apply_orderbook_level_limit", lambda rows, **kwargs: rows)
+    values = arguments()
+    values["execution_config"] = ExecutionConfig(
+        depth_participation=0.5, allow_signal_snapshot_buy=True
+    )
+    result = dynamic.run_backtest_dynamic_expect_debounce(**values)
+    assert len(result) == 1
+    assert result[0].entry_time.endswith("09:30:00")
+    assert result[0].exit_time.endswith("09:30:01")
 
 
 def test_runner_does_not_fabricate_end_of_data_liquidation(monkeypatch):

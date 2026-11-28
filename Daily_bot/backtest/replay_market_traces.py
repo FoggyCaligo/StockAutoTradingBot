@@ -191,16 +191,16 @@ def _to_float(value) -> float:
         return 0.0
 
 
-def _normalize_created_at(session_date: str, created_at: str) -> str:
+def _normalize_created_at(session_date: str, created_at: str, *, exact: bool = False) -> str:
     if not created_at:
         return created_at
     try:
         dt = datetime.fromisoformat(created_at)
     except ValueError:
         return created_at
-    if dt.hour < 6:
+    if dt.hour < 6 and not exact:
         dt += timedelta(hours=9)
-    normalized = dt.strftime("%Y-%m-%d %H:%M:%S")
+    normalized = dt.isoformat(sep=" ", timespec="microseconds" if exact else "seconds")
     if session_date and normalized[:10] != session_date:
         return created_at
     return normalized
@@ -245,7 +245,9 @@ def load_traces(db_path: Path) -> list[TraceRow]:
             TraceRow(
                 session_date=session_date,
                 ticker=row["ticker"],
-                created_at=_normalize_created_at(session_date, row["created_at"]),
+                created_at=_normalize_created_at(
+                    session_date, row["created_at"], exact=row["phase"] == "buy_order_quote",
+                ),
                 phase=row["phase"],
                 selected=_to_int(row["selected"]),
                 price=_to_int(row["price"]),
@@ -2000,10 +2002,18 @@ def parse_args():
     parser.add_argument("--fill-model", choices=("conservative", "legacy"), default="conservative")
     parser.add_argument("--order-latency-seconds", type=float, default=1.0)
     parser.add_argument("--buy-order-timeout-seconds", type=float, default=30.0)
+    parser.add_argument("--buy-fill-poll-seconds", type=float, default=2.0,
+                        help="Delay exit submission until the next simulated buy-fill poll")
+    parser.add_argument("--replay-recorded-buy-orders", action="store_true",
+                        help="Simulate fills for submissions linked to recorded post-order quotes")
     parser.add_argument("--depth-participation", type=float, default=0.10)
     parser.add_argument("--queue-multiplier", type=float, default=1.0)
     parser.add_argument("--max-tape-gap-seconds", type=float, default=5.0)
     parser.add_argument("--aggregate-trade-through", action="store_true", help="Approximate passive fills from aggregate tick volume; strict tape-only is default")
+    parser.add_argument(
+        "--allow-signal-snapshot-buy", action=argparse.BooleanOptionalAction, default=False,
+        help="Allow immediately marketable buys to consume a capped share of the signal snapshot's ask depth",
+    )
     args = parser.parse_args(remaining_argv)
     from Daily_bot.backtest.execution_replay import config_from_args
     try:
