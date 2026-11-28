@@ -206,6 +206,25 @@ def _normalize_created_at(session_date: str, created_at: str, *, exact: bool = F
     return normalized
 
 
+def market_metadata(row):
+    # Existing real records have no synthetic session marker.
+    if '"market_state"' not in row.raw_json:
+        return {}
+    try:
+        raw=json.loads(row.raw_json)
+        return raw if isinstance(raw,dict) else {}
+    except (ValueError,TypeError):
+        return {}
+
+
+def can_enter(row):
+    return market_metadata(row).get('market_state','continuous')=='continuous'
+
+
+def can_execute(row):
+    return market_metadata(row).get('market_state','continuous') in {'continuous','auction_uncross'}
+
+
 def load_traces(db_path: Path) -> list[TraceRow]:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -629,7 +648,7 @@ def infer_selected_signals_from_fill_audit(
     traces = load_traces(db_path)
     scan_rows_by_day_and_ticker: dict[tuple[str, str], list[TraceRow]] = {}
     for row in traces:
-        if row.phase != "scan_candidate":
+        if row.phase != "scan_candidate" or not can_enter(row):
             continue
         scan_rows_by_day_and_ticker.setdefault((row.session_date, row.ticker), []).append(row)
 
@@ -949,7 +968,7 @@ def _pick_candidates_for_timestamp(
 ) -> list[TraceRow]:
     latest_by_ticker: dict[str, TraceRow] = {}
     for row in rows:
-        if row.phase != "scan_candidate":
+        if row.phase != "scan_candidate" or not can_enter(row):
             continue
         if row.ticker in active_tickers:
             continue

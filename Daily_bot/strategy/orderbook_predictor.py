@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
-
 from Daily_bot.models import HogaLevel, HogaSnapshot
 from Daily_bot.utils import move_price_by_ticks, round_to_tick
 
@@ -81,8 +79,8 @@ def predict_price_from_hoga(snapshot: HogaSnapshot) -> int:
     This is a clean-room skeleton implementation of the user's original
     orderbook offset idea. Validate against the old predict_priceidx before use.
     """
-    bids: list[HogaLevel] = deepcopy(snapshot.bids)
-    asks: list[HogaLevel] = deepcopy(snapshot.asks)
+    bids: list[HogaLevel] = [HogaLevel(v.price,v.volume) for v in snapshot.bids]
+    asks: list[HogaLevel] = [HogaLevel(v.price,v.volume) for v in snapshot.asks]
 
     if not bids or not asks:
         return snapshot.current_price

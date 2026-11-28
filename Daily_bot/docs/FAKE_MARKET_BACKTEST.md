@@ -270,3 +270,6 @@ python -m Daily_bot.backtest.fake_market \
 기존 고정 가상자료는 폐기했다. 새 자료는 생성기로 재생성하며 Git에는 올리지 않는다.
 체결 방식과 신호 비교 범위는 [보수적 체결 재생](CONSERVATIVE_REPLAY.md)을 참조한다.
 
+
+종가 단일가·동적/정적 VI는 `--fake-auction-vi`로 켠다. `korean` 프로필의
+10초 이하 간격을 사용하며, [구현 범위와 백테스트](AUCTION_VI_BACKTEST_20261128.md)를 참조한다.

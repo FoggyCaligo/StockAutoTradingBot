@@ -1,0 +1,338 @@
+{
+  "source_parent_commit": "556bb8ebfd21248ce2af270f91d7b81fa9510bac",
+  "seed": 20261128,
+  "capital_krw": 1000000,
+  "capital_policy": "fixed each day, no compounding",
+  "fee_per_side": 0.00015,
+  "sell_tax": 0.002,
+  "cases": {
+    "baseline": {
+      "all": {
+        "sessions": 130,
+        "trades": 147,
+        "net_profit_krw": -40038.9065,
+        "net_return_on_initial_capital_percent": -4.00389065,
+        "daily_mean_krw": -307.9915884615384,
+        "winning_days": 42,
+        "losing_days": 54,
+        "no_trade_days": 34,
+        "net_winning_trades": 71,
+        "net_trade_win_rate_percent": 48.29931972789116,
+        "daily_close_max_drawdown_percent": -4.556286231991669,
+        "gross_pnl_krw": 54150,
+        "fees_and_tax_krw": 94188.9065,
+        "exit_reasons": {
+          "dynamic_expect_stop": 104,
+          "take_profit": 43
+        },
+        "unfilled_mark_positions": 0,
+        "marked_net_profit_krw": -40038.9065,
+        "unresolved_stock_days": 0
+      },
+      "weak_bull": {
+        "sessions": 65,
+        "trades": 94,
+        "net_profit_krw": -4854.404,
+        "net_return_on_initial_capital_percent": -0.48544040000000005,
+        "daily_mean_krw": -74.68313846153846,
+        "winning_days": 31,
+        "losing_days": 28,
+        "no_trade_days": 6,
+        "net_winning_trades": 51,
+        "net_trade_win_rate_percent": 54.255319148936174,
+        "daily_close_max_drawdown_percent": -2.685643092219814,
+        "gross_pnl_krw": 57700,
+        "fees_and_tax_krw": 62554.404,
+        "exit_reasons": {
+          "dynamic_expect_stop": 67,
+          "take_profit": 27
+        },
+        "unfilled_mark_positions": 0,
+        "marked_net_profit_krw": -4854.404,
+        "unresolved_stock_days": 0
+      },
+      "strong_bear": {
+        "sessions": 65,
+        "trades": 53,
+        "net_profit_krw": -35184.5025,
+        "net_return_on_initial_capital_percent": -3.51845025,
+        "daily_mean_krw": -541.3000384615385,
+        "winning_days": 11,
+        "losing_days": 26,
+        "no_trade_days": 28,
+        "net_winning_trades": 20,
+        "net_trade_win_rate_percent": 37.735849056603776,
+        "daily_close_max_drawdown_percent": -3.608342249999974,
+        "gross_pnl_krw": -3550,
+        "fees_and_tax_krw": 31634.5025,
+        "exit_reasons": {
+          "dynamic_expect_stop": 37,
+          "take_profit": 16
+        },
+        "unfilled_mark_positions": 0,
+        "marked_net_profit_krw": -35184.5025,
+        "unresolved_stock_days": 0
+      }
+    },
+    "standard": {
+      "all": {
+        "sessions": 130,
+        "trades": 145,
+        "net_profit_krw": -13683.412500000002,
+        "net_return_on_initial_capital_percent": -1.3683412500000003,
+        "daily_mean_krw": -105.25701923076925,
+        "winning_days": 46,
+        "losing_days": 46,
+        "no_trade_days": 38,
+        "net_winning_trades": 85,
+        "net_trade_win_rate_percent": 58.62068965517241,
+        "daily_close_max_drawdown_percent": -2.4192354399587446,
+        "gross_pnl_krw": 80170,
+        "fees_and_tax_krw": 93853.4125,
+        "exit_reasons": {
+          "dynamic_expect_stop": 95,
+          "take_profit": 50
+        },
+        "unfilled_mark_positions": 0,
+        "marked_net_profit_krw": -13683.412500000002,
+        "unresolved_stock_days": 0
+      },
+      "weak_bull": {
+        "sessions": 65,
+        "trades": 89,
+        "net_profit_krw": 4300.092499999998,
+        "net_return_on_initial_capital_percent": 0.4300092499999998,
+        "daily_mean_krw": 66.15526923076919,
+        "winning_days": 29,
+        "losing_days": 24,
+        "no_trade_days": 12,
+        "net_winning_trades": 57,
+        "net_trade_win_rate_percent": 64.04494382022472,
+        "daily_close_max_drawdown_percent": -1.8922388186406902,
+        "gross_pnl_krw": 63970,
+        "fees_and_tax_krw": 59669.9075,
+        "exit_reasons": {
+          "dynamic_expect_stop": 60,
+          "take_profit": 29
+        },
+        "unfilled_mark_positions": 0,
+        "marked_net_profit_krw": 4300.092499999998,
+        "unresolved_stock_days": 0
+      },
+      "strong_bear": {
+        "sessions": 65,
+        "trades": 56,
+        "net_profit_krw": -17983.505,
+        "net_return_on_initial_capital_percent": -1.7983505,
+        "daily_mean_krw": -276.6693076923077,
+        "winning_days": 17,
+        "losing_days": 22,
+        "no_trade_days": 26,
+        "net_winning_trades": 28,
+        "net_trade_win_rate_percent": 50.0,
+        "daily_close_max_drawdown_percent": -1.9327519999999931,
+        "gross_pnl_krw": 16200,
+        "fees_and_tax_krw": 34183.505,
+        "exit_reasons": {
+          "dynamic_expect_stop": 35,
+          "take_profit": 21
+        },
+        "unfilled_mark_positions": 0,
+        "marked_net_profit_krw": -17983.505,
+        "unresolved_stock_days": 0
+      }
+    },
+    "conservative": {
+      "all": {
+        "sessions": 130,
+        "trades": 29,
+        "net_profit_krw": -6428.5835,
+        "net_return_on_initial_capital_percent": -0.6428583499999999,
+        "daily_mean_krw": -49.450642307692306,
+        "winning_days": 10,
+        "losing_days": 19,
+        "no_trade_days": 101,
+        "net_winning_trades": 10,
+        "net_trade_win_rate_percent": 34.48275862068966,
+        "daily_close_max_drawdown_percent": -0.976746900000014,
+        "gross_pnl_krw": 830.0,
+        "fees_and_tax_krw": 7258.5835,
+        "exit_reasons": {
+          "dynamic_expect_stop": 22,
+          "take_profit": 7
+        },
+        "unfilled_mark_positions": 0,
+        "marked_net_profit_krw": -6428.58349999995,
+        "unresolved_stock_days": 0
+      },
+      "weak_bull": {
+        "sessions": 65,
+        "trades": 22,
+        "net_profit_krw": -8072.1085,
+        "net_return_on_initial_capital_percent": -0.8072108499999999,
+        "daily_mean_krw": -124.18628461538462,
+        "winning_days": 6,
+        "losing_days": 16,
+        "no_trade_days": 43,
+        "net_winning_trades": 6,
+        "net_trade_win_rate_percent": 27.272727272727273,
+        "daily_close_max_drawdown_percent": -0.976746900000014,
+        "gross_pnl_krw": -3270.0,
+        "fees_and_tax_krw": 4802.1085,
+        "exit_reasons": {
+          "dynamic_expect_stop": 19,
+          "take_profit": 3
+        },
+        "unfilled_mark_positions": 0,
+        "marked_net_profit_krw": -8072.108499999973,
+        "unresolved_stock_days": 0
+      },
+      "strong_bear": {
+        "sessions": 65,
+        "trades": 7,
+        "net_profit_krw": 1643.5250000000003,
+        "net_return_on_initial_capital_percent": 0.16435250000000004,
+        "daily_mean_krw": 25.285000000000004,
+        "winning_days": 4,
+        "losing_days": 3,
+        "no_trade_days": 58,
+        "net_winning_trades": 4,
+        "net_trade_win_rate_percent": 57.142857142857146,
+        "daily_close_max_drawdown_percent": -0.16675882585496238,
+        "gross_pnl_krw": 4100.0,
+        "fees_and_tax_krw": 2456.475,
+        "exit_reasons": {
+          "take_profit": 4,
+          "dynamic_expect_stop": 3
+        },
+        "unfilled_mark_positions": 0,
+        "marked_net_profit_krw": 1643.5250000000233,
+        "unresolved_stock_days": 0
+      }
+    }
+  },
+  "conservative_parameters": {
+    "latency_seconds": 1,
+    "depth_participation": 0.1,
+    "queue_multiplier": 1,
+    "buy_timeout_seconds": 30,
+    "buy_fill_poll_seconds": 2,
+    "max_tape_gap_seconds": 15,
+    "aggregate_trade_through": false
+  },
+  "dataset_validation": {
+    "sessions": 130,
+    "rows": 3047380,
+    "regime_sessions": {
+      "weak_bull": 65,
+      "strong_bear": 65
+    },
+    "market_events": {
+      "closing_auction_start": 1300,
+      "auction_uncross": 1390,
+      "vi_start": 98
+    },
+    "integrity": "all rows passed checksums, date cadence, grid, limits, quotes, fills and close continuity",
+    "weak_bull_actual_equal_weight_return_percent": 2.073910963240211,
+    "strong_bear_actual_equal_weight_return_percent": -32.37975937026284,
+    "volatility": [
+      {
+        "regime": "strong_bear",
+        "horizon_seconds": 60,
+        "observations": 253500,
+        "winsorized_sd_bps": 23.448265280725394,
+        "flat_percent": 22.684812623274162
+      },
+      {
+        "regime": "strong_bear",
+        "horizon_seconds": 300,
+        "observations": 50700,
+        "winsorized_sd_bps": 60.29333578455674,
+        "flat_percent": 10.195266272189349
+      },
+      {
+        "regime": "strong_bear",
+        "horizon_seconds": 900,
+        "observations": 16900,
+        "winsorized_sd_bps": 107.69666605738543,
+        "flat_percent": 4.514792899408284
+      },
+      {
+        "regime": "weak_bull",
+        "horizon_seconds": 60,
+        "observations": 253500,
+        "winsorized_sd_bps": 17.381289060306386,
+        "flat_percent": 28.92938856015779
+      },
+      {
+        "regime": "weak_bull",
+        "horizon_seconds": 300,
+        "observations": 50700,
+        "winsorized_sd_bps": 40.61167267322908,
+        "flat_percent": 14.24457593688363
+      },
+      {
+        "regime": "weak_bull",
+        "horizon_seconds": 900,
+        "observations": 16900,
+        "winsorized_sd_bps": 71.63094297424773,
+        "flat_percent": 7.165680473372781
+      }
+    ]
+  },
+  "trade_causality_audit": {
+    "trades_checked": 145,
+    "trades_held_through_vi": 0,
+    "no_entries_in_collection": true,
+    "no_exits_before_uncross": true,
+    "uniform_uncross_exit_prices": true,
+    "unfilled_end_marks": 0
+  },
+  "archives": [
+    {
+      "file_name": "dailybot_auction_vi_0001_01.zip",
+      "canonical_name": "dailybot_korean_mixed_0001_01.zip",
+      "bytes": 194159721,
+      "sha256": "84987567fd3b193ae4dbd73a2de07aa08f06f1af64e144f416240e74244c7193"
+    },
+    {
+      "file_name": "dailybot_auction_vi_0001_02.zip",
+      "canonical_name": "dailybot_korean_mixed_0001_02.zip",
+      "bytes": 168643052,
+      "sha256": "0959abddc54a0db5807fdf433891755feaa35c1714175f23cb38b93374eb1cfa"
+    },
+    {
+      "file_name": "dailybot_auction_vi_0001_03.zip",
+      "canonical_name": "dailybot_korean_mixed_0001_03.zip",
+      "bytes": 185880061,
+      "sha256": "cf2370515c571eab205b73545411869cfa22b3762b5e8af4083be31d9b46fdf2"
+    },
+    {
+      "file_name": "dailybot_auction_vi_0001_04.zip",
+      "canonical_name": "dailybot_korean_mixed_0001_04.zip",
+      "bytes": 183630116,
+      "sha256": "3ee93b3962d67196bfa27201052785c19dbdd91163a7fa7a20d5339aa3b4a1c2"
+    },
+    {
+      "file_name": "dailybot_auction_vi_0001_05.zip",
+      "canonical_name": "dailybot_korean_mixed_0001_05.zip",
+      "bytes": 200878856,
+      "sha256": "1dc75411132ddd07a256a601dc56009852a6269afbd7ebd99bbf6760550566d9"
+    },
+    {
+      "file_name": "dailybot_auction_vi_0001_06.zip",
+      "canonical_name": "dailybot_korean_mixed_0001_06.zip",
+      "bytes": 183019397,
+      "sha256": "98ddd57d9f04367014dd95c2bf765f39dbf05db7d70246508679bfac8ee90e9a"
+    }
+  ],
+  "tests_passed": 314,
+  "limitations": [
+    "synthetic scenario, not a measured real-market expected return",
+    "standard replay buys at current price and fills full quantity on later price touch",
+    "general ordinary-share VI; no opening auction, CB, IPO or expiry special cases",
+    "10-second timing and nearest-last-price auction tie approximation",
+    "VI overlapping 15:20 is merged into closing collection",
+    "same reference path/seed, but order-flow random consumption changes; not a pure causal intervention"
+  ]
+}

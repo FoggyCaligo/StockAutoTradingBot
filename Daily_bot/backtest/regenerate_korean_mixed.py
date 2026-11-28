@@ -68,8 +68,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--output', type=Path, required=True)
     ap.add_argument('--seed', type=int, default=20261128)
+    ap.add_argument('--auction-vi',action='store_true')
     args = ap.parse_args()
-    cfg = korean_config(seed=args.seed, start_date='0001-01-01', days=130, stocks=10)
+    cfg = korean_config(seed=args.seed, start_date='0001-01-01', days=130, stocks=10, auction_vi=args.auction_vi)
     paths, scenario = reference_scenario(cfg)
     generate_market(args.output, cfg, viewer=False, reference_paths=paths, archive_months=True)
     scenario['archives'] = [dict(path=p.name, bytes=p.stat().st_size,

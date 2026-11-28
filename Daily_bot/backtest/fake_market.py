@@ -72,6 +72,7 @@ class OrderBook:
         self.sequence = 0
         self.depth_log_bias = 0.0
         self.depth_rng = random.Random(0)
+        self.auction = None
 
     def submit(self, side: str, quantity: int, price: int | None = None) -> list[Execution]:
         if side not in {"buy", "sell"} or quantity <= 0:
@@ -82,9 +83,16 @@ class OrderBook:
         opposite = self.asks if side == "buy" else self.bids
         own = self.bids if side == "buy" else self.asks
         fills = []
+        if self.auction and self.auction.mode != 'continuous':
+            self.auction.park(side,quantity,price,self.sequence)
+            return fills
         while quantity and opposite:
             best = min(opposite) if side == "buy" else max(opposite)
             if price is not None and ((side == "buy" and price < best) or (side == "sell" and price > best)):
+                break
+            if self.auction and self.auction.interrupt(best):
+                self.auction.park(side,quantity,price,self.sequence)
+                quantity=0
                 break
             queue = opposite[best]
             order = queue[0]
@@ -147,6 +155,8 @@ class MarketConfig:
     # Independent zero-centered passive-liquidity shock; never a return target.
     depth_imbalance_sigma: float = 0.0
     depth_imbalance_persistence: float = .995  # AR correlation per simulated second
+    auction_vi: bool = False
+    kospi200: bool = False
     session_seconds: int = 22800
     include_session_end: bool = False
     initial_price_samples: tuple[int, ...] = ()  # optional observed training cross-section
@@ -155,6 +165,8 @@ class MarketConfig:
         if self.profile not in {"legacy", "ordinary-bull", "korean"}:
             raise ValueError("profile must be legacy, ordinary-bull or korean")
         date.fromisoformat(self.start_date)
+        if self.auction_vi and (self.ticks_per_day<2341 or self.session_seconds!=23400 or not self.include_session_end):
+            raise ValueError('auction/VI requires 09:00-15:30 including the end, with 10s or finer snapshots')
         if type(self.include_session_end) is not bool or type(self.session_seconds) is not int or not 1 <= self.session_seconds <= 23400:
             raise ValueError("session_seconds must be an integer in [1,23400]")
         if type(self.days) is not int or type(self.ticks_per_day) is not int or self.days < 1 or self.ticks_per_day < 2 or self.ticks_per_day > 22800000:
@@ -313,7 +325,7 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
                 for i in range(pool_size)}
     current_day = date.fromisoformat(cfg.start_date)
     if cfg.profile == "korean" or reference_paths is not None:
-        version = 4
+        version = 5 if cfg.auction_vi else 4
     elif cfg.depth_imbalance_sigma or cfg.initial_price_samples:
         version = 3
     else:
@@ -323,9 +335,9 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
                 "session": {"timezone": "Asia/Seoul", "start": "09:00:00",
                             "seconds": cfg.session_seconds, "include_end": cfg.include_session_end,
                             "calendar": "weekdays, holidays ignored"},
-                "limitations": ["assumed opening reference; no opening/closing call auction, VI or halts",
+                "limitations": ["opening reference assumed; IPO/CB/halts and exchange edge-case allocations not modeled",
                                 "volatility and depth partly calibrated on selected stocks; other dynamics are assumptions",
-                                "15:20-15:30 is continuous-auction approximation, not a closing call auction",
+                                "optional auction/VI uses ordinary-share thresholds and 10s quantization; no derivatives expiry exception",
                                 "strategy replay remains snapshot-based with no bot market impact",
                                 "optional depth calibration fits dispersion only; not a validated market or profit model"],
                 "files": []}
@@ -344,6 +356,10 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
         for ticker, book in books.items():
             book.depth_rng = random.Random(int.from_bytes(hashlib.sha256(
                 f'depth-shock:{cfg.seed}:{current_day}:{ticker}'.encode()).digest()[:8], 'big'))
+        if cfg.auction_vi:
+            from Daily_bot.backtest.auction import AuctionRules
+            for ticker,book in books.items():
+                book.auction=AuctionRules(book,seed=f'auction:{cfg.seed}:{current_day}:{ticker}',kospi200=cfg.kospi200)
         supplied = reference_paths.get(str(current_day)) if reference_paths is not None else None
         if reference_paths is not None:
             if supplied is None or set(supplied) != set(simulated_tickers):
@@ -362,8 +378,12 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
         with path.open("w", encoding="utf-8-sig", newline="") as fp:
             writer = csv.DictWriter(fp, fieldnames=FIELDS)
             writer.writeheader()
-            for index in range(cfg.ticks_per_day):
+            tail_steps = math.ceil(180/dt) if cfg.auction_vi else 0
+            written_rows = 0
+            for index in range(cfg.ticks_per_day+tail_steps):
                 elapsed = index * dt
+                if elapsed>cfg.session_seconds and all(b.auction.mode=='closed' for b in books.values()):
+                    break
                 now = start + timedelta(seconds=elapsed)
                 bucket = int(elapsed // cfg.scan_interval_seconds)
                 phase = "scan_candidate" if bucket != scan_bucket else "watch"
@@ -372,7 +392,7 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
                 for ticker in simulated_tickers:
                     book = books[ticker]
                     if supplied is not None:
-                        reference = float(supplied[ticker][index])
+                        reference = float(supplied[ticker][min(index,cfg.ticks_per_day-1)])
                     else:
                         ref_rng = noise_rngs.get(ticker, rng)
                         hour = int(elapsed // 3600)
@@ -384,10 +404,16 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
                             noise[ticker] += signed_uniform(ref_rng, cfg.c, cfg.d) * cfg.n * scale
                         reference = previous[ticker] * (1 + (cfg.x * elapsed / cfg.session_seconds + noise[ticker]) / 10000)
                     reference = max(book.lower, min(book.upper, reference))
-                    fills = advance_book(book, reference, rng, cfg)
+                    if book.auction:
+                        book.auction.begin_tick(elapsed)
+                    fills = (advance_book(book, reference, rng, cfg)
+                             if not book.auction or book.auction.mode!='closed' else [])
+                    if book.auction:
+                        fills += book.auction.finish_tick()
                     if ticker not in recorded_tickers:
                         continue
                     raw = _raw(book, ticker, reference, fills)
+                    if book.auction:raw.update(book.auction.raw())
                     if cfg.profile != "legacy":
                         raw.update(model_version=version, market_profile=cfg.profile)
                     if cfg.depth_imbalance_sigma:
@@ -398,7 +424,7 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
                     expected = predict_price_from_hoga(apply_orderbook_decay(snapshot, 0.0, 0.0))
                     target = int(calc_target_sell_price(expected, 1))
                     writer.writerow(dict(
-                        session_date=str(current_day), phase=phase, ticker=ticker,
+                        session_date=str(current_day), phase=phase if not book.auction or book.auction.mode=="continuous" else "auction", ticker=ticker,
                         scan_cycle_at=stamp if phase == "scan_candidate" else "", selected=0,
                         reason="synthetic_continuous_auction", price=book.last_price,
                         prev_close_price=previous[ticker], current_price=book.last_price,
@@ -409,6 +435,7 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
                         prev_day_change_percent=(book.last_price / previous[ticker] - 1) * 100,
                         raw_json=json.dumps(raw, separators=(",", ":")), created_at=stamp,
                     ))
+                    written_rows += 1
                     if series is not None:
                         series[ticker].append([round(elapsed, 6), book.last_price, round(reference, 4),
                                                bids, asks, raw["tick_volume"]])
@@ -420,7 +447,9 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
             for chunk in iter(lambda: fp.read(1024 * 1024), b""):
                 digest.update(chunk)
         manifest["files"].append({"path": path.name, "sha256": digest.hexdigest(),
-                                  "rows": count * cfg.ticks_per_day, "tickers": tickers})
+                                  "rows": written_rows, "tickers": tickers})
+        if cfg.auction_vi:
+            manifest['files'][-1]['market_events']={t:b.auction.events for t,b in books.items()}
         if cfg.profile != "legacy":
             manifest["files"][-1].update(previous_close_by_ticker=previous_closes,
                                          closing_price_by_ticker=dict(previous))
@@ -434,7 +463,7 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
             manifest['files'][-1]['archive'] = archive_name
             path.unlink()
         current_day += timedelta(days=1)
-        print(f"Synthetic session {day_index + 1}/{cfg.days}: {path} ({count * cfg.ticks_per_day} rows)")
+        print(f"Synthetic session {day_index + 1}/{cfg.days}: {path} ({written_rows} rows)")
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return out_dir
 
@@ -472,6 +501,8 @@ def add_market_arguments(parser: argparse.ArgumentParser) -> None:
                     "depth-imbalance-sigma", "depth-imbalance-persistence"}
         parser.add_argument("--fake-" + name, default=None if name in profiled else default,
                             type=kind, help=help_text)
+    parser.add_argument('--fake-auction-vi',action='store_true',help='ordinary-share closing auction and dynamic/static VI')
+    parser.add_argument('--fake-kospi200',action='store_true',help='3%/2% VI instead of general-stock 6%/4%')
     parser.add_argument("--fake-no-viewer", action="store_true", help="omit per-day HTML viewer")
 
 

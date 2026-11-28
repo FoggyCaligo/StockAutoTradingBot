@@ -118,12 +118,17 @@ class SnapshotMatcher:
                 price = row.current_price or row.price
                 if qty and price > 0:
                     tape.append([price, qty, None, 'aggregate_trade_through'])
-        result = dict(now=now, levels=levels, pools=pools, tape=tape)
+        result = dict(now=now, levels=levels, pools=pools, tape=tape,
+            market_state=raw.get('market_state','continuous'),
+            auction_price=int(raw.get('auction_price',0)),
+            auction_remaining=int(int(raw.get('auction_volume',0))*self.config.depth_participation))
         self.frames[row.ticker] = result
         return result
 
     def match(self, order, frame):
         now = frame['now']
+        if frame.get('market_state','continuous') not in {'continuous','auction_uncross'}:
+            return []
         signal_buy = (
             self.config.allow_signal_snapshot_buy
             and order.side == 'buy'
@@ -134,6 +139,21 @@ class SnapshotMatcher:
         ):
             return []
         fills = []
+        if frame.get('market_state')=='auction_uncross':
+            price=frame['auction_price']
+            compatible=(order.limit_price is None or (price<=order.limit_price if order.side=='buy' else price>=order.limit_price))
+            if not compatible or price<=0:return []
+            ahead=min(int(order.queue_ahead),frame['auction_remaining'])
+            order.queue_ahead-=ahead;frame['auction_remaining']-=ahead
+            quantity=min(order.remaining,frame['auction_remaining'])
+            frame['auction_remaining']-=quantity
+            if quantity:
+                order.remaining-=quantity
+                self.events.append(dict(event='fill',time=now.isoformat(),ticker=order.ticker,
+                    order_id=order.order_id,side=order.side,quantity=quantity,price=price,
+                    reason=order.reason,evidence='auction_volume',remaining=order.remaining,queue_ahead=0))
+                return [(quantity,price,'auction_volume')]
+            return []
         if not signal_buy and not order.joined:
             # The interval's tape precedes this observed arrival: never reuse it.
             own = frame['levels']['bid' if order.side == 'buy' else 'ask']

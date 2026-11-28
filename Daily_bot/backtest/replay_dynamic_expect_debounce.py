@@ -121,6 +121,7 @@ def run_backtest_dynamic_expect_debounce(
                 session_override_times.update(item.final_exit_time for item in overrides)
 
         open_positions: dict[str, base.ReplayPosition] = {}
+        pending_exits: dict[str, str] = {}
         dynamic_stop_counts: dict[str, int] = {}
         entry_anchor_stop_counts: dict[str, int] = {}
         blocked_reentry_tickers: set[str] = set()
@@ -168,6 +169,37 @@ def run_backtest_dynamic_expect_debounce(
                     continue
                 current_price = current_row.current_price or current_row.price
                 if current_price <= 0:
+                    continue
+
+                if not base.can_execute(current_row):
+                    expected_sell=base.calc_target_sell_price(current_row.expect_price,sell_tick_offset) if current_row.expect_price>0 else 0
+                    refreshed=(expected_sell/current_price-1)*100 if expected_sell>0 else None
+                    dynamic_stop_counts[ticker]=(dynamic_stop_counts.get(ticker,0)+1
+                        if refreshed is not None and refreshed<=dynamic_expect_stop_threshold_percent else 0)
+                    anchor=(expected_sell/position.entry_price-1)*100
+                    entry_anchor_stop_counts[ticker]=(entry_anchor_stop_counts.get(ticker,0)+1
+                        if expected_sell>0 and entry_anchor_stop_threshold_percent is not None and anchor<=entry_anchor_stop_threshold_percent else 0)
+                    reason=''
+                    if base._is_after_time(current_row.created_at,force_sell_time):reason='force_exit_time'
+                    elif max_hold_seconds_before_exit>0 and (base._parse_timestamp(current_row.created_at)-base._parse_timestamp(position.entry.created_at)).total_seconds()>max_hold_seconds_before_exit:reason='time_stop_loss'
+                    elif current_price<=position.stop_loss_price:reason='stop_loss'
+                    elif dynamic_stop_counts[ticker]>=consecutive_required:reason='dynamic_expect_stop'
+                    elif entry_anchor_stop_counts[ticker]>=entry_anchor_consecutive_required:reason='entry_anchor_expect_stop'
+                    if reason:pending_exits.setdefault(ticker,reason)
+                    continue
+                if ticker in pending_exits:
+                    reason=pending_exits.pop(ticker)
+                    trades.append(base.BacktestTrade(session_date=session_date,ticker=ticker,
+                        entry_time=position.entry.created_at,exit_time=current_row.created_at,
+                        quantity=position.quantity,entry_price=position.entry_price,exit_price=current_price,
+                        buy_amount_krw=position.invested_amount,sell_amount_krw=position.quantity*current_price,
+                        exit_reason=reason,pnl_percent=base._realized_pnl_percent(position.entry_price,current_price)))
+                    available_cash+=position.quantity*current_price
+                    if block_stop_loss_reentry_same_day and reason in {'stop_loss','dynamic_expect_stop','entry_anchor_expect_stop'}:
+                        blocked_reentry_tickers.add(ticker)
+                    del open_positions[ticker]
+                    dynamic_stop_counts.pop(ticker,None);entry_anchor_stop_counts.pop(ticker,None)
+                    exited_tickers_at_time.add(ticker)
                     continue
 
                 if base._is_after_time(current_row.created_at, force_sell_time):
@@ -246,7 +278,7 @@ def run_backtest_dynamic_expect_debounce(
                     continue
 
                 if current_price >= position.target_price:
-                    exit_price = position.target_price
+                    exit_price = (current_price if base.market_metadata(current_row).get("market_state")=="auction_uncross" else position.target_price)
                     trades.append(
                         base.BacktestTrade(
                             session_date=session_date,
@@ -537,7 +569,7 @@ def run_backtest_dynamic_expect_debounce(
                     exit_price=exit_price,
                     buy_amount_krw=position.invested_amount,
                     sell_amount_krw=position.quantity * exit_price,
-                    exit_reason="force_exit_last_trace",
+                    exit_reason="force_exit_last_trace" if base.can_execute(exit_row) else "unfilled_end_mark",
                     pnl_percent=base._realized_pnl_percent(position.entry_price, exit_price),
                 )
             )

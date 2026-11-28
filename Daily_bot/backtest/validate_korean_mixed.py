@@ -18,6 +18,8 @@ def validate(root):
     days=[date(1,1,1)+timedelta(days=i) for i in range(181)]
     expected=[f'fake_market_traces_{d.year:04d}{d.month:02d}{d.day:02d}.csv' for d in days if d.weekday()<5]
     assert [f['path'] for f in manifest['files']]==expected
+    enhanced=manifest['config'].get('auction_vi',False)
+    auction_counts=defaultdict(int)
     previous_closes=None
     initial=None
     rows=0
@@ -36,7 +38,9 @@ def validate(root):
             assert row['session_date'].replace('-','')==file['path'].removesuffix('.csv')[-8:]
             ticker=row['ticker']; price=int(row['current_price']);prev=int(row['prev_close_price'])
             raw=json.loads(row['raw_json'])
-            assert raw['synthetic'] and raw['model_version']==4
+            assert raw['synthetic'] and raw['model_version']==(5 if enhanced else 4)
+            state=raw.get('market_state','continuous')
+            for event in raw.get('market_events',[]):auction_counts[event['event']]+=1
             assert floor_price(price)==price and .7*prev<=price<=1.3*prev
             assert prev==file['previous_close_by_ticker'][ticker]
             if previous_closes is not None:
@@ -51,9 +55,15 @@ def validate(root):
                         assert floor_price(p)==p and .7*prev<=p<=1.3*prev and q>0
                         quotes.append(p)
                 assert quotes==sorted(set(quotes),reverse=side=='buy')
-            if int(row['best_bid']) and int(row['best_ask']):
+            if state in {'continuous','closed','auction_uncross'} and int(row['best_bid']) and int(row['best_ask']):
                 assert int(row['best_bid'])<int(row['best_ask'])
             fills=raw['executions']
+            if state in {'vi_auction','closing_auction'} and fills:
+                assert any(e['event']=='vi_start' for e in raw.get('market_events',[]))
+                assert all(f['aggressor_side']!='auction' for f in fills)
+            if raw.get('auction_volume'):
+                assert state=='auction_uncross' and sum(f['quantity'] for f in fills if f['aggressor_side']=='auction')==raw['auction_volume']
+                assert {f['price'] for f in fills if f['aggressor_side']=='auction'}=={raw['auction_price']}
             if fills:
                 assert fills[-1]['price']==price
                 assert all(f['quantity']>0 and floor_price(f['price'])==f['price'] for f in fills)
@@ -66,8 +76,10 @@ def validate(root):
             hh=9+seconds//3600;mm=(seconds%3600)//60;ss=seconds%60
             assert row['created_at']==f"{row['session_date']} {hh:02d}:{mm:02d}:{ss:02d}.000000"
             series.append(price)
-        assert n==file['rows']==23410
-        assert len(per_ticker)==10 and all(len(v)==2341 for v in per_ticker.values())
+        assert n==file['rows']
+        assert 23410<=n<=23590 if enhanced else n==23410
+        assert len(per_ticker)==10 and len({len(v) for v in per_ticker.values()})==1
+        if not enhanced:assert all(len(v)==2341 for v in per_ticker.values())
         assert last==file['closing_price_by_ticker']
         previous_closes=last
         if initial is None:
@@ -81,7 +93,7 @@ def validate(root):
         for horizon in (60,300,900):
             k=horizon//10
             for prices in per_ticker.values():
-                prices=np.asarray(prices,dtype=float)[::k]
+                prices=np.asarray(prices[:2341],dtype=float)[::k]
                 returns[(regime,horizon)].extend((np.diff(np.log(prices))*10000).tolist())
     volatility=[]
     for (regime,horizon),values in sorted(returns.items()):
@@ -89,9 +101,11 @@ def validate(root):
         volatility.append(dict(regime=regime,horizon_seconds=horizon,observations=len(values),
             winsorized_sd_bps=float(np.std(np.clip(values,lo,hi))),
             flat_percent=100*sum(v==0 for v in values)/len(values)))
-    assert len(manifest['files'])==130 and rows==3043300
+    assert len(manifest['files'])==130
+    if not enhanced:assert rows==3043300
+    else:assert auction_counts['closing_auction_start']==1300
     assert counts=={'weak_bull':65,'strong_bear':65}
-    return dict(sessions=130,rows=rows,regime_sessions=dict(counts),
+    return dict(sessions=130,rows=rows,regime_sessions=dict(counts),market_events=dict(auction_counts),
         integrity='all rows passed checksums, date cadence, grid, limits, quotes, fills and close continuity',
         weak_bull_actual_equal_weight_return_percent=100*(np.mean([march[t]/initial[t] for t in initial])-1),
         strong_bear_actual_equal_weight_return_percent=100*(np.mean([last[t]/march[t] for t in initial])-1),
