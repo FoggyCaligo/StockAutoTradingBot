@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 from collections import defaultdict
+from datetime import date, timedelta
 from pathlib import Path
 from zipfile import ZipFile
 import numpy as np
@@ -14,6 +15,9 @@ from Daily_bot.backtest.fake_market import floor_price
 
 def validate(root):
     manifest=json.loads((root/'manifest.json').read_text())
+    days=[date(1,1,1)+timedelta(days=i) for i in range(181)]
+    expected=[f'fake_market_traces_{d.year:04d}{d.month:02d}{d.day:02d}.csv' for d in days if d.weekday()<5]
+    assert [f['path'] for f in manifest['files']]==expected
     previous_closes=None
     initial=None
     rows=0
@@ -29,6 +33,7 @@ def validate(root):
         n=0
         for row in csv.DictReader(io.StringIO(data.decode('utf-8-sig'))):
             n+=1
+            assert row['session_date'].replace('-','')==file['path'].removesuffix('.csv')[-8:]
             ticker=row['ticker']; price=int(row['current_price']);prev=int(row['prev_close_price'])
             raw=json.loads(row['raw_json'])
             assert raw['synthetic'] and raw['model_version']==4

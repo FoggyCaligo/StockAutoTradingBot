@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "generator_commit": "83b106daa7070da1163fb3f3579e5239c977e24c",
+  "date_range": [
+    "0001-01-01",
+    "0001-06-30"
+  ],
+  "last_trading_date": "0001-06-29",
+  "seed": 20261128,
+  "profile": "korean",
+  "stocks": 10,
+  "snapshot_seconds": 10,
+  "reference_n": 4.292969240786431,
+  "archives": [
+    {
+      "path": "dailybot_korean_mixed_0001_01.zip",
+      "bytes": 194007212,
+      "sha256": "5993105d8d2392b2bcc213560c4fd62d8152f28a707873016bdbee4acd91e761"
+    },
+    {
+      "path": "dailybot_korean_mixed_0001_02.zip",
+      "bytes": 168449899,
+      "sha256": "a1bf0205cd3729fdb31aed1388a37fc52a4ce819684a43f68c9671e1174afbc9"
+    },
+    {
+      "path": "dailybot_korean_mixed_0001_03.zip",
+      "bytes": 185802087,
+      "sha256": "9d4e89d50ab1f576070eae1a697855f35f5cb879f847b185d251a57875cc28d2"
+    },
+    {
+      "path": "dailybot_korean_mixed_0001_04.zip",
+      "bytes": 183843073,
+      "sha256": "a7def7cf37ff9b548b33b7e1cdff5cd46a306a91c486d1b7920dc77cffc4958e"
+    },
+    {
+      "path": "dailybot_korean_mixed_0001_05.zip",
+      "bytes": 201210340,
+      "sha256": "0d23b1af364dcf85f9834914adad5ec5d3504c0ab68ed5879a741ecc998dccf1"
+    },
+    {
+      "path": "dailybot_korean_mixed_0001_06.zip",
+      "bytes": 183233558,
+      "sha256": "9c183f30d776f17149e820417abb61aa087aae92661cd1f48d7ae6a646d74c99"
+    }
+  ],
+  "validation": {
+    "sessions": 130,
+    "rows": 3043300,
+    "regime_sessions": {
+      "weak_bull": 65,
+      "strong_bear": 65
+    },
+    "integrity": "all rows passed checksums, date cadence, grid, limits, quotes, fills and close continuity",
+    "weak_bull_actual_equal_weight_return_percent": 2.0199563334872828,
+    "strong_bear_actual_equal_weight_return_percent": -32.35785610570603,
+    "volatility": [
+      {
+        "regime": "strong_bear",
+        "horizon_seconds": 60,
+        "observations": 253500,
+        "winsorized_sd_bps": 23.790677943140537,
+        "flat_percent": 20.557790927021696
+      },
+      {
+        "regime": "strong_bear",
+        "horizon_seconds": 300,
+        "observations": 50700,
+        "winsorized_sd_bps": 60.98495140702557,
+        "flat_percent": 8.282051282051283
+      },
+      {
+        "regime": "strong_bear",
+        "horizon_seconds": 900,
+        "observations": 16900,
+        "winsorized_sd_bps": 108.96995085607132,
+        "flat_percent": 4.568047337278107
+      },
+      {
+        "regime": "weak_bull",
+        "horizon_seconds": 60,
+        "observations": 253500,
+        "winsorized_sd_bps": 17.614140916382464,
+        "flat_percent": 27.138067061143985
+      },
+      {
+        "regime": "weak_bull",
+        "horizon_seconds": 300,
+        "observations": 50700,
+        "winsorized_sd_bps": 41.13438673070363,
+        "flat_percent": 12.096646942800788
+      },
+      {
+        "regime": "weak_bull",
+        "horizon_seconds": 900,
+        "observations": 16900,
+        "winsorized_sd_bps": 72.6283706251452,
+        "flat_percent": 6.733727810650888
+      }
+    ]
+  },
+  "signal_coverage": {
+    "settings": {
+      "threshold_percent": 0.71,
+      "slot_budget_krw": 333333,
+      "start": "09:30",
+      "stop": "11:30",
+      "window_end_inclusive": true,
+      "weight_floor": 0.0,
+      "sell_tick_offset": 1
+    },
+    "counts": {
+      "input_rows": 3043300,
+      "outside_buy_window": 351000,
+      "not_scan_candidate": 2535000,
+      "entry_scan_rows": 157300,
+      "duplicate_entry_keys": 0,
+      "crossed_or_locked_quotes": 0,
+      "partial_books": 29,
+      "scored_entry_rows": 157300,
+      "geometrically_below_threshold": 140453,
+      "below_signal_threshold": 156574,
+      "signal_pass_rows": 726,
+      "signal_pass_but_one_share_unaffordable": 0,
+      "signal_pass_and_affordable_rows": 726,
+      "recomputed_differs_from_stored_signal": 0,
+      "synthetic_entry_rows": 157300
+    },
+    "by_regime": {
+      "weak_bull": {
+        "sessions": 65,
+        "signal_days": 59,
+        "no_signal_days": 6,
+        "affordable_signal_rows": 595
+      },
+      "strong_bear": {
+        "sessions": 65,
+        "signal_days": 37,
+        "no_signal_days": 28,
+        "affordable_signal_rows": 131
+      }
+    }
+  },
+  "tests": {
+    "full_suite_passed": 303,
+    "all_dataset_rows_validated": true
+  },
+  "limitation": "Signal coverage is not a new full-period trading PnL backtest; closing auctions/VI are not modeled"
+}
