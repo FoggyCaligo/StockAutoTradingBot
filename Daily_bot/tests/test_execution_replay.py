@@ -194,6 +194,40 @@ def test_runner_does_not_fabricate_end_of_data_liquidation(monkeypatch):
     assert result.unresolved_inventory[0]['mark_only'] is True
 
 
+def test_default_standard_can_replay_sparse_quotes_without_post_order_samples(monkeypatch):
+    import sys
+
+    traces = [row(0), row(60, price=1020, bid=1019, ask=1021)]
+    monkeypatch.setattr(base, 'load_traces', lambda _: traces)
+    monkeypatch.setattr(base, 'apply_orderbook_level_limit', lambda rows, **kwargs: rows)
+    monkeypatch.setattr(sys, 'argv', ['replay_market_traces.py'])
+    values = arguments()
+    values['execution_config'] = base.parse_args().execution_config
+
+    standard = dynamic.run_backtest_dynamic_expect_debounce(**values)
+
+    assert len(standard) == 1
+    assert standard[0].entry_time.endswith('09:30:00')
+    assert standard[0].exit_time.endswith('09:31:00')
+    assert standard[0].entry_price == 1000
+    assert standard[0].exit_reason == 'take_profit'
+    values['execution_config'] = ExecutionConfig()
+    conservative = dynamic.run_backtest_dynamic_expect_debounce(**values)
+    assert not conservative
+    assert any(event['reason'] == 'buy_timeout' for event in conservative.execution_events)
+
+
+def test_net_summary_treats_small_gross_gain_as_loss_after_costs(capsys):
+    trade = base.BacktestTrade('2026-11-24', 'AAA', '2026-11-24 09:30:00',
+        '2026-11-24 09:31:00', 1, 1000, 1001, 1000, 1001, 'take_profit', .1)
+
+    base.print_summary([trade])
+
+    output = capsys.readouterr().out
+    assert 'net_profit_krw=-1.10' in output
+    assert 'net_wins=0 net_losses=1 net_win_rate=0.00%' in output
+
+
 def test_validation_and_actual_fill_overrides_are_rejected(monkeypatch):
     with pytest.raises(ValueError): ExecutionConfig(latency_seconds=-1)
     with pytest.raises(ValueError): ExecutionConfig(depth_participation=0)

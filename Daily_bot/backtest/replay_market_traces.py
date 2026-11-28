@@ -1803,6 +1803,17 @@ def print_summary(trades: list[BacktestTrade]) -> None:
         f"win_rate={summary.win_rate_percent:.2f}%"
     )
     print(f"avg_pnl={summary.avg_pnl_percent:.4f}% summed_pnl={summary.total_pnl_percent:.4f}%")
+    net_profits = [
+        trade.sell_amount_krw * (1 - DEFAULT_FEE_RATE - DEFAULT_SELL_TAX_RATE)
+        - trade.buy_amount_krw * (1 + DEFAULT_FEE_RATE)
+        for trade in trades
+    ]
+    net_wins = sum(profit > 0 for profit in net_profits)
+    print(
+        f"net_profit_krw={sum(net_profits):.2f} net_wins={net_wins} "
+        f"net_losses={len(trades) - net_wins} "
+        f"net_win_rate={net_wins / len(trades) * 100:.2f}%"
+    )
     print("exit_reasons:")
     for reason in sorted({trade.exit_reason for trade in trades}):
         count = sum(1 for trade in trades if trade.exit_reason == reason)
@@ -1999,7 +2010,11 @@ def parse_args():
         type=float,
         default=float(strategy_cfg.get("orderbook_ask_linear_decay_min_weight", 1.0)),
     )
-    parser.add_argument("--fill-model", choices=("conservative", "legacy"), default="conservative")
+    parser.add_argument(
+        "--fill-model", choices=("standard", "conservative", "legacy"), default="standard",
+        help="standard: signal-price buys and later price-touch exits (legacy alias); "
+             "conservative: delayed, depth-limited fills requiring post-order quotes",
+    )
     parser.add_argument("--order-latency-seconds", type=float, default=1.0)
     parser.add_argument("--buy-order-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--buy-fill-poll-seconds", type=float, default=2.0,
@@ -2043,6 +2058,7 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    print(f"fill_model={args.fill_model}")
     logs_dir = Path(args.logs_dir) if args.logs_dir else None
     resolved_db_path = resolve_replay_db_path(
         Path(args.db),

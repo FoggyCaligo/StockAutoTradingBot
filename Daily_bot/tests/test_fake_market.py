@@ -161,7 +161,7 @@ def test_fake_mode_prepares_isolated_db_and_viewer(tmp_path):
     assert 'https://' not in viewer  # self-contained
 
 
-@pytest.mark.parametrize("fill_model", ["legacy", "conservative"])
+@pytest.mark.parametrize("fill_model", ["standard", "legacy", "conservative"])
 def test_cli_fake_and_recorded_paths_replay_identical_trace_equally(tmp_path, fill_model):
     import os
     import shutil
@@ -185,7 +185,7 @@ def test_cli_fake_and_recorded_paths_replay_identical_trace_equally(tmp_path, fi
     assert real.returncode == 0, real.stdout+real.stderr
     assert (fake_dir/'backtest_fake.csv').read_bytes() == recorded_out.read_bytes()
     assert (fake_dir/'backtest_fake_daily_rev.csv').read_bytes() == (tmp_path/'recorded_daily_rev.csv').read_bytes()
-    if fill_model == 'legacy':
+    if fill_model in {'standard', 'legacy'}:
         assert len(list(csv.DictReader(recorded_out.open(encoding='utf-8-sig')))) > 0
     else:
         import json

@@ -560,6 +560,7 @@ def main() -> None:
     finally:
         sys.argv = original_argv
 
+    print(f"fill_model={args.fill_model}")
     if args.out == "Daily_bot/backtest/results/backtest_replay.csv":
         args.out = "Daily_bot/backtest/results/backtest_replay_dynamic_expect_debounce.csv"
 

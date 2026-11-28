@@ -486,7 +486,7 @@ def write_execution_report(path: Path, result):
 
 
 def config_from_args(args):
-    if args.fill_model == 'legacy':
+    if args.fill_model in {'standard', 'legacy'}:
         if args.replay_recorded_buy_orders:
             raise ValueError('recorded buy orders require --fill-model conservative')
         return None
