@@ -1,8 +1,8 @@
 # 데일리봇 가상 시장 백테스트 설명서
 
-이 문서는 가상 호가 시장의 작동 방식과 사용법을 설명한다. 실제 기록으로 하는 기존 백테스트에 더해, 설정한 장세와 무작위 주문으로 합성 시장을 만들고 같은 표준 전략으로 재생할 수 있다. 활용 목적은 장세·유동성·변동성에 따른 전략의 반응과 취약 조건을 확인하는 것이다. 현재 모형은 실제 시장 데이터에 보정하지 않았으므로 합성 시장에서의 수익을 실제 기대수익으로 해석하지 않는다.
+이 문서는 가상 호가 시장의 작동 방식과 사용법을 설명한다. 실제 기록으로 하는 기존 백테스트에 더해, 설정한 장세와 무작위 주문으로 합성 시장을 만들고 같은 표준 전략으로 재생할 수 있다. 활용 목적은 장세·유동성·변동성에 따른 전략의 반응과 취약 조건을 확인하는 것이다. 현재 기본 `korean` 프로필은 일부 한국 주식 관측의 가격 변동·가격대·잔량 분산에 보정했다. 합성 시장 수익을 실제 기대수익으로 해석하지 않는다.
 
-작성 기준: 2026-11-23 구현. 표준 진입점은 `Daily_bot/backtest/replay_refill_threshold.py`다.
+갱신 기준: 2026-11-28. 새 기본값과 6개월 재생성은 [한국장 변동성 보정](KOREAN_VOLATILITY_20261128.md)을 참조한다. 아래 09:00~15:20·1초 설명은 명시적 `ordinary-bull`/`legacy` 프로필의 기존 동작이다. 표준 진입점은 `Daily_bot/backtest/replay_refill_threshold.py`다.
 
 ## 1 작동 방식과 구성 원리
 
@@ -123,7 +123,7 @@ ordinary-bull은 공격 주문의 도착 여부도 뽑으며 한 건이 소진�
 
 저장소 루트에서 프로젝트 의존성이 설치된 Python으로 실행한다. Windows 가상환경을 사용한다면 아래 `python`을 `.\.venv\Scripts\python.exe`로 바꿀 수 있다. 아래 줄바꿈은 Bash 형식이다. PowerShell에서는 한 줄로 입력하거나 줄 끝의 역슬래시를 백틱으로 바꾼다.
 
-기본 가상 생성은 `ordinary-bull`(일반 상승장 근사) 프로필이다. 자세한 근거와 검증 범위는 [일반 상승장 설정](ORDINARY_BULL_MARKET.md)을 참조한다. 이전 자료 재현에는 `--fake-profile legacy`를 명시한다.
+기본 가상 생성은 `korean`(선택 종목의 한국장 관측 보정) 프로필이다. 10종목·10초 간격·09:00~15:30과 기존 잔량/가격대 보정을 사용한다. 이전 일반 상승장은 `--fake-profile ordinary-bull`을 명시한다. 자세한 근거와 검증 범위는 [일반 상승장 설정](ORDINARY_BULL_MARKET.md)을 참조한다. 이전 자료 재현에는 `--fake-profile legacy`를 명시한다.
 
 일반 상승장 가상 시장 백테스트:
 
@@ -151,11 +151,11 @@ python -m Daily_bot.backtest.replay_refill_threshold \
 | `--fake-seed` | 42 | 난수 시드 |
 | `--fake-days` | 1 | 합성 거래일 수 |
 | `--fake-start-date` | 2026-11-23 | 첫 날짜, 한국 시각. 주말은 다음 평일로 이동 |
-| `--fake-stocks` | 0 | 0이면 매일 5~10개, 지정 시 5~10 범위 |
-| `--fake-ticks-per-day` | 22800 | 종목당 하루 틱 수 |
-| `--fake-profile` | ordinary-bull | ordinary-bull 또는 이전 모형 legacy |
+| `--fake-stocks` | 10 | 0이면 매일 5~10개, 지정 시 5~20 범위 |
+| `--fake-ticks-per-day` | 2341 | 09:00~15:30 양 끝 포함, 종목당 하루 기록 수 |
+| `--fake-profile` | korean | korean, ordinary-bull, legacy |
 | `--fake-x` | 7 | 기준선의 하루 기울기, bp |
-| `--fake-n` | 1.6 | 시간별·틱별 변동의 기본 크기, bp |
+| `--fake-n` | 4.292969240786431 | 시간별·틱별 변동의 기본 크기, bp |
 | `--fake-a`, `--fake-b` | 1, 3 | 시간별 기울기 강도의 하한·상한 배율 |
 | `--fake-c`, `--fake-d` | 0.1, 1 | 틱별 변화량 강도의 하한·상한 배율 |
 | `--fake-base-quantity` | 15 | 신규 주문의 기본 주식 수 Q |
@@ -269,3 +269,4 @@ python -m Daily_bot.backtest.fake_market \
 
 기존 고정 가상자료는 폐기했다. 새 자료는 생성기로 재생성하며 Git에는 올리지 않는다.
 체결 방식과 신호 비교 범위는 [보수적 체결 재생](CONSERVATIVE_REPLAY.md)을 참조한다.
+

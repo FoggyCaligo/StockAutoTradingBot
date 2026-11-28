@@ -1,6 +1,6 @@
 # 일반 상승장 근사 프로필
 
-가상 자료 생성의 CLI 기본 프로필은 `ordinary-bull`이다. 기존의 큰 기울기와 넓은
+이 문서는 이전 `ordinary-bull` 프로필의 재현용 설명이다. 2026-11-28부터 CLI 기본값은 [korean](KOREAN_VOLATILITY_20261128.md)이며, 이 설정은 `--fake-profile ordinary-bull`로 선택한다. 기존의 큰 기울기와 넓은
 호가 진동을 사용하는 모형은 `legacy`로 명시해 재현한다. 실거래 전략 설정은 바꾸지 않는다.
 
 ## 작동 방식과 구성
@@ -92,3 +92,4 @@ python -m Daily_bot.backtest.replay_refill_threshold --market-source fake --fake
 명시한 `--fake-x`, `--fake-n` 등은 프리셋 값을 덮어쓴다. 이전 모형 재현에는
 `--fake-profile legacy`를 사용한다. Python의 `MarketConfig()` 자체 기본값은 기존 데이터
 재생성 스크립트와의 호환성을 위해 legacy이며, `ordinary_bull_config()`가 새 설정을 반환한다.
+

@@ -8,14 +8,15 @@ import pytest
 
 from Daily_bot.backtest.fake_market import (
     MarketConfig, OrderBook, add_market_arguments, config_from_args,
-    advance_book, ordinary_bull_config, generate_market, adjacent,
+    advance_book, ordinary_bull_config, korean_config, generate_market, adjacent,
 )
 
 
 def test_normal_cli_default_and_explicit_overrides():
     p=argparse.ArgumentParser();add_market_arguments(p)
     cfg=config_from_args(p.parse_args([]))
-    assert cfg==ordinary_bull_config()
+    assert cfg==korean_config()
+    assert config_from_args(p.parse_args(["--fake-profile","ordinary-bull"]))==ordinary_bull_config()
     assert config_from_args(p.parse_args(['--fake-profile','legacy']))==MarketConfig()
     custom=config_from_args(p.parse_args(['--fake-x','-12','--fake-n','0','--fake-market-order-probability','0']))
     assert (custom.x,custom.n,custom.market_order_probability)==(-12,0,0)
@@ -131,4 +132,5 @@ def test_calibration_price_samples_are_used_without_strategy_threshold_fitting(t
 @pytest.mark.parametrize('prices',[(0,),(-1,),('1000',),(1000.,)])
 def test_invalid_price_calibration_is_rejected(prices):
     with pytest.raises(ValueError):replace(ordinary_bull_config(),initial_price_samples=prices).validate()
+
 

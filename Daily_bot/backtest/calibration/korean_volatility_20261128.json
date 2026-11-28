@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "reference_n": 4.292969240786431,
+  "previous_reference_n": 1.6,
+  "noise_multiplier": 2.6831057754915193,
+  "method": "median of 1/5/15-minute 1%-winsorized return SD / sqrt(horizon * .37)",
+  "training": {
+    "sources": [
+      {
+        "path": "market_traces_20260903.csv",
+        "sha256": "0c3eed69497cc70b1bb7d2941ba3ca88c4504abce0ee9b81f13f8b854c028352"
+      },
+      {
+        "path": "market_traces_20260904.csv",
+        "sha256": "a759a1a1f9613d21f17466b719448acbb73d9c336c621d5b86fae5e82c6177e1"
+      }
+    ],
+    "input_rows": 2745,
+    "invalid_rows": 0,
+    "duplicate_quote_clocks": 522,
+    "horizons": [
+      {
+        "horizon_seconds": 60,
+        "observations": 192,
+        "symbol_days": 5,
+        "winsorized_sd_bps": 22.017461140667017,
+        "flat_percent": 41.145833333333336,
+        "reference_n": 4.672945880473797
+      },
+      {
+        "horizon_seconds": 300,
+        "observations": 283,
+        "symbol_days": 234,
+        "winsorized_sd_bps": 43.492345540326234,
+        "flat_percent": 17.6678445229682,
+        "reference_n": 4.128110752363119
+      },
+      {
+        "horizon_seconds": 900,
+        "observations": 16,
+        "symbol_days": 2,
+        "winsorized_sd_bps": 78.3393373247355,
+        "flat_percent": 6.25,
+        "reference_n": 4.292969240786431
+      }
+    ]
+  },
+  "holdout": {
+    "sources": [
+      {
+        "path": "market_traces_20261123.csv",
+        "sha256": "1d0e0162403f92eb51e679310fa09fa492a3022aadca304d872d598da70373cd"
+      }
+    ],
+    "input_rows": 2770,
+    "invalid_rows": 0,
+    "duplicate_quote_clocks": 53,
+    "horizons": [
+      {
+        "horizon_seconds": 60,
+        "observations": 333,
+        "symbol_days": 4,
+        "winsorized_sd_bps": 26.11793669535823,
+        "flat_percent": 39.63963963963964,
+        "reference_n": 5.543223349290865
+      },
+      {
+        "horizon_seconds": 300,
+        "observations": 426,
+        "symbol_days": 346,
+        "winsorized_sd_bps": 43.47263341075454,
+        "flat_percent": 16.431924882629108,
+        "reference_n": 4.12623975982349
+      },
+      {
+        "horizon_seconds": 900,
+        "observations": 28,
+        "symbol_days": 4,
+        "winsorized_sd_bps": 99.82539987790305,
+        "flat_percent": 3.5714285714285716,
+        "reference_n": 5.470398215759866
+      }
+    ]
+  },
+  "limitations": [
+    "selected bot-observed stocks, not a representative Korean market sample",
+    "quote clocks deduplicated; no exchange trade tape or full freshness audit",
+    "depth persistence, order arrivals, market correlation and bear multiplier are scenario assumptions",
+    "reference calibration does not guarantee the same realized last-trade volatility"
+  ]
+}

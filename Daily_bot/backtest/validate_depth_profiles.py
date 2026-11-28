@@ -63,9 +63,10 @@ def main():
                      'Fixed cases were declared before replay; no seed or parameter chosen on profits',
                      'Depth dispersion comes from a single observed candidate cross-section',
                      'Order-arrival dispersion does not guarantee the same stationary quote distribution',
-                     'The default profile remains uncalibrated unless the calibration option is supplied'])
+                     'This comparison explicitly uses ordinary-bull; its baseline cases have no calibration'])
     args.out.parent.mkdir(parents=True,exist_ok=True)
     args.out.write_text(json.dumps(output,ensure_ascii=False,indent=2),encoding='utf-8')
 
 
 if __name__=='__main__':main()
+

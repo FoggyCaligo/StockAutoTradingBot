@@ -157,7 +157,7 @@ API 키·계좌·접속 설정은 기존 `Daily_bot/.env`에서 읽는다. 기�
 
 ## 가상 호가 시장 백테스트
 
-표준 러너에 `--market-source fake`를 추가하면 난수 시드로 재현 가능한 가상 주문장을 생성하여 같은 전략으로 replay한다. 실제 기록은 기본 `--market-source real`이며 기존 명령을 그대로 쓴다. 가상 생성의 기본값은 `ordinary-bull` 프로필이며 이전 모형은 `--fake-profile legacy`로 선택한다. [일반 상승장 설정과 검증](docs/ORDINARY_BULL_MARKET.md), `x/n/a~d` 변동 설정, 틱 단위 CSV와 하루 그래프·호가 재생은 [가상 시장 사용법](docs/FAKE_MARKET_BACKTEST.md)을 참조한다.
+표준 러너에 `--market-source fake`를 추가하면 난수 시드로 재현 가능한 가상 주문장을 생성하여 같은 전략으로 replay한다. 실제 기록은 기본 `--market-source real`이며 기존 명령을 그대로 쓴다. 가상 생성의 기본값은 관측 변동성·가격대·잔량 분산을 반영한 `korean` 프로필이다. [한국장 보정과 새 6개월 자료](docs/KOREAN_VOLATILITY_20261128.md)를 참조한다. 이전 모형은 `--fake-profile ordinary-bull` 또는 `--fake-profile legacy`로 선택한다. [일반 상승장 설정과 검증](docs/ORDINARY_BULL_MARKET.md), `x/n/a~d` 변동 설정, 틱 단위 CSV와 하루 그래프·호가 재생은 [가상 시장 사용법](docs/FAKE_MARKET_BACKTEST.md)을 참조한다.
 
 ## 현재 전략과 맞춘 백테스트
 
@@ -333,4 +333,5 @@ market_trace_collection:
 실거래 루프는 후보 스캔뿐 아니라 보유·관심 종목 trace도 기록한다. 이월 포지션 청산이 실패하는 동안에도 보유 종목 trace를 남기지만 신규매수는 계속 차단한다. 전체 유니버스 스캔은 신규매수 시간과 슬롯 여유 등 기존 진입 조건을 따르므로 수집 전용 모드와 기록 빈도가 같지는 않다.
 
 **전환 전 주의:** 코드 갱신 전에 시작한 예전 Python 프로세스는 자동으로 새 모드로 전환되지 않는다. 실계좌 보유·미체결을 먼저 확인하고 기존 실행 프로세스 및 Windows 작업 스케줄러의 중복 실행 여부를 확인한 뒤, 새 버전으로 시작한다.
+
 

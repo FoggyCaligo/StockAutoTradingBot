@@ -15,6 +15,8 @@ from collections import deque
 from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
+from typing import Mapping, Sequence
+from zipfile import ZipFile, ZIP_DEFLATED
 
 from Daily_bot.models import HogaLevel, HogaSnapshot
 from Daily_bot.utils import get_tick_size as tick_size
@@ -128,7 +130,7 @@ class MarketConfig:
     days: int = 1
     start_date: str = "2026-11-23"
     stocks: int = 0  # 0 = seeded independent 5..10 count per synthetic session
-    ticks_per_day: int = 22800  # 09:00 <= time < 15:20 (continuous session only)
+    ticks_per_day: int = 22800  # legacy/ordinary-bull defaults; Korean preset overrides cadence
     x: float = 100.0  # reference slope: basis points per session, may be negative
     n: float = 1.0  # reference change scale, basis points
     a: float = 5.0  # hourly slope magnitude a*n..b*n basis points/hour
@@ -145,13 +147,17 @@ class MarketConfig:
     # Independent zero-centered passive-liquidity shock; never a return target.
     depth_imbalance_sigma: float = 0.0
     depth_imbalance_persistence: float = .995  # AR correlation per simulated second
+    session_seconds: int = 22800
+    include_session_end: bool = False
     initial_price_samples: tuple[int, ...] = ()  # optional observed training cross-section
 
     def validate(self) -> None:
-        if self.profile not in {"legacy", "ordinary-bull"}:
-            raise ValueError("profile must be legacy or ordinary-bull")
+        if self.profile not in {"legacy", "ordinary-bull", "korean"}:
+            raise ValueError("profile must be legacy, ordinary-bull or korean")
         date.fromisoformat(self.start_date)
-        if self.days < 1 or self.ticks_per_day < 2 or self.ticks_per_day > 22800000:
+        if type(self.include_session_end) is not bool or type(self.session_seconds) is not int or not 1 <= self.session_seconds <= 23400:
+            raise ValueError("session_seconds must be an integer in [1,23400]")
+        if type(self.days) is not int or type(self.ticks_per_day) is not int or self.days < 1 or self.ticks_per_day < 2 or self.ticks_per_day > 22800000:
             raise ValueError("days >= 1; 2 <= ticks_per_day <= 22800000")
         if self.stocks != 0 and not 5 <= self.stocks <= 20:
             raise ValueError("stocks must be 0 (random 5..10), or 5..20")
@@ -172,8 +178,8 @@ class MarketConfig:
             raise ValueError("max_market_order_levels must be a nonnegative integer")
         if not 0 <= self.depth_imbalance_sigma <= 3 or not 0 <= self.depth_imbalance_persistence < 1:
             raise ValueError('depth sigma must be in [0,3]; persistence in [0,1)')
-        if self.depth_imbalance_sigma and self.profile != 'ordinary-bull':
-            raise ValueError('independent depth calibration requires the ordinary-bull reference model')
+        if self.depth_imbalance_sigma and self.profile == 'legacy':
+            raise ValueError('independent depth calibration requires ordinary-bull or korean')
         if len(self.initial_price_samples) > 10000 or any(type(p) is not int or p <= 0 for p in self.initial_price_samples):
             raise ValueError('initial prices must be <=10000 positive integer samples')
 
@@ -188,6 +194,19 @@ def ordinary_bull_config(**overrides) -> MarketConfig:
     cfg = MarketConfig(profile="ordinary-bull", x=7.0, n=1.6, a=1.0, b=3.0, base_quantity=15,
                        cancellation_probability=.20, market_order_scale=1.0,
                        market_order_probability=.50, max_market_order_levels=1)
+    return replace(cfg, **overrides)
+
+
+def korean_config(**overrides) -> MarketConfig:
+    """Observed-stock volatility/depth preset; scenario assumptions stay explicit."""
+    root = Path(__file__).with_name('calibration')
+    vol = json.loads((root/'korean_volatility_20261128.json').read_text())
+    depth = json.loads((root/'depth_dispersion_20260910.json').read_text())
+    cfg = replace(ordinary_bull_config(), profile='korean', n=vol['reference_n'],
+        stocks=10, ticks_per_day=2341, session_seconds=23400, include_session_end=True,
+        depth_imbalance_sigma=depth['depth_imbalance_sigma'],
+        depth_imbalance_persistence=depth['depth_imbalance_persistence'],
+        initial_price_samples=tuple(depth['initial_price_samples']))
     return replace(cfg, **overrides)
 
 
@@ -220,7 +239,7 @@ def advance_book(book: OrderBook, reference: float, rng: random.Random, cfg: Mar
     gap_ticks = (reference - book.last_price) / tick_size(book.last_price)
     pressure = math.tanh(gap_ticks / 3)
     if cfg.depth_imbalance_sigma:
-        rho = cfg.depth_imbalance_persistence ** (22800 / cfg.ticks_per_day)
+        rho = cfg.depth_imbalance_persistence ** (cfg.session_seconds / (cfg.ticks_per_day - int(cfg.include_session_end)))
         book.depth_log_bias = (rho * book.depth_log_bias
             + math.sqrt(1 - rho * rho) * cfg.depth_imbalance_sigma * book.depth_rng.gauss(0, 1))
     else:
@@ -235,7 +254,7 @@ def advance_book(book: OrderBook, reference: float, rng: random.Random, cfg: Mar
         for price in list(levels):
             if abs(price - book.last_price) > 60 * tick_size(book.last_price):
                 book.cancel(side, price, sum(o.quantity for o in levels[price]))
-    bids, asks = _quote_prices(book, reference=reference if cfg.profile == "ordinary-bull" else None)
+    bids, asks = _quote_prices(book, reference=reference if cfg.profile != "legacy" else None)
     submissions = [("buy", p) for p in bids] + [("sell", p) for p in asks]
     rng.shuffle(submissions)  # no deterministic buy-first ordering
     fills = []
@@ -264,7 +283,8 @@ def _raw(book: OrderBook, ticker: str, reference: float, fills: list[Execution])
     raw = {"synthetic": True, "model_version": MODEL_VERSION, "cur_prc": book.last_price,
            "reference_price": round(reference, 6), "tick_volume": sum(f.quantity for f in fills),
            "tick_turnover": sum(f.quantity * f.price for f in fills),
-           "executions": [asdict(f) for f in fills]}
+           "executions": [dict(price=f.price, quantity=f.quantity, resting_sequence=f.resting_sequence,
+                               aggressor_side=f.aggressor_side) for f in fills]}
     for side, prefix in (("buy", "buy"), ("sell", "sel")):
         for i, (p, q) in enumerate(book.snapshot(side), 1):
             key = f"{prefix}_fpr" if i == 1 else f"{prefix}_{i}th_pre"
@@ -273,7 +293,9 @@ def _raw(book: OrderBook, ticker: str, reference: float, fills: list[Execution])
     return raw
 
 
-def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) -> Path:
+def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True,
+                    reference_paths: Mapping[str, Mapping[str, Sequence[float]]] | None = None,
+                    archive_months: bool = False) -> Path:
     """Create isolated fake_market_traces CSVs and a reproducibility manifest."""
     cfg.validate()
     # A run owns its directory. Refuse reuse so stale sessions can never mix in.
@@ -281,7 +303,7 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
     if any(out_dir.iterdir()):
         raise FileExistsError(f"Use an empty directory for a synthetic run: {out_dir}")
     rng = random.Random(cfg.seed)
-    selection_rng = random.Random(cfg.seed) if cfg.profile == "ordinary-bull" else rng
+    selection_rng = random.Random(cfg.seed) if cfg.profile != "legacy" else rng
     initial_prices = [1500, 3500, 7500, 15000, 25000, 45000, 75000, 150000, 250000, 550000]
     pool_size = max(10, cfg.stocks)
     if cfg.initial_price_samples:
@@ -290,12 +312,20 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
     previous = {f"FAKE{i + 1:02d}": floor_price(initial_prices[i % len(initial_prices)])
                 for i in range(pool_size)}
     current_day = date.fromisoformat(cfg.start_date)
-    version = 3 if cfg.depth_imbalance_sigma or cfg.initial_price_samples else (2 if cfg.profile == 'ordinary-bull' else MODEL_VERSION)
+    if cfg.profile == "korean" or reference_paths is not None:
+        version = 4
+    elif cfg.depth_imbalance_sigma or cfg.initial_price_samples:
+        version = 3
+    else:
+        version = 2 if cfg.profile != 'legacy' else MODEL_VERSION
     manifest = {"model_version": version,
                 "synthetic": True, "config": asdict(cfg),
-                "session": "09:00:00 <= Asia/Seoul time < 15:20:00; weekdays, holidays ignored",
+                "session": {"timezone": "Asia/Seoul", "start": "09:00:00",
+                            "seconds": cfg.session_seconds, "include_end": cfg.include_session_end,
+                            "calendar": "weekdays, holidays ignored"},
                 "limitations": ["assumed opening reference; no opening/closing call auction, VI or halts",
-                                "random model is not calibrated to real market distributions",
+                                "volatility and depth partly calibrated on selected stocks; other dynamics are assumptions",
+                                "15:20-15:30 is continuous-auction approximation, not a closing call auction",
                                 "strategy replay remains snapshot-based with no bot market impact",
                                 "optional depth calibration fits dispersion only; not a validated market or profit model"],
                 "files": []}
@@ -304,23 +334,30 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
             current_day += timedelta(days=1)
         count = cfg.stocks or selection_rng.randint(5, 10)
         tickers = selection_rng.sample(list(previous), count)
-        simulated_tickers = list(previous) if cfg.profile == "ordinary-bull" else tickers
+        simulated_tickers = list(previous) if cfg.profile != "legacy" else tickers
         recorded_tickers = set(tickers)
         # Exogenous reference draws must not change when execution-flow settings change.
         noise_rngs = {ticker: random.Random(int.from_bytes(hashlib.sha256(
             f"ordinary-bull-reference:{cfg.seed}:{current_day}:{ticker}".encode()).digest()[:8], "big"))
-            for ticker in simulated_tickers} if cfg.profile == "ordinary-bull" else {}
+            for ticker in simulated_tickers} if cfg.profile != "legacy" else {}
         books = {ticker: OrderBook(previous[ticker]) for ticker in simulated_tickers}
         for ticker, book in books.items():
             book.depth_rng = random.Random(int.from_bytes(hashlib.sha256(
                 f'depth-shock:{cfg.seed}:{current_day}:{ticker}'.encode()).digest()[:8], 'big'))
+        supplied = reference_paths.get(str(current_day)) if reference_paths is not None else None
+        if reference_paths is not None:
+            if supplied is None or set(supplied) != set(simulated_tickers):
+                raise ValueError(f'missing reference paths for {current_day}')
+            if any(len(v) != cfg.ticks_per_day or any(not math.isfinite(p) or p <= 0 for p in v)
+                   for v in supplied.values()):
+                raise ValueError('reference paths must be finite positive prices, one per snapshot')
         hourly = {}
         noise = dict.fromkeys(simulated_tickers, 0.0)
         series = {ticker: [] for ticker in tickers} if viewer else None
         date_suffix = f'{current_day.year:04d}{current_day.month:02d}{current_day.day:02d}'
         path = out_dir / f"fake_market_traces_{date_suffix}.csv"
         start = datetime.combine(current_day, time(9))
-        dt = 22800 / cfg.ticks_per_day
+        dt = cfg.session_seconds / (cfg.ticks_per_day - int(cfg.include_session_end))
         scan_bucket = -1
         with path.open("w", encoding="utf-8-sig", newline="") as fp:
             writer = csv.DictWriter(fp, fieldnames=FIELDS)
@@ -334,21 +371,24 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
                 stamp = now.isoformat(sep=" ", timespec="microseconds")
                 for ticker in simulated_tickers:
                     book = books[ticker]
-                    ref_rng = noise_rngs.get(ticker, rng)
-                    hour = int(elapsed // 3600)
-                    if (ticker, hour) not in hourly:
-                        hourly[ticker, hour] = signed_uniform(ref_rng, cfg.a, cfg.b) * cfg.n
-                    if index:
-                        noise[ticker] += hourly[ticker, hour] * dt / 3600
-                        scale = math.sqrt(dt) if cfg.profile == "ordinary-bull" else 1.0
-                        noise[ticker] += signed_uniform(ref_rng, cfg.c, cfg.d) * cfg.n * scale
-                    reference = previous[ticker] * (1 + (cfg.x * elapsed / 22800 + noise[ticker]) / 10000)
+                    if supplied is not None:
+                        reference = float(supplied[ticker][index])
+                    else:
+                        ref_rng = noise_rngs.get(ticker, rng)
+                        hour = int(elapsed // 3600)
+                        if (ticker, hour) not in hourly:
+                            hourly[ticker, hour] = signed_uniform(ref_rng, cfg.a, cfg.b) * cfg.n
+                        if index:
+                            noise[ticker] += hourly[ticker, hour] * dt / 3600
+                            scale = math.sqrt(dt) if cfg.profile != "legacy" else 1.0
+                            noise[ticker] += signed_uniform(ref_rng, cfg.c, cfg.d) * cfg.n * scale
+                        reference = previous[ticker] * (1 + (cfg.x * elapsed / cfg.session_seconds + noise[ticker]) / 10000)
                     reference = max(book.lower, min(book.upper, reference))
                     fills = advance_book(book, reference, rng, cfg)
                     if ticker not in recorded_tickers:
                         continue
                     raw = _raw(book, ticker, reference, fills)
-                    if cfg.profile == "ordinary-bull":
+                    if cfg.profile != "legacy":
                         raw.update(model_version=version, market_profile=cfg.profile)
                     if cfg.depth_imbalance_sigma:
                         raw['passive_depth_log_bias'] = book.depth_log_bias
@@ -381,12 +421,18 @@ def generate_market(out_dir: Path, cfg: MarketConfig, *, viewer: bool = True) ->
                 digest.update(chunk)
         manifest["files"].append({"path": path.name, "sha256": digest.hexdigest(),
                                   "rows": count * cfg.ticks_per_day, "tickers": tickers})
-        if cfg.profile == "ordinary-bull":
+        if cfg.profile != "legacy":
             manifest["files"][-1].update(previous_close_by_ticker=previous_closes,
                                          closing_price_by_ticker=dict(previous))
         if series is not None:
             from Daily_bot.backtest.fake_market_viewer import write_viewer
             write_viewer(out_dir / f"market_{date_suffix}.html", series, asdict(cfg), str(current_day))
+        if archive_months:
+            archive_name = f'dailybot_korean_mixed_{current_day.year:04d}_{current_day.month:02d}.zip'
+            with ZipFile(out_dir/archive_name, 'a', ZIP_DEFLATED, compresslevel=1) as archive:
+                archive.write(path, path.name)
+            manifest['files'][-1]['archive'] = archive_name
+            path.unlink()
         current_day += timedelta(days=1)
         print(f"Synthetic session {day_index + 1}/{cfg.days}: {path} ({count * cfg.ticks_per_day} rows)")
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -397,15 +443,15 @@ def add_market_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--market-source", choices=("real", "fake"), default="real",
                         help="real: existing recorded traces; fake: generate an isolated synthetic run")
     parser.add_argument("--fake-output-dir", default="", help="empty destination directory; default is a unique run")
-    parser.add_argument("--fake-profile", choices=("ordinary-bull", "legacy"), default="ordinary-bull",
-                        help="ordinary-bull: moderate uptrend and bounded aggressive flow; legacy: original model")
+    parser.add_argument("--fake-profile", choices=("korean", "ordinary-bull", "legacy"), default="korean",
+                        help="korean: observed volatility/depth/price preset (default); ordinary-bull: moderate uptrend and bounded aggressive flow; legacy: original model")
     parser.add_argument('--fake-depth-calibration', default='',
                         help='optional real-snapshot depth-dispersion JSON from diagnose_no_trades; no profit fitting')
     for name, default, kind, help_text in [
         ("seed", 42, int, "reproducible RNG seed"), ("days", 1, int, "synthetic weekday sessions"),
         ("start-date", "2026-11-23", str, "first date (KST)"),
         ("stocks", 0, int, "0=random 5..10 per day, or fixed 5..20"),
-        ("ticks-per-day", 22800, int, "t snapshots/stock/day; default one simulated second"),
+        ("ticks-per-day", 22800, int, "snapshots/stock/day; Korean default 2341 (10s), other profiles 22800 (1s)"),
         ("x", 100., float, "reference slope in bps/session (negative=down)"),
         ("n", 1., float, "reference change scale in bps"),
         ("a", 5., float, "hourly magnitude lower multiplier"),
@@ -418,10 +464,10 @@ def add_market_arguments(parser: argparse.ArgumentParser) -> None:
         ("market-order-probability", 1., float, "per-side aggressive order arrival probability per tick"),
         ("max-market-order-levels", 0, int, "maximum book levels consumed per aggressive order; 0=uncapped"),
         ("scan-interval-seconds", 60., float, "strategy entry scan cadence, separate from tick cadence"),
-        ("depth-imbalance-sigma", 0., float, "independent passive-depth log-ratio shock SD; default off"),
+        ("depth-imbalance-sigma", 0., float, "passive-depth log-ratio SD; Korean preset calibrated, other profiles off"),
         ("depth-imbalance-persistence", .995, float, "depth-shock AR correlation per simulated second"),
     ]:
-        profiled = {"x", "n", "a", "b", "c", "d", "base-quantity", "cancellation-probability",
+        profiled = {"stocks", "ticks-per-day", "x", "n", "a", "b", "c", "d", "base-quantity", "cancellation-probability",
                     "market-order-scale", "market-order-probability", "max-market-order-levels",
                     "depth-imbalance-sigma", "depth-imbalance-persistence"}
         parser.add_argument("--fake-" + name, default=None if name in profiled else default,
@@ -430,7 +476,8 @@ def add_market_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def config_from_args(args: argparse.Namespace) -> MarketConfig:
-    cfg = ordinary_bull_config() if args.fake_profile == "ordinary-bull" else MarketConfig()
+    cfg = (korean_config() if args.fake_profile == "korean" else
+           ordinary_bull_config() if args.fake_profile == "ordinary-bull" else MarketConfig())
     if getattr(args, 'fake_depth_calibration', ''):
         calibration = json.loads(Path(args.fake_depth_calibration).read_text(encoding='utf-8'))
         if calibration.get('schema_version') != 1:
@@ -478,4 +525,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
